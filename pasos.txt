@@ -2055,3 +2055,57 @@ ESTADO    : OK. CRITERIO DE ACEPTACION DE LA FASE 5 CUMPLIDO.
   SIGUIENTE: FASE 6 - API CRUD DE LIQUIDACIONES (Form Requests, controladores,
   rutas, resources, inmutabilidad D2 con 422 y calculo servido desde la API).
 ################################################################################
+
+################################################################################
+  FASE 6 - API CRUD DE LIQUIDACIONES  --  2026-10-06
+################################################################################
+
+  Entregables:
+    6.1  Form Requests: StoreLiquidacionRequest, UpdateLiquidacionRequest,
+         TransicionRequest, ObservacionRequest, ParametrosRequest y el trait
+         ValidaUbicacionDelArea (C5 en las reglas regex).
+    6.2  LiquidacionController: index (filtros), store, show, update (parcial),
+         destroy (borrado logico), pdf, excel, observar, historial.
+    6.3  Calculo SIEMPRE recalculado en el backend; se persiste tal cual sale
+         del servicio (T3).
+    6.4  LiquidacionResource con transiciones_disponibles calculadas por el
+         backend; montos como string.
+    6.5  CatalogoController: 8 catalogos + cotizaciones.
+    6.6  ParametrosController: GET/PUT (PUT solo admin).
+    6.7  TransicionController: POST /{id}/transiciones, con validacion de
+         estado (422) antes que permiso (403).
+    6.8  ReporteController: resumen, liquidaciones y exportar (xlsx|pdf).
+    6.9  Pint passed; PHPStan nivel 5 sin errores.
+    6.10 Tests feature: LiquidacionApiTest (27), ReportesYCatalogosApiTest,
+         mas LiquidacionPolicyTest existente. Total suite: 127 tests.
+    6.11 docs/api.md escrito.
+
+  Correcciones de la iteracion de tests (todas verificadas):
+    - store() no persistia varios campos (tipo_cambio, cotizacion, area,
+      vendedor, etc.): helper entradaPersistible(), compartido con update().
+    - update() tampoco persistia insumos ni numero_documento externo; ahora
+      recalcula codigo_formulario si cambia la fecha.
+    - Liquidacion no tenia 'observaciones' en #[Fillable]: fill() lo
+      descartaba en silencio.
+    - ValidaUbicacionDelArea comparaba campos ausentes en update parcial:
+      ahora solo valida los campos presentes en la peticion.
+    - LiquidacionPolicy::delete() es "solo el autor" (estado eliminable +
+      esPropia). El permiso liquidaciones.eliminar del admin NO abre borrado
+      de ajenas (L694 + D2).
+    - El guard de Sanctum cachea el primer usuario entre peticiones del mismo
+      test: los tests que cambian de actor usan identificarseComo() con
+      forgetGuards().
+    - El helper de calculo de los tests replica exactamente el orden de
+      operaciones del servicio (bruto desde valor_usd_gramo y peso_fino a
+      escala 20) y el redondeo half-up de MySQL (bcmath trunca).
+
+  Entregables verificados:
+    - 127 tests / 699 assertions en verde
+    - Pint passed
+    - PHPStan nivel 5 sin errores
+
+  Git    : FASE 6 sin commitear (el usuario pide los commits por fase).
+           Historial: 1b4b956 (FASE 0-3), 4fd6849 (FASE 4), 4bd490c (FASE 5).
+
+  SIGUIENTE: FASE 7 - FRONTEND (SPA Vue 3 + Vite + Tailwind).
+################################################################################

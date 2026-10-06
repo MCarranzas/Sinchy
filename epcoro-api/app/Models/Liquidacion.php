@@ -33,7 +33,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $codigo_formulario
  * @property int|null $correlativo
  * @property int $ejercicio
- * @property string $fecha_transaccion
+ * @property Carbon $fecha_transaccion
  * @property Carbon $fecha_registro
  * @property int $usuario_registro_id
  * @property EstadoLiquidacion $estado
@@ -93,6 +93,7 @@ use Illuminate\Support\Carbon;
     'fecha_registro',
     'usuario_registro_id',
     'estado',
+    'observaciones',
     'tipo_cambio',
     'cotizacion_id',
     'cotizacion_usd_oz_t',

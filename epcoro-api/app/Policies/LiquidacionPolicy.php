@@ -75,14 +75,27 @@ class LiquidacionPolicy
 
     /**
      * Borrado logico. Dos cortes, ambos de la decision D2: el estado tiene
-     * que poder ir a `eliminado` (solo `creado`) y el que borra tiene que
-     * ser el autor. Borrar en revision o en aprobado por la puerta de atras
-     * anularia D2.
+     * que poder ir a `eliminado` (solo `creado`, y `en_correccion` segun la
+     * linea 699 del documento) y el que borra tiene que ser el autor. El
+     * permiso `eliminar` (solo del administrador) da via una tercera,
+     * administrativa.
+     *
+     * El autor no necesita permiso: el borrado de una captura es parte de
+     * "solo el autor, antes de enviar" (linea 694), y exigirle
+     * `liquidaciones.eliminar` dejaria a ningun tecnico poder borrar lo que
+     * recien capturo con un error de tipeo.
+     */
+    /**
+     * Borrado logico: solo el autor, y solo en los estados que la maquina
+     * permite dejar (`creado`, `en_correccion`).
+     *
+     * El permiso `liquidaciones.eliminar` del admin NO abre esta puerta para
+     * liquidaciones ajenas: la regla escrita en las instrucciones es "solo el
+     * autor, antes de enviar" (L694) y una aprobada jamas se toca (D2).
      */
     public function delete(User $usuario, Liquidacion $liquidacion): bool
     {
-        return $usuario->can('liquidaciones.eliminar')
-            && $liquidacion->estado->puedeTransicionA(EstadoLiquidacion::Eliminado)
+        return $liquidacion->estado->puedeTransicionA(EstadoLiquidacion::Eliminado)
             && $this->esPropia($usuario, $liquidacion);
     }
 
@@ -112,6 +125,24 @@ class LiquidacionPolicy
     {
         return $usuario->can('liquidaciones.rechazar')
             && $liquidacion->estado->puedeTransicionA(EstadoLiquidacion::Rechazado);
+    }
+
+    /**
+     * rechazado -> en_correccion: el autor retoma lo suyo para corregirlo.
+     *
+     * Es la unica puerta de vuelta hacia un estado editable (4.1: solo
+     * `creado` y `en_correccion` aceptan edicion), y sin esta habilidad la
+     * rama `rechazado -> en_correccion` del enum quedaria sin nadie que
+     * pudiera recorrerla: una liquidacion rechazada seria un callejon sin
+     * salida. Usa el permiso de edicion porque corregir ES editar, y exige
+     * ser el autor por lo mismo que cualquier otra vuelta al trabajo del
+     * tecnico.
+     */
+    public function corregir(User $usuario, Liquidacion $liquidacion): bool
+    {
+        return $usuario->can('liquidaciones.editar')
+            && $liquidacion->estado->puedeTransicionA(EstadoLiquidacion::EnCorreccion)
+            && $this->esPropia($usuario, $liquidacion);
     }
 
     /**

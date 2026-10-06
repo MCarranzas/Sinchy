@@ -1,0 +1,209 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\AreaMinera;
+use App\Models\CotizacionQuincenal;
+use App\Models\Departamento;
+use App\Models\Localidad;
+use App\Models\Municipio;
+use App\Models\Persona;
+use App\Models\PresentacionMineral;
+use App\Models\Provincia;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
+
+/**
+ * Los 8 catalogos que el formulario de captura necesita para no escribir
+ * texto libre (seccion 3.2 + FASE 6.5).
+ *
+ * Son de LECTURA para cualquier usuario autenticado: el tecnico no puede
+ * editar el catalogo, pero sin el no captura nada. El unico alta que se
+ * agrega aqui es la de personas, porque 8.4 la exige ("buscador de personas
+ * con alta rapida") y sin ella el formulario se queda sin vendedor la
+ * primera vez que aparece uno nuevo.
+ *
+ * Las cascadas llegan con el id del padre: la CARGA la resuelve el cliente
+ * (al cambiar el departamento se piden las provincias), que es como el
+ * SelectorUbicacion.vue funciona. Orden alfabetico siempre, para que la
+ * lista no cambie de orden entre una carga y otra.
+ */
+class CatalogoController extends Controller
+{
+    public function departamentos(): JsonResponse
+    {
+        return $this->lista(
+            Departamento::query()->orderBy('nombre')->get(['id', 'codigo', 'nombre'])
+        );
+    }
+
+    public function provincias(Request $request): JsonResponse
+    {
+        return $this->lista(
+            Provincia::query()
+                ->when($request->filled('departamento_id'), fn ($q) => $q->where('departamento_id', $request->integer('departamento_id')))
+                ->orderBy('nombre')
+                ->get(['id', 'departamento_id', 'codigo', 'nombre'])
+        );
+    }
+
+    public function municipios(Request $request): JsonResponse
+    {
+        return $this->lista(
+            Municipio::query()
+                ->when($request->filled('provincia_id'), fn ($q) => $q->where('provincia_id', $request->integer('provincia_id')))
+                ->orderBy('nombre')
+                ->get(['id', 'provincia_id', 'codigo', 'nombre'])
+        );
+    }
+
+    public function localidades(Request $request): JsonResponse
+    {
+        return $this->lista(
+            Localidad::query()
+                ->when($request->filled('municipio_id'), fn ($q) => $q->where('municipio_id', $request->integer('municipio_id')))
+                ->orderBy('nombre')
+                ->get(['id', 'municipio_id', 'codigo', 'nombre'])
+        );
+    }
+
+    /**
+     * El buscador de areas trae la UBICACION COMPLETA: el formulario
+     * autocompleta los cuatro niveles desde aqui, y el backend despues
+     * exige que coincidan (store/update).
+     */
+    public function areasMineras(Request $request): JsonResponse
+    {
+        $areas = AreaMinera::query()
+            ->with([
+                'departamento:id,nombre',
+                'provincia:id,nombre',
+                'municipio:id,nombre,codigo',
+                'localidad:id,nombre',
+            ])
+            ->when($request->filled('q'), fn ($q) => $q->where(
+                fn ($busqueda) => $busqueda
+                    ->where('nombre_area_minera', 'ilike', '%'.trim((string) $request->input('q')).'%')
+                    ->orWhere('titular_derecho_minero', 'ilike', '%'.trim((string) $request->input('q')).'%')
+            ))
+            ->orderBy('nombre_area_minera')
+            ->limit(50)
+            ->get()
+            ->map(fn (AreaMinera $area): array => [
+                'id' => $area->id,
+                'nombre_area_minera' => $area->nombre_area_minera,
+                'titular_derecho_minero' => $area->titular_derecho_minero,
+                'codigo_ajam_patente' => $area->codigo_ajam_patente,
+                'activo' => $area->activo,
+                'ubicacion' => [
+                    'departamento_id' => $area->departamento_id,
+                    'departamento_nombre' => $area->departamento?->nombre,
+                    'provincia_id' => $area->provincia_id,
+                    'provincia_nombre' => $area->provincia?->nombre,
+                    'municipio_id' => $area->municipio_id,
+                    'municipio_nombre' => $area->municipio?->nombre,
+                    'codigo_municipio' => $area->municipio?->codigo,
+                    'localidad_id' => $area->localidad_id,
+                    'localidad_nombre' => $area->localidad?->nombre,
+                ],
+            ]);
+
+        return $this->lista($areas);
+    }
+
+    public function personas(Request $request): JsonResponse
+    {
+        $personas = Persona::query()
+            ->where('activo', true)
+            ->when($request->filled('q'), function ($q) use ($request): void {
+                $busqueda = '%'.trim((string) $request->input('q')).'%';
+
+                $q->where(fn ($b) => $b
+                    ->where('nombre_completo', 'ilike', $busqueda)
+                    ->orWhere('ci', 'ilike', $busqueda)
+                    ->orWhere('nit', 'ilike', $busqueda));
+            })
+            ->orderBy('nombre_completo')
+            ->limit(50)
+            ->get(['id', 'nombre_completo', 'nombres', 'apellidos', 'ci', 'nit', 'tipo_documento', 'email', 'telefono']);
+
+        return $this->lista($personas);
+    }
+
+    public function presentacionesMineral(): JsonResponse
+    {
+        return $this->lista(
+            PresentacionMineral::query()->orderBy('nombre')->get(['id', 'nombre'])
+        );
+    }
+
+    /**
+     * Alta rapida de persona (8.4): el vendedor nuevo no puede obligar a
+     * salirse del formulario.
+     *
+     * `ci` va con los mismos cortes C5 que vendedor_ci en la liquidacion:
+     * es un identificador, y si aqui se guardara con puntos o en notacion
+     * cientifica, despues no pasaria la validacion del expediente.
+     */
+    public function guardarPersona(Request $request): JsonResponse
+    {
+        $datos = $request->validate([
+            'nombres' => ['required', 'string', 'max:100'],
+            'apellidos' => ['required', 'string', 'max:100'],
+            'ci' => ['required', 'string', 'regex:/^\d{1,10}$/'],
+            'nit' => ['nullable', 'string', 'regex:/^\d{1,20}$/'],
+            'tipo_documento' => ['nullable', 'string', 'in:CI,NIT,PAS'],
+            'email' => ['nullable', 'email', 'max:150'],
+            'telefono' => ['nullable', 'string', 'max:30'],
+            'direccion' => ['nullable', 'string', 'max:200'],
+        ]);
+
+        // El vendedor puede venir del Excel externo (N5): si el CI ya esta,
+        // se devuelve la persona existente y no se crea un duplicado. La
+        // escritura por encima de los nombres de alguien que ya existe no
+        // se hace por aqui, para no pisar datos por una casilla mal llena.
+        $persona = Persona::query()->where('ci', $datos['ci'])->first();
+
+        if ($persona !== null) {
+            return response()->json([
+                'message' => 'La persona con este CI ya estaba registrada.',
+                'data' => $persona,
+            ], 200);
+        }
+
+        $persona = Persona::query()->create(array_merge($datos, [
+            'tipo_documento' => $datos['tipo_documento'] ?? 'CI',
+            'nombre_completo' => trim($datos['nombres'].' '.$datos['apellidos']),
+            'activo' => true,
+        ]));
+
+        return response()->json([
+            'message' => 'Persona registrada correctamente.',
+            'data' => $persona,
+        ], 201);
+    }
+
+    /**
+     * Ultimas cotizaciones quincenales, la mas reciente primero (8.2).
+     */
+    public function cotizaciones(Request $request): JsonResponse
+    {
+        return $this->lista(
+            CotizacionQuincenal::query()
+                ->when($request->filled('ejercicio'), fn ($q) => $q->where('ejercicio', $request->integer('ejercicio')))
+                ->orderByDesc('ejercicio')
+                ->orderByDesc('quincena')
+                ->limit(24)
+                ->get()
+        );
+    }
+
+    /**
+     * @param  Collection<int, mixed>  $elementos
+     */
+    private function lista(Collection $elementos): JsonResponse
+    {
+        return response()->json(['data' => $elementos]);
+    }
+}

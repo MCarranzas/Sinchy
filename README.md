@@ -32,6 +32,7 @@ epcoro/
 | `docs/hoja.xlsx` | El formulario real. Todos los casos de prueba salen de aca. |
 | `docs/diagrama_sist_epcoro.drawio` | Roles y flujo de estados. |
 | `docs/reglas-negocio.md` | Decisiones D1-D4 del negocio y redondeo verificado. |
+| `epcoro-api/docs/api.md` | Contrato de la API `/api/v1` (endpoints, estados, recursos, errores). |
 | `pasos.txt` | Bitacora. **Toda orden ejecutada se anota aca.** |
 
 ## La regla mas importante del proyecto
@@ -103,14 +104,15 @@ el PATH y no se usa para este proyecto.
 | 3 - Autenticacion y roles | completa: login por cookie Sanctum, roles Spatie, bloqueo y 23 tests en verde |
 | 4 - Esquema de base de datos | completa: 15 migraciones, ENUM de estados, catalogos sembrados, 13 factories, `LiquidacionPolicy` y 45 tests en verde |
 | 5 - Servicio de calculo | completa (salvo 5.4.8, que necesita la API): calculo puro, parametros, numerador, maquina de estados y 87 tests en verde |
-| 6 a 12 - API, frontend, reportes, produccion | pendiente |
+| 6 - API CRUD de liquidaciones | completa: `/api/v1` (auth, catalogos, parametros, liquidaciones, PDF/Excel, transiciones, observaciones, historial y reportes), 127 tests en verde, pint y phpstan limpios. Ver `epcoro-api/docs/api.md` |
+| 7 a 12 - Frontend, reportes UI, produccion | pendiente |
 
 Comprobacion (`epcoro-api/`):
 
 ```bash
 php artisan migrate:fresh --seed   # crea todo sin errores
 php artisan migrate:rollback       # revierte todo
-php artisan test                   # 87 tests / 522 assertions
+php artisan test                   # 127 tests / 699 assertions
 vendor\bin\pint --test
 vendor\bin\phpstan analyse
 ```
