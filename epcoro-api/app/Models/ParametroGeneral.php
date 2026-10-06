@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Database\Factories\ParametroGeneralFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -21,7 +22,10 @@ use InvalidArgumentException;
 #[Fillable(['clave', 'valor', 'tipo', 'descripcion'])]
 class ParametroGeneral extends Model
 {
-    /** @use HasFactory<\Database\Factories\ParametroGeneralFactory> */
+    /** El pluralizador ingles diria "parametro_generals". */
+    protected $table = 'parametros_generales';
+
+    /** @use HasFactory<ParametroGeneralFactory> */
     use HasFactory;
 
     protected $primaryKey = 'clave';

@@ -22,7 +22,13 @@ return new class extends Migration
             $table->string('tipo', 20); // comentario | solicitud | observacion
             $table->text('texto');
 
-            $table->timestampsTz();
+            // Solo created_at con valor por omision, igual que en el
+            // historial: el modelo tiene $timestamps = false porque una
+            // observacion se escribe una vez y no se edita. Sin el
+            // useCurrent(), created_at quedaria en NULL y el indice
+            // (liquidacion_id, created_at) dejaria de servir para ordenar.
+            $table->timestampTz('created_at')->useCurrent();
+            $table->timestampTz('updated_at')->nullable();
 
             $table->index(['liquidacion_id', 'created_at']);
         });

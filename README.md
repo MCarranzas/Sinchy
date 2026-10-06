@@ -17,7 +17,7 @@ epcoro/
 |-- docs/
 |   |-- hoja.xlsx                     formulario oficial (fuente de verdad)
 |   |-- diagrama_sist_epcoro.drawio   flujo de estados y roles
-|   |-- diagrama-erd.md               entidad-relacion (se crea en FASE 4)
+|   |-- diagrama-erd.md               entidad-relacion (deriva de las migraciones)
 |   |-- catalogo-campos.md            celda Excel <-> columna BD <-> campo UI
 |   `-- reglas-negocio.md             formulas y maquina de estados
 |-- instrucciones.txt  especificacion tecnica v1.2
@@ -93,7 +93,17 @@ el PATH y no se usa para este proyecto.
 | 1 - Entorno | completa salvo 1.6 (extensiones de VS Code) |
 | 2 - Esqueleto del backend | completa |
 | 3 - Autenticacion y roles | completa: login por cookie Sanctum, roles Spatie, bloqueo y 23 tests en verde |
-| 4 - Esquema de base de datos | pendiente |
+| 4 - Esquema de base de datos | completa: 15 migraciones, ENUM de estados, catalogos sembrados, 13 factories, `LiquidacionPolicy` y 45 tests en verde |
 | 5 a 12 - Calculo, API, frontend, reportes, produccion | pendiente |
+
+Comprobacion de la FASE 4 (`epcoro-api/`):
+
+```bash
+php artisan migrate:fresh --seed   # crea todo sin errores
+php artisan migrate:rollback       # revierte todo
+php artisan test                   # 45 tests / 202 assertions
+vendor\bin\pint --test
+vendor\bin\phpstan analyse
+```
 
 Detalle exacto y cronologico en `pasos.txt`.

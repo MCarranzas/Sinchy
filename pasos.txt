@@ -20,7 +20,7 @@
    ESTADO    : OK | FALLA | PENDIENTE | OMNEGIDO
 
  ESTADO GLOBAL DEL PROYECTO
-   [EN CURSO] FASE 0 -> FASE 1 (preparacion de entorno)
+   [EN CURSO] FASE 4 -> FASE 5 (servicio de calculo)
 ================================================================================
 
 
@@ -1700,4 +1700,191 @@ ESTADO    : OK. LAS 2 PREGUNTAS QUE BLOQUEABAN LA FASE 4 ESTAN RESUELTAS.
   Git    : repositorio inicializado, 0 commits. El primer commit sigue
            pendiente de autorizacion del usuario. .env esta correctamente
            ignorado por .gitignore y .env.example no lo esta.
+################################################################################
+
+################################################################################
+# FASE 4 - DISENO DE LA BASE DE DATOS DE NEGOCIO
+################################################################################
+
+### [93] 2026-10-06 14:30 - FASE 4 / PRIMER COMMIT
+OBJETIVO  : Versionar el trabajo de la FASE 0-3 antes de tocar la FASE 4, para
+            que cualquier cambio de esquema sea un diff aparte.
+COMANDO   : git status --short; git log --oneline -5
+            git add -A; git commit -m "Commit inicial: FASE 0-3 completadas"
+RESULTADO : 1b4b956 Commit inicial: FASE 0-3 completadas (114 archivos,
+            20320 inserciones). Verificado que NO entran .env, vendor/, ni
+            node_modules/. Working tree limpio despues del commit.
+ESTADO    : OK
+
+### [94] 2026-10-06 14:40 - FASE 4 / AUDITORIA DE PARTIDA
+OBJETIVO  : Confirmar que FASE 4.1-4.3 (migraciones, ENUM, enum PHP) ya
+            existian antes de empezar, para no duplicar trabajo.
+COMANDO   : git log --oneline; ls database/migrations/2026_10_06_*.php
+            php artisan migrate:status
+RESULTADO : 15 migraciones de la FASE 4 presentes y aplicadas (Ran).
+            Enum PHP app/Enums/EstadoLiquidacion.php con la maquina de D2.
+            El primer commit las ya incluia.
+ESTADO    : OK
+
+### [95] 2026-10-06 14:55 - FASE 4 / PINT REEJECUTADO (no solo --test)
+OBJETIVO  : Aplicar las correcciones de estilo, no solo reportarlas.
+COMANDO   : vendor\bin\pint
+RESULTADO : 13 modelos de app/Models corregidos (BOM/encoding,
+            ordered_imports, fully_qualified_strict_types). PHPStan dejo de
+            fallar por parseo en Departamento.php.
+ESTADO    : OK
+
+### [96] 2026-10-06 15:10 - FASE 4.4 / SEEDERS DE CATALOGOS
+OBJETIVO  : Sembrar catalogos y parametros iniciales.
+COMANDO   : write database/seeders/CatalogoGeograficoSeeder.php
+            write database/seeders/PresentacionesSeeder.php
+            write database/seeders/ParametrosSeeder.php
+            edit database/seeders/DatabaseSeeder.php
+RESULTADO : CatalogoGeograficoSeeder lee database/catalogos/bolivia.php (9
+            departamentos, 112 provincias, 340 municipios) con updateOrCreate
+            idempotente y crea la localidad cabecera de cada municipio.
+            PresentacionesSeeder: ORO FUNDIDO y ORO EN GRANO.
+            ParametrosSeeder: TIPO_CAMBIO_DEFECTO 6.96,
+            GRAMOS_POR_ONZA_TROY 31.1035, ALICUOTA_APORTE 0.018 (D1),
+            nombre/NIM/NIT del comprador. NO se siembra
+            ALICUOTA_APORTE_SOLIDARIO: por D1 ese parametro no existe.
+            DatabaseSeeder los encadena en el orden correcto.
+ESTADO    : OK
+
+### [97] 2026-10-06 15:25 - FASE 4.5 / 13 FACTORIES
+OBJETIVO  : Factories para cada modelo de negocio (4.5).
+COMANDO   : write database/factories/*Factory.php (13 archivos)
+RESULTADO : Departamento, Provincia, Municipio, Localidad, Persona, AreaMinera,
+            PresentacionMineral, ParametroGeneral, CotizacionQuincenal,
+            Liquidacion, LiquidacionDeduccion, LiquidacionObservacion,
+            LiquidacionEstadoHistorial.
+
+            Decisiones que no son evidentes:
+            - AreaMinera y Liquidacion crean su jerarquia de UNA vez y en
+              orden. Si cada FK creara su nivel, el area quedaria con un
+              municipio de otro departamento y la liquidacion con un snapshot
+              que no coincide con la fila referida.
+            - Los snapshots (vendedor_nombre, *_nombre, usuario_nombre) se
+              copian del modelo YA creado, no de una factory anidada: la
+              anidada solo daria el id y el texto quedaria inventado.
+            - Los codigos usan pools de mas de 9999 valores: en un solo test
+              se crean decenas de departamentos y con el rango del INE el
+              unique() de Faker lanza OverflowException.
+            - Montos generados con bcmath y redondeo half-up, mismos que usara
+              el servicio de la FASE 5.
+ESTADO    : OK
+
+### [98] 2026-10-06 15:45 - FASE 4.8 / LIQUIDACIONPOLICY
+OBJETIVO  : Policy con la visibilidad de D3 y la inmutabilidad de D2.
+COMANDO   : write app/Policies/LiquidacionPolicy.php
+RESULTADO : viewAny/view por permiso (ver_todas vs ver_propias) en Policy y no
+            en el controlador, para que ningun endpoint olvide filtrar.
+            update: solo creado/en_correccion y solo propias (4.2).
+            delete: solo autor y solo en creado (D2: eliminado es de creado).
+            aprobar: permiso + estado revisado + NUNCA la propia (linea 748 de
+            instrucciones.txt, separacion de responsabilidades).
+            anular: jamas desde aprobado (decision del 2026-10-05).
+            La inmutabilidad de D2 cae de gratis: puedeTransicionA() y
+            esEditable() devuelven false desde 'aprobado', con permiso o no.
+ESTADO    : OK
+
+### [99] 2026-10-06 15:57 - FASE 4 / PRIMERA CORRIDA DE LOS NUEVOS TESTS
+OBJETIVO  : Ejercitar la Policy y el enum.
+COMANDO   : php artisan test
+RESULTADO : FALLA en los 15 tests nuevos.
+            SQLSTATE[42P01]: Undefined table ... insert into "localidads"
+            El pluralizador de Laravel es ingles: "localidad" -> "localidads",
+            "liquidacion" -> "liquidacions", "presentacion_mineral" ->
+            "presentacion_minerals". Ningun modelo declaraba $table.
+            Los tests previos no lo habian visto porque nunca INSERTaban.
+ESTADO    : FALLA (bug real, no del test)
+
+### [100] 2026-10-06 15:58 - FASE 4 / ARREGLO DE $table + TEST DE CANDADO
+OBJETIVO  : Que cada modelo apunte a su tabla y que el error no vuelva.
+COMANDO   : edit app/Models/*.php (13 modelos: protected $table)
+            write tests/Feature/TablasDeModelosTest.php
+RESULTADO : Los 13 modelos de negocio declaran $table a mano. El test nuevo
+            afirma getTable() === nombre de migracion y Schema::hasTable() para
+            cada uno: un modelo sin $table ahora rompe aqui y no a mitad de un
+            test de otra cosa.
+ESTADO    : OK
+
+### [101] 2026-10-06 16:01 - FASE 4 / TESTS EN VERDE
+OBJETIVO  : Verificar Policy, maquina de estados y tablas.
+COMANDO   : php artisan test
+RESULTADO : 45 tests / 202 assertions, todos en verde.
+              tests/Unit/EstadoLiquidacionTest   6 tests (tabla D2 completa,
+                aprobado/anulado/eliminado terminales, esEditable)
+              tests/Feature/LiquidacionPolicyTest 15 tests (D3 por rol, D2
+                aprobada intocable hasta para admin, aprobar no es la propia,
+                edicion y transiciones por estado)
+              tests/Feature/TablasDeModelosTest   1 test (13 modelos)
+              + los 23 de la FASE 3
+ESTADO    : OK
+
+### [102] 2026-10-06 16:02 - FASE 4.7 / DIAGRAMA ERD
+OBJETIVO  : Documentar el esquema en docs/diagrama-erd.md.
+COMANDO   : psql -c "select table_name, column_name, data_type ...
+            write docs/diagrama-erd.md
+RESULTADO : Diagrama mermaid con las 14 tablas de negocio + users, columnas y
+            FKs tomadas de information_schema (no de un dibujo aparte), mas 7
+            notas que el dibujo no puede decir: snapshot, T3, ENUM nativo,
+            PKs especiales (parametros_generales.clave y correlativos), la
+            ausencia de aporte solidario, la vista y las tablas de roles.
+ESTADO    : OK
+
+### [103] 2026-10-06 16:03 - FASE 4 / CRITERIO DE ACEPTACION
+OBJETIVO  : migrate:fresh --seed sin errores y migrate:rollback funcional.
+COMANDO   : php artisan migrate:fresh --seed --force
+            psql -c "select count(*) ..."
+            php artisan migrate:rollback --force
+            php artisan migrate --seed --force
+RESULTADO : fresh --seed: 18 migraciones + 5 seeders sin errores.
+            Conteos: departamentos=9 provincias=112 municipios=340
+            localidades=340 presentaciones=2 parametros=6 roles=4 permisos=18.
+            rollback: 21 migraciones revertidas en orden (incluida la vista).
+            migrate --seed: base restaurada.
+            Despues: pint --test passed, PHPStan [OK] No errors (26 errores
+            de la FASE 4 resueltos con las factories), 45 tests en verde.
+ESTADO    : OK. CRITERIO DE ACEPTACION DE LA FASE 4 CUMPLIDO.
+
+################################################################################
+  ESTADO AL CIERRE DE LA FASE 4  --  2026-10-06 16:05
+################################################################################
+
+  FASE 0 : completa para lo que bloqueaba. D1-D4 resueltas y documentadas.
+  FASE 1 : completa salvo 1.6 (extensiones de VS Code).
+  FASE 2 : completa
+  FASE 3 : completa (ver cierre del 2026-10-05 20:30).
+  FASE 4 : COMPLETA.
+             4.1 migraciones (15, aplicadas)
+             4.2 ENUM liquidacion_estado nativo de PostgreSQL
+             4.3 enum PHP + tests de la maquina de estados
+             4.4 seeders (catalogo geografico, presentaciones, parametros)
+             4.5 factories (13)
+             4.6 vista v_liquidaciones_detalle
+             4.7 docs/diagrama-erd.md
+             4.8 app/Policies/LiquidacionPolicy.php + tests
+
+  Entregables verificados:
+    - 45 tests / 202 assertions en verde
+    - Pint passed
+    - PHPStan nivel 5 sin errores (incluye tests/ y database/)
+    - migrate:fresh --seed y migrate:rollback sin errores
+
+  Base de desarrollo: 9 departamentos, 112 provincias, 340 municipios y 340
+  localidades; 2 presentaciones; 6 parametros; 1 admin, 4 roles, 18 permisos.
+  La contrasena del admin se genera aleatoria cada db:seed y se muestra una
+  sola vez (usuario con debe_cambiar_password=true).
+
+  Git    : 1 commit (1b4b956, FASE 0-3). Los cambios de la FASE 4 quedan sin
+           commitear a proposito: el usuario pide los commits por separado.
+
+  SIGUIENTE: FASE 5 - SERVICIO DE CALCULO (CalculoLiquidacionService, Parametro
+  Repository, NumeradorDocumento y los tests unitarios de los casos ORO).
+  Sigue abierto (no bloquea la FASE 5, pero si conviene resolverlo antes):
+    - Via de correccion para una aprobada mal cargada (punto 5 de los
+      abiertos de docs/reglas-negocio.md).
+    - Visibilidad del revisor: implementada como "ve todas", falta confirmar.
+    - Transiciones de la maquina de estados distintas de 'aprobado'.
 ################################################################################

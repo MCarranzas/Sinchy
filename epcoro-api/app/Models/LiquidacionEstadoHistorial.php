@@ -3,10 +3,12 @@
 namespace App\Models;
 
 use App\Enums\EstadoLiquidacion;
+use Database\Factories\LiquidacionEstadoHistorialFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
 /**
  * Bitacora de cambios de estado (seccion 3.5).
@@ -24,7 +26,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $usuario_id
  * @property string $usuario_nombre
  * @property string|null $comentario
- * @property \Illuminate\Support\Carbon $created_at
+ * @property Carbon $created_at
  */
 #[Fillable([
     'liquidacion_id',
@@ -36,7 +38,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 ])]
 class LiquidacionEstadoHistorial extends Model
 {
-    /** @use HasFactory<\Database\Factories\LiquidacionEstadoHistorialFactory> */
+    /** Tabla en singular: es la unica del esquema que lo esta. */
+    protected $table = 'liquidacion_estado_historial';
+
+    /** @use HasFactory<LiquidacionEstadoHistorialFactory> */
     use HasFactory;
 
     /**

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Database\Factories\LiquidacionDeduccionFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -36,7 +37,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 ])]
 class LiquidacionDeduccion extends Model
 {
-    /** @use HasFactory<\Database\Factories\LiquidacionDeduccionFactory> */
+    /** El pluralizador ingles diria "liquidacion_deduccions". */
+    protected $table = 'liquidacion_deducciones';
+
+    /** @use HasFactory<LiquidacionDeduccionFactory> */
     use HasFactory;
 
     /**

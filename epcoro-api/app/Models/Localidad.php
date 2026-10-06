@@ -1,7 +1,8 @@
-﻿<?php
+<?php
 
 namespace App\Models;
 
+use Database\Factories\LocalidadFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -19,7 +20,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable(['municipio_id', 'codigo', 'nombre'])]
 class Localidad extends Model
 {
-    /** @use HasFactory<\Database\Factories\LocalidadFactory> */
+    /**
+     * Declarada a mano: el pluralizador de Laravel es ingles y sacaria
+     * "localidads" en vez de "localidades". Los demas modelos de negocio la
+     * declaran por la misma razon, aunque a veces les acertaria de casualidad.
+     */
+    protected $table = 'localidades';
+
+    /** @use HasFactory<LocalidadFactory> */
     use HasFactory;
 
     /** @return BelongsTo<Municipio, $this> */

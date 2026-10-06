@@ -3,11 +3,13 @@
 namespace App\Models;
 
 use App\Enums\EstadoLiquidacion;
+use Database\Factories\LiquidacionFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 
 /**
  * Liquidacion de mineral: la tabla principal, diseno denso con una columna
@@ -32,17 +34,17 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int|null $correlativo
  * @property int $ejercicio
  * @property string $fecha_transaccion
- * @property \Illuminate\Support\Carbon $fecha_registro
+ * @property Carbon $fecha_registro
  * @property int $usuario_registro_id
  * @property EstadoLiquidacion $estado
- * @property \Illuminate\Support\Carbon|null $fecha_revision
+ * @property Carbon|null $fecha_revision
  * @property int|null $usuario_revision_id
- * @property \Illuminate\Support\Carbon|null $fecha_aprobacion
+ * @property Carbon|null $fecha_aprobacion
  * @property int|null $usuario_aprobacion_id
- * @property \Illuminate\Support\Carbon|null $fecha_rechazo
+ * @property Carbon|null $fecha_rechazo
  * @property int|null $usuario_rechazo_id
  * @property string|null $motivo_rechazo
- * @property \Illuminate\Support\Carbon|null $fecha_anulacion
+ * @property Carbon|null $fecha_anulacion
  * @property int|null $usuario_anulacion_id
  * @property string|null $motivo_anulacion
  * @property string|null $observaciones
@@ -129,7 +131,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 ])]
 class Liquidacion extends Model
 {
-    /** @use HasFactory<\Database\Factories\LiquidacionFactory> */
+    /** "liquidacions" no existe: el plural es liquidaciones. */
+    protected $table = 'liquidaciones';
+
+    /** @use HasFactory<LiquidacionFactory> */
     use HasFactory;
 
     /**

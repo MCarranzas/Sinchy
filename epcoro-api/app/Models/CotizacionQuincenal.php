@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Database\Factories\CotizacionQuincenalFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -31,7 +32,10 @@ use Illuminate\Database\Eloquent\Model;
 ])]
 class CotizacionQuincenal extends Model
 {
-    /** @use HasFactory<\Database\Factories\CotizacionQuincenalFactory> */
+    /** El pluralizador ingles diria "cotizacion_quincenals". */
+    protected $table = 'cotizaciones_quincenales';
+
+    /** @use HasFactory<CotizacionQuincenalFactory> */
     use HasFactory;
 
     /**

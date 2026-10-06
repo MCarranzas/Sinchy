@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Database\Factories\PresentacionMineralFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -15,7 +16,10 @@ use Illuminate\Database\Eloquent\Model;
 #[Fillable(['nombre'])]
 class PresentacionMineral extends Model
 {
-    /** @use HasFactory<\Database\Factories\PresentacionMineralFactory> */
+    /** El pluralizador ingles diria "presentacion_minerals". */
+    protected $table = 'presentaciones_mineral';
+
+    /** @use HasFactory<PresentacionMineralFactory> */
     use HasFactory;
 
     /** @return array<string, string> */

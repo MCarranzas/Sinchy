@@ -1,7 +1,8 @@
-﻿<?php
+<?php
 
 namespace App\Models;
 
+use Database\Factories\MunicipioFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -21,7 +22,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 #[Fillable(['provincia_id', 'codigo', 'nombre'])]
 class Municipio extends Model
 {
-    /** @use HasFactory<\Database\Factories\MunicipioFactory> */
+    /** Declarada como en el resto de modelos: no se confia en el plural. */
+    protected $table = 'municipios';
+
+    /** @use HasFactory<MunicipioFactory> */
     use HasFactory;
 
     /** @return BelongsTo<Provincia, $this> */

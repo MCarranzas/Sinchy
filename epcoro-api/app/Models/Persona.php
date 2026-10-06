@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Database\Factories\PersonaFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -38,7 +39,10 @@ use Illuminate\Database\Eloquent\Model;
 ])]
 class Persona extends Model
 {
-    /** @use HasFactory<\Database\Factories\PersonaFactory> */
+    /** Declarada como en el resto de modelos: no se confia en el plural. */
+    protected $table = 'personas';
+
+    /** @use HasFactory<PersonaFactory> */
     use HasFactory;
 
     /**

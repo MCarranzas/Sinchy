@@ -2,10 +2,12 @@
 
 namespace App\Models;
 
+use Database\Factories\LiquidacionObservacionFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
 /**
  * Observacion del flujo: comentario, solicitud de correccion u observacion
@@ -17,12 +19,15 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $usuario_id
  * @property string $tipo
  * @property string $texto
- * @property \Illuminate\Support\Carbon $created_at
+ * @property Carbon $created_at
  */
 #[Fillable(['liquidacion_id', 'usuario_id', 'tipo', 'texto'])]
 class LiquidacionObservacion extends Model
 {
-    /** @use HasFactory<\Database\Factories\LiquidacionObservacionFactory> */
+    /** El pluralizador ingles diria "liquidacion_observations". */
+    protected $table = 'liquidacion_observaciones';
+
+    /** @use HasFactory<LiquidacionObservacionFactory> */
     use HasFactory;
 
     /**

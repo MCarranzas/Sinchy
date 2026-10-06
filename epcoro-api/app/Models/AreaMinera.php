@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Database\Factories\AreaMineraFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -37,7 +38,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 ])]
 class AreaMinera extends Model
 {
-    /** @use HasFactory<\Database\Factories\AreaMineraFactory> */
+    /** No es "area_mineras": el plural del articulo esta en el plural. */
+    protected $table = 'areas_mineras';
+
+    /** @use HasFactory<AreaMineraFactory> */
     use HasFactory;
 
     /**
