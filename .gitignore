@@ -1,0 +1,62 @@
+# Dependencias
+/vendor/
+/node_modules/
+/epcoro-api/vendor/
+/epcoro-web/node_modules/
+
+# Entorno
+.env
+.env.local
+.env.*.local
+/epcoro-api/.env
+/epcoro-web/.env
+
+# Compilados
+/build/
+/dist/
+/epcoro-api/storage/*.key
+/epcoro-api/storage/framework/cache/*
+/epcoro-api/storage/framework/sessions/*
+/epcoro-api/storage/framework/views/*
+/epcoro-api/storage/logs/*
+/epcoro-api/bootstrap/cache/*
+/epcoro-web/.vite/
+
+# Base de datos
+*.sqlite
+*.sqlite3
+*.db
+
+# Pruebas y cobertura
+.phpunit.result.cache
+/.phpunit.cache/
+/coverage/
+/epcoro-api/.phpunit.result.cache
+/epcoro-api/.phpunit.cache/
+/epcoro-api/coverage/
+
+# Herramientas
+/.php-cs-fixer.cache
+/epcoro-api/.php-cs-fixer.cache
+/.phpstan.cache
+/epcoro-api/.phpstan.cache
+/epcoro-api/.pint.cache
+
+# Sistema
+Thumbs.db
+.DS_Store
+Desktop.ini
+ehthumbs.db
+
+# Editores
+.idea/
+*.swp
+*.swo
+
+# Material que NO pertenece a EPCORO
+# (es material de un curso, vive en la raiz pero no va al repo)
+/preguntas_curso_claude/
+
+# Artefactos temporales de Draw.io
+*.bkp
+.$*

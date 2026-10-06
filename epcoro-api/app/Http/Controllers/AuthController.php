@@ -1,0 +1,197 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Http\Requests\ChangePasswordRequest;
+use App\Http\Requests\LoginRequest;
+use App\Models\User;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpFoundation\Response;
+
+class AuthController extends Controller
+{
+    /**
+     * Inicia sesion con usuario y contrasena.
+     *
+     * Orden de las comprobaciones, y por que en ese orden:
+     *  1. bloqueado por intentos fallidos -> 429, porque el usuario no tiene
+     *     nada que hacer hasta que expire y hay que decirle cuanto;
+     *  2. credenciales -> 422 generico, que no revela si el usuario existe;
+     *  3. cuenta inactiva -> 403, que si revela. Es una decision consciente:
+     *     en un sistema interno de la entidad los usuarios ya saben quien
+     *     existe, y "tu cuenta esta desactivada" es accionable mientras que
+     *     "credenciales incorrectas" solo confunde. Si algun dia esto se
+     *     expone fuera de la organizacion, este 403 es lo primero que hay que
+     *     cambiar.
+     */
+    public function login(LoginRequest $request): JsonResponse
+    {
+        $credentials = $request->credentials();
+        $intentosMaximos = (int) config('autenticacion.intentos_maximos');
+
+        // 1. Bloqueo por intentos fallidos.
+        $usuarioBloqueado = User::query()
+            ->where('username', $credentials['username'])
+            ->first();
+
+        if ($usuarioBloqueado !== null && $usuarioBloqueado->estaBloqueado()) {
+            return response()->json([
+                'message' => 'La cuenta esta bloqueada por intentos fallidos. Intenten de nuevo mas tarde.',
+                'minutos_restantes' => $usuarioBloqueado->minutosDeBloqueoRestantes(),
+            ], Response::HTTP_TOO_MANY_REQUESTS);
+        }
+
+        // 2. Credenciales.
+        if (! Auth::attempt($credentials, (bool) $request->boolean('remember'))) {
+            if ($usuarioBloqueado !== null) {
+                $this->registrarIntentoFallido($usuarioBloqueado, $intentosMaximos);
+            }
+
+            throw ValidationException::withMessages([
+                'username' => 'Las credenciales no son correctas.',
+            ]);
+        }
+
+        // 3. Cuenta inactiva. Se comprueba DESPUES de validar la contrasena a
+        //    proposito: si se hiciera antes, bastaria con conocer un usuario
+        //    valido para enumerar quienes estan activos.
+        /** @var User $usuario */
+        $usuario = Auth::user();
+
+        if (! $usuario->activo) {
+            Auth::logout();
+
+            throw ValidationException::withMessages([
+                'username' => 'Las credenciales no son correctas.',
+            ]);
+        }
+
+        $usuario->forceFill([
+            'intentos_fallidos' => 0,
+            'bloqueado_hasta' => null,
+            'ultimo_acceso' => now(),
+        ])->save();
+
+        // regenerate(true) y no regenerate(): el parametro $destroy viene en
+        // false por defecto, asi que la sesion previa NO se borra de la tabla
+        // sessions y queda una fila huerfana con el user_id ya escrito. Con
+        // true se destruye antes de emitir el identificador nuevo, que es lo
+        // que evita el fixation y ademas no acumula filas.
+        $request->session()->regenerate(true);
+
+        return response()->json([
+            'message' => 'Sesion iniciada correctamente.',
+            'usuario' => $usuario->fresh()->perfilParaApi(),
+        ]);
+    }
+
+    /**
+     * Cierra la sesion del usuario actual.
+     *
+     * Se invalida la sesion en servidor y ademas se borra la cookie de sesion.
+     * Sin el segundo paso el navegador sigue enviando un identificador que ya
+     * no vale, que es una de las formas clasicas de fixation de sesion.
+     */
+    public function logout(Request $request): JsonResponse
+    {
+        Auth::guard('web')->logout();
+
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        return response()->json([
+            'message' => 'Sesion cerrada correctamente.',
+        ]);
+    }
+
+    /**
+     * Datos del usuario autenticado.
+     */
+    public function me(Request $request): JsonResponse
+    {
+        /** @var User $usuario */
+        $usuario = $request->user();
+
+        return response()->json([
+            'usuario' => $usuario->perfilParaApi(),
+        ]);
+    }
+
+    /**
+     * Cambia la contrasena del usuario autenticado.
+     */
+    public function changePassword(ChangePasswordRequest $request): JsonResponse
+    {
+        /** @var User $usuario */
+        $usuario = $request->user();
+
+        if (! Hash::check($request->string('password_actual')->toString(), $usuario->password)) {
+            throw ValidationException::withMessages([
+                'password_actual' => 'La contrasena actual no es correcta.',
+            ]);
+        }
+
+        if (config('autenticacion.exigir_contrasena_distinta')
+            && Hash::check($request->string('password')->toString(), $usuario->password)) {
+            throw ValidationException::withMessages([
+                'password' => 'La nueva contrasena debe ser distinta de la actual.',
+            ]);
+        }
+
+        $request->cambiar();
+
+        $this->cerrarLasOTRASSesiones($request, $usuario);
+        $request->session()->regenerate(true);
+
+        return response()->json([
+            'message' => 'Contrasena actualizada correctamente.',
+        ]);
+    }
+
+    /**
+     * Cierra las demas sesiones del usuario y deja viva la actual.
+     *
+     * Tras cambiar la contrasena, si el usuario esta logueado en dos equipos, el
+     * otro equipo sigue con una credencial que el usuario acaba de invalidar.
+     *
+     * NO se usa Auth::logoutOtherDevices() a proposito: ese metodo solo marca el
+     * hash en la sesion y espera que el middleware AuthenticateSession invalide
+     * al resto. AuthenticateSession no esta en el grupo de middleware de la API,
+     * asi que llamarlo no haria nada: pareceria seguro sin serlo. Con el driver
+     * de sesion en base de datos, borrar las filas directamente si funciona.
+     */
+    private function cerrarLasOTRASSesiones(Request $request, User $usuario): void
+    {
+        if (config('session.driver') !== 'database') {
+            return;
+        }
+
+        DB::table(config('session.table', 'sessions'))
+            ->where('user_id', $usuario->id)
+            ->where('id', '!=', $request->session()->getId())
+            ->delete();
+    }
+
+    /**
+     * Suma un intento fallido y bloquea la cuenta al superar el maximo.
+     */
+    private function registrarIntentoFallido(User $usuario, int $intentosMaximos): void
+    {
+        $intentos = $usuario->intentos_fallidos + 1;
+
+        $atributos = ['intentos_fallidos' => $intentos];
+
+        if ($intentos >= $intentosMaximos) {
+            $atributos['bloqueado_hasta'] = now()->addMinutes(
+                (int) config('autenticacion.minutos_bloqueo')
+            );
+        }
+
+        $usuario->forceFill($atributos)->save();
+    }
+}

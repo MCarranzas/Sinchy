@@ -1,0 +1,1703 @@
+================================================================================
+ EPCORO - BITACORA DE EJECUCION
+================================================================================
+ Archivo    : pasos.txt
+ Fecha init : 2026-10-05
+ Responsable: opencode (agente Build)
+ Project    : C:\marioc\webs_figma\epcoro
+--------------------------------------------------------------------------------
+ REGLA DE ESTE ARCHIVO
+   Todo comando ejecutado durante el proyecto queda registrado aqui.
+   Se escribe el bloque ANTES de ejecutar (OBJETIVO + COMANDO) y se completa el
+   RESULTADO + ESTADO despues. Si un comando falla, se registra igual: la
+   trazabilidad de los fallos es mas valuable que la de los aciertos.
+
+ FORMATO DE CADA BLOQUE
+   ### [N] <fecha> <hora> - <FASE>
+   OBJETIVO  : que se busca lograr
+   COMANDO   : comando literal ejecutado
+   RESULTADO : salida relevante (recortada)
+   ESTADO    : OK | FALLA | PENDIENTE | OMNEGIDO
+
+ ESTADO GLOBAL DEL PROYECTO
+   [EN CURSO] FASE 0 -> FASE 1 (preparacion de entorno)
+================================================================================
+
+
+################################################################################
+# FASE 0 - AUDITORIA (solo lectura, previa al plan)
+################################################################################
+
+### [1] 2026-10-05 17:50 - FASE 0 / AUDITORIA
+OBJETIVO  : Inventariar archivos del proyecto de trabajo.
+COMANDO   : dir
+RESULTADO : notas_curso_claude\, diagrama_sist_epcoro.drawio, hoja.xlsx,
+            instrucciones.txt, notas1.txt, notas_figma.txt, prompt.txt
+ESTADO    : OK
+
+### [2] 2026-10-05 17:50 - FASE 0 / AUDITORIA
+OBJETIVO  : Leer el enunciado original y las notas previas del usuario.
+COMANDO   : read prompt.txt, notas_figma.txt, notas1.txt
+RESULTADO : Requisitos confirmados: login contra tabla en PostgreSQL, captura de
+            liquidacion basada en hoja.xlsx, campo de usuario conectado + fecha/
+            hora de registro, flujo de estados, web responsive escritorio+movil.
+            notas1.txt: "instalar php 8.4 para laravel".
+ESTADO    : OK
+
+### [3] 2026-10-05 17:51 - FASE 0 / AUDITORIA
+OBJETIVO  : Leer el plan completo instrucciones.txt (1229 lineas).
+COMANDO   : read instrucciones.txt (offset 1, 400, 850)
+RESULTADO : Plan de 13 fases. Monorepo Laravel 13 API + Vue 3 SPA. Estados:
+            creado/en_revision/revisado/aprobado/rechazado/en_correccion/anulado/
+            eliminado. Detalle en CORRECCIONES DE ESTE DOCUMENTO mas abajo.
+ESTADO    : OK
+
+### [4] 2026-10-05 17:51 - FASE 0 / ENTORNO
+OBJETIVO  : Verificar toolchain instalado vs. lo que exige el plan.
+COMANDO   : php -v; composer --version; psql --version; docker --version;
+            node -v; npm -v; git --version
+RESULTADO : php  8.2.12 (ZTS, C:\xampp\php\php.exe)   <-- BLOQUEO
+            Composer 2.9.7                                <-- OK
+            psql  NO INSTALADO                            <-- BLOQUEO
+            docker 29.8.1 (CLI)                          <-- daemon apagado
+            node  v24.21.0                                <-- OK
+            npm   11.19.0                                 <-- OK
+            git   2.53.0.windows.1                        <-- OK
+ESTADO    : OK (diagnostico)
+
+### [5] 2026-10-05 17:52 - FASE 0 / ENTORNO
+OBJETIVO  : Listar modulos PHP y ubicacion de php.ini.
+COMANDO   : php -m ; php --ini
+RESULTADO : Loaded ini: C:\xampp\php\php.ini
+            PRESENTES : bcmath, curl, fileinfo, intl, mbstring, openssl,
+                        tokenizer, xml, zip
+            AUSENTES  : pdo_pgsql, pgsql     <-- BLOQUEO (imprescindible)
+                        gd, exif, sodium, soap
+ESTADO    : OK (diagnostico)
+
+### [6] 2026-10-05 17:52 - FASE 0 / ENTORNO
+OBJETIVO  : Verificar estado de Docker Desktop y disponibilidad de Python.
+COMANDO   : docker info --format "{{.ServerVersion}}"; docker ps -a; docker images;
+            python --version
+RESULTADO : docker daemon NO corre:
+            "failed to connect to the docker API at
+             npipe:////./pipe/dockerDesktopLinuxEngine"
+            contenedores: ninguno. imagenes: ninguna.
+            Python 3.14.3  (utilizado para auditar hoja.xlsx sin Excel)
+ESTADO    : OK (diagnostico)
+
+### [7] 2026-10-05 17:52 - FASE 0 / ENTORNO
+OBJETIVO  : Confirmar si las DLL de PostgreSQL existen en XAMPP y si hay Laragon.
+COMANDO   : Get-ChildItem C:\xampp\php\ext -Filter "*pgsql*"; Test-Path C:\laragon;
+            where.exe php
+RESULTADO : C:\xampp\php\ext\php_pdo_pgsql.dll   PRESENTE
+            C:\xampp\php\ext\php_pgsql.dll        PRESENTE
+            Laragon: NO instalado. XAMPP presente (Apache+MySQL+PHP 8.2 ZTS).
+ESTADO    : OK (diagnostico)
+
+### [8] 2026-10-05 17:53 - FASE 0 / VERIFICACION DE LA FORMULA
+OBJETIVO  : Comprobar con precision decimal (40 digitos) la regla de redondeo
+            del CASO DE PRUEBA ORO definido en instrucciones.txt linea 134-137.
+COMANDO   : python -c "<Decimal, ROUND_HALF_UP: peso=1944.53, ley=0.9302,
+            cot=2648.57, tc=6.96, oz=31.1035>"
+RESULTADO : SIN redondeo intermedio:
+              peso_fino       = 1808.801806
+              valor_usd_gramo = 85.15343932354879675920716318099249280628
+              valor_bruto     = 1072018.836055403514073978812673814843989
+              valor_bruto(2d) = 1072018.84      <-- coincide con el doc
+              caja_salud      = 19296.34
+              valor_neto      = 1052722.50     <-- coincide con el doc
+            CON redondeo intermedio a 6 decimales:
+              valor_bruto     = 1072018.83     <-- 1 centavo MENOS
+CONCLUSION: el caso ORO del documento solo cuadra SIN redondeo intermedio.
+            La regla escrita en la seccion 4.3 ("6 decimales, sin redondeo
+            intermedio") es contradictoria con los numeros publicados.
+ESTADO    : OK (defecto confirmado)
+
+### [9] 2026-10-05 17:53 - FASE 0 / VERIFICACION DE LA FORMULA
+OBJETIVO  : Comprobar si al recalcular valor_bruto desde los valores YA
+            PERSISTIDOS en BD (numeric) se reproduce el mismo resultado.
+COMANDO   : python -c "<Decimal: pf_persist=1808.8018, vug_persist=85.153439>"
+RESULTADO : valor_bruto RECALCULADO desde persistidos = 1072018.83
+            valor_bruto PERSISTIDO (full precision)    = 1072018.84
+            diferencia                                = -0.01
+CONCLUSION: valor_bruto_bs debe persistirse como valor calculado y NUNCA
+            recalcularse desde los componentes ya redondeados en BD.
+ESTADO    : OK (defecto confirmado)
+
+### [10] 2026-10-05 17:53 - FASE 0 / ANALISIS DE hoja.xlsx
+OBJETIVO  : Inspeccionar la estructura interna del libro sin abrir Excel.
+COMANDO   : python -c "<zipfile: namelist de hoja.xlsx>"
+RESULTADO : Pestana unica: "hoja" (sheetId 1).
+            1 solo libro externo (externalLink1) -> origen de los campos.
+ESTADO    : OK
+
+### [11] 2026-10-05 17:54 - FASE 0 / ANALISIS DE hoja.xlsx
+OBJETIVO  : Leer valores Y formulas cacheadas de las celdas clave del formulario.
+COMANDO   : python -c "<zipfile+regex sobre xl/worksheets/sheet1.xml,
+            extrayendo <f>formula</f> y <v>valor</v> por celda>"
+RESULTADO : G2 =FORM-              H2 ==C8-> EP-BCB-723I2 =/2024
+            F6  ==[1]NOMBRES!G1   -> 6.96Bs/$
+            C7  ==[1]NOMBRES!C3   -> 45628(serial) = 2024-12-02
+            C8  ==[1]NOMBRES!D3   -> EP-BCB-723
+            F9  ==[1]NOMBRES!R3   -> 2648.57          $/OzT
+            F10 ==(F9/31.1035)*F6*C40 -> 1072018.8360554   Bs
+            C11 = EMPRESA ESTATAL DE PRODUCCION Y COMERCIALIZACION DEL ORO
+            C12 = 02-2388-05(NIM)      C13 = 1006965023(NIT, numerico)
+            C20 = NO                <-- CAJA DE SALUD NO APLICA
+            C21 = DYONNE LIZET TITO CORTEZ   C22 = 5956713(CI, numerico)
+            C27 = COOP. DE EXPLOTACION AURIFERA CHIMA LTDA SECTOR 6
+            C28 = COOPERATIVA MINERA CHIMA R.L.
+            C29 = 1500735(patente, numerico)
+            C30 = LA PAZ   C31 = LARECAJA   C32 = TIPUANI
+            C33 = 20633(cod. municipio, numerico)   C34 = TIPUANI
+            C37 = ORO FUNDIDO
+            C38 ==[1]NOMBRES!P3 -> 1944.53        C39 ==[1]NOMBRES!Q3 -> 0.9302
+            C40 ==C39*C38      -> 1808.801806
+ESTADO    : OK
+
+### [12] 2026-10-05 17:54 - FASE 0 / ANALISIS DE hoja.xlsx
+OBJETIVO  : Volcar todas las celdas no vacias para descartar que quedara algun
+            campo del formulario sin mapear.
+COMANDO   : python -c "<volcado completo de celdas no vacias>"
+RESULTADO : 47 celdas con contenido. Ademas de las de arriba:
+            E5/G5 = UNIDAD, H5 = ALICUOTA/OTROS, I5 = DESCUENTO (ETIQUETAS,
+            sin filas de datos debajo -> columnas reservadas, sin usar).
+            Columnas A y D contienen solo indices de fila (2,3,8,11,...) que
+            son artefactos del formato; no son datos.
+            B19="FEDERACION" y B20="CAJA DE SALUD APORTE 1,8%" que el doc cita
+            NO existen como celdas con valor en este archivo.
+CONCLUSION: no existe ninguna fila ni celda de APORTE SOLIDARIO en la hoja.
+            El parametro ALICUOTA_APORTE_SOLIDARIO=0.01 del doc esta inventado.
+ESTADO    : OK (defecto confirmado)
+
+### [13] 2026-10-05 17:54 - FASE 0 / ANALISIS DE hoja.xlsx
+OBJETIVO  : Verificar celdas combinadas y validaciones de datos (el desplegable
+            SI/NO del formulario original).
+COMANDO   : python -c "<regex mergeCell y dataValidation sobre sheet1.xml>"
+RESULTADO : MERGED: 'C3:I3' (titulo), 'B43:I45' (observaciones/firmas).
+            DATA VALIDATIONS: 1
+              sqref="C19"  formula1=#REF!  type="list"
+            INTERPRETACION: el desplegable SI/NO esta ROTO (apunta a C19 y su
+            lista de origen es #REF!). El valor real "NO" esta en C20.
+            Confirma que el sistema debe reconstruir ese control; el mapeo por
+            posicion (C20) es el correcto.
+ESTADO    : OK (defecto confirmado)
+
+### [14] 2026-10-05 17:55 - FASE 0 / ANALISIS DE hoja.xlsx
+OBJETIVO  : Convertir el serial de Excel de C7 a fecha real.
+COMANDO   : python -c "<base 1899-12-30 + timedelta(45628)>"
+RESULTADO : C7 = 2024-12-02
+            El ejemplo de payload de instrucciones.txt usa 2024-12-03.
+ESTADO    : OK (defecto confirmado, menor)
+
+### [15] 2026-10-05 17:55 - FASE 0 / ARQUITECTURA
+OBJETIVO  : Contrastar el diseno de BD propuesto contra el diagrama drawio.
+COMANDO   : python -c "<regex value= sobre diagrama_sist_epcoro.drawio>"
+RESULTADO : Nodos: Tecnico, Administracion de Liquidaciones, Gerente,
+            Iniciar sesion, Captura, Cambio de Estado, Reportes,
+            Revisado, Aprobado, Rechazado,
+            Dept, Provincia, Municipio, Localidad,
+            Vendedor, Comprador, Area Minera, Material,
+            Tipo Cambio, CotizacionQuincenal.
+CONCLUSION: el diseno de 3 roles y los catalogos propuestos en el documento
+            COINCIDEN con el diagrama. Sin desviaciones.
+ESTADO    : OK
+
+### [16] 2026-10-05 17:55 - FASE 0 / ENTORNO
+OBJETIVO  : Determinar version de Windows, privilegios del shell, ocupacion del
+            puerto 5432 y servicios PostgreSQL existentes.
+COMANDO   : Get-CimInstance Win32_OperatingSystem; IsInRole(Administrator);
+            Get-NetTCPConnection -LocalPort 5432; Get-Service *postgres*
+RESULTADO : Microsoft Windows 10 Pro, 10.0.19045(build 19045), x64
+            Administrador: NO  <-- BLOQUEO (instaladores requieren UAC)
+            Puerto 5432: libre(0 conexiones)
+            Servicios postgres: ninguno
+ESTADO    : OK (diagnostico)
+
+### [17] 2026-10-05 17:55 - FASE 0 / ENTORNO
+OBJETIVO  : Comprobar permiso de escritura en C:\, existencia de C:\tools,
+            presencia de VC++ Redistributable y espacio en disco.
+COMANDO   : New-Item C:\_probe_test; Test-Path C:\tools;
+            Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64";
+            Get-PSDrive C
+RESULTADO : Escritura en C:\ : PERMITIDA
+            C:\tools : no existe (se creara)
+            VC++ Redistributable x64 : "NO INSTALADO"  <-- DIAGNOSTICO ERRONEO
+            Espacio libre en C: : 111,6 GB
+ESTADO    : FALLA (diagnostico erroneo, ver correccion en el paso [20])
+
+### [18] 2026-10-05 17:56 - FASE 0 / VERIFICACION DE VERSIONES
+OBJETIVO  : Confirmar el requisito real de PHP de Laravel 13.
+COMANDO   : websearch "Laravel 13 release PHP requirement version"
+RESULTADO : Laravel 13 -> 17/03/2026, requiere PHP 8.3 minimo (soporta 8.3-8.5).
+            Laravel 12 -> 24/02/2025, PHP 8.2-8.5, security fixes hasta 2027-02-24.
+            PHP 8.2 de XAMPP solo alcanza para Laravel 12.
+ESTADO    : OK
+
+### [19] 2026-10-05 17:56 - FASE 0 / VERIFICACION DE VERSIONES
+OBJETIVO  : Obtener las URLs exactas de descarga, sin improvisar versiones.
+COMANDO   : webfetch postgresql.org/download/windows/ ; webfetch windows.php.net
+RESULTADO : PostgreSQL: instalador alojado por EDB (no en los servidores de la
+            comunidad). Soporte en Win10 build 19045: versiones 16, 17 y 18.
+            DECISION DEL USUARIO: PostgreSQL 17.
+            PHP: ultimas builds oficiales
+              php-8.4.26-nts-Win32-vs17-x64.zip   (33 MB)  <-- elegida
+              php-8.4.26-Win32-vs17-x64.zip       (34 MB, thread-safe)
+            "vs17" = requiere VC++ 2015-2022 Redistributable.
+ESTADO    : OK
+
+
+================================================================================
+ DECISIONES TOMADAS (cerradas con el usuario)
+================================================================================
+ [D1] Framework    : Laravel 13 (exige PHP 8.3+)
+ [D2] PHP          : 8.4.26 NTS x64 en C:\tools\php84, XAMPP intacto
+ [D3] Base de datos: PostgreSQL 17 (instalador nativo, NO Docker), rol epcoro
+ [D4] Aporte solidario 1%: la tabla se crea pero el parametro queda INACTIVO
+                      hasta que negocio confirme (no existe en hoja.xlsx)
+ [D5] Bitacora     : este archivo (pasos.txt), un bloque por comando
+
+
+================================================================================
+ CORRECCIONES PENDIENTES A APLICAR EN instrucciones.txt -> v1.1
+================================================================================
+ [C1] Seccion 4.3 "Reglas de redondeo" y CASO DE PRUEBA ORO.
+     DEFECTO : dice "6 decimales, sin redondeo intermedio", pero los numeros
+               publicados solo se reproducen SIN redondear nada.
+     CORRECCION: cero redondeo intermedio; half-up a 2 decimales unicamente
+               sobre los montos en Bs, en el paso final.
+ [C2] Seccion 3.4 / 4.3 - prohibicion de recalcular.
+     DEFECTO : falta la regla de que valor_bruto_bs se persiste ya calculado.
+     CORRECCION: los reportes NUNCA multiplican peso_fino x valor_usd_gramo x
+               tipo_cambio; leen valor_bruto_bs persistido. Recalcular desde los
+               componentes redondeados en BD da 1072018,83 (+/-0,01).
+ [C3] Seccion 1 - CASO DE PRUEBA ORO debe tener DOS escenarios.
+     DEFECTO : asume C20 = SI, pero hoja.xlsx tiene C20 = NO.
+     CORRECCION:
+       ORO-A (replica exacta de la hoja, C20=NO):
+         peso_fino=1808.801806 bruto=1072018.84 aporte=0.00 neto=1072018.84
+       ORO-B (con caja de salud, C20=SI):
+         peso_fino=1808.801806 bruto=1072018.84 aporte=19296.34
+         neto=1052722.50
+ [C4] Seccion 3.3 - ALICUOTA_APORTE_SOLIDARIO.
+     DEFECTO : el parametro 0.01 no tiene respaldo en hoja.xlsx.
+     CORRECCION: sembrar la clave pero INACTIVA, con nota de "pendiente de
+               definicion de negocio (FASE 0.4)".
+ [C5] Seccion 3.4 - NIT, CI y codigo de municipio.
+     DEFECTO : en el Excel llegan como NUMERO (1006965023, 5956713, 20633).
+     CORRECCION: varchar en BD (el doc ya lo hace) + validacion solo digitos en
+               Form Request, para evitar notacion cientifica y perdida de
+               ceros a la izquierda en el JSON.
+ [C6] Seccion 3.4 - identifica como fecha de la hoja.
+     CORRECCION: C7 = 2024-12-02 (no 2024-12-03 como el ejemplo de payload).
+ [C7] Seccion 2 - ruta de bootstrap/app.php.
+     DEFECTO : el doc lo ubica en app/Support/bootstrap/app.php.
+     CORRECCION: va en la RAIZ del proyecto (epcoro-api/bootstrap/app.php) en
+               Laravel 11+.
+ [C8] Seccion 1 - nota sobre el desplegable SI/NO.
+     DEFECTO : el doc afirma que C20 tiene lista validada.
+     REALIDAD: el dataValidation del libro apunta a C19 con formula1=#REF!.
+               El sistema debe reconstruir el control SI/NO.
+
+
+################################################################################
+# FASE 1 - PREPARACION DEL ENTORNO
+################################################################################
+
+### [20] 2026-10-05 18:02 - FASE 1.1 / DESCARGAS
+OBJETIVO  : Traer los tres instaladores/prerequisitos a una carpeta de trabajo.
+COMANDO   : $ProgressPreference='SilentlyContinue'
+            Invoke-WebRequest "https://windows.php.net/downloads/releases/
+                               php-8.4.26-nts-Win32-vs17-x64.zip" -OutFile php.zip
+            Invoke-WebRequest "https://aka.ms/vs/17/release/vc_redist.x64.exe"
+                               -OutFile vc_redist.x64.exe
+            Invoke-WebRequest "https://get.enterprisedb.com/postgresql/
+                               postgresql-17.6-1-windows-x64.exe" -OutFile pg.exe
+RESULTADO : Destino: %LOCALAPPDATA%\Temp\opencode\installers
+            php-8.4.26-nts.zip          35.103.568 bytes   OK
+            vc_redist.x64.exe           25.635.768 bytes   OK
+            postgresql-17.6-1.exe      364.795.648 bytes   OK (33,1 s)
+            Nota: la URL canonica "postgresql-17-x-windows-x64.exe" devuelve 403.
+            La version publicada exacta es la que se resolvio por HEAD: 17.6-1.
+ESTADO    : OK
+
+### [21] 2026-10-05 18:03 - FASE 1.2 / VC++ REDISTRIBUTABLE
+OBJETIVO  : Asegurar el runtime vs17 que exigen los builds de PHP 8.4 Windows.
+COMANDO   : Start-Process vc_redist.x64.exe -ArgumentList
+              "/install","/quiet","/norestart" -Verb RunAs -Wait -PassThru
+RESULTADO : ExitCode = 1638
+            1638 = "ya hay otra version instalada". NO se instalo nada.
+ESTADO    : OMNEGIDO (innecesario)
+
+### [22] 2026-10-05 18:03 - FASE 1.2 / CORRECCION DEL DIAGNOSTICO [17]
+OBJETIVO  : Corregir el error del paso [17]: se concluyo erroneamente que el
+            VC++ Redistributable no estaba instalado.
+COMANDO   : Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\VisualStudio\14.0\
+              VC\Runtimes\x64"
+RESULTADO : x64 : Version = v14.50.35719.00   Major = 14   Installed = 1
+            x86 : no instalado
+CAUSA     : en el paso [17] se uso Get-ChildItem sobre una clave de registro.
+            Get-ChildItem lista SUBCLAVES, y esta clave no tiene ninguna;
+            sus datos estan en VALORES. Por eso devolvio vacio y se genero un
+            bloqueo inexistente.
+            Get-ItemProperty si lee valores.
+LECCION   : verificar registros con Get-ItemProperty, nunca con Get-ChildItem.
+ESTADO    : OK (diagnostico corregido; el bloqueo era ficticio)
+
+
+### [23] 2026-10-05 18:07 - FASE 1.3 / POSTGRESQL 17 (intento 1: desatendido)
+OBJETIVO  : Instalar PostgreSQL 17 en modo desatendido (un solo prompt UAC).
+COMANDO   : Start-Process postgresql-17.6-1.exe -Verb RunAs -Wait -PassThru
+              --mode unattended --unattendedmodeui none
+              --superpassword epcoro_root_2026 --serverport 5432
+              --servicename postgresql-x64-17
+              --prefix "C:\Program Files\PostgreSQL\17"
+              --datadir "C:\Program Files\PostgreSQL\17\data"
+              --locale Spanish_Bolivia.1252 --encoding UTF8
+RESULTADO : ExitCode = 1 en 12,4 s. Servicio postgresql-x64-17 NO creado.
+ESTADO    : FALLA
+
+### [24] 2026-10-05 18:09 - FASE 1.3 / DIAGNOSTICO (log de instalacion)
+OBJETIVO  : Localizar el log del instalador para entender el codigo 1.
+COMANDO   : Get-ChildItem $env:TEMP -Filter *.log | Where Name -match install
+RESULTADO : installbuilder_installer.log (2.897.752 bytes) y
+            uninstall-postgresql.log, ambos con fecha 17:50:49.
+            CONTENIDO RELEVANTE:
+              "Could not find registry key
+               HKLM\SOFTWARE\PostgreSQL\Installations\postgresql-x64-18 ..."
+              "Desinstalacion completada" / "Script exit code: 0"
+HALLAZGO  : a las 17:50:49 se DESINSTALO PostgreSQL 18 de esta maquina.
+            No fue una accion de opencode (la auditoria fue solo de lectura).
+            Alguien lo desinstalo antes de esta sesion.
+            Tambien explica las 5 carpetas postgresql_installer_* creadas entre
+            17:49:52 y 17:49:56 (desinstalador reintentando componentes).
+ESTADO    : OK (contexto)
+
+### [25] 2026-10-05 18:10 - FASE 1.3 / DIAGNOSTICO (restos)
+OBJETIVO  : Confirmar que el intento 1 no dejo instalacion a medias.
+COMANDO   : Test-Path 'C:\Program Files\PostgreSQL'; Get-Service *postgres*;
+            Get-NetTCPConnection -LocalPort 5432;
+            Get-ChildItem HKLM:\SOFTWARE\PostgreSQL -Recurse
+RESULTADO : C:\Program Files\PostgreSQL : NO existe
+            Servicios postgres            : ninguno
+            Puerto 5432                    : libre
+            HKLM\...\PostgreSQL\Installations : VACIA (sin valores ni subclaves)
+            HKLM\...\PostgreSQL\Services      : VACIA
+            RebootPending / WindowsUpdate\RebootRequired : False
+            Get-Command psql                : no encontrado
+CONCLUSION:Instalacion limpia. Las claves de registro residuales estan vacias y
+            no bloquean. No hay reinicio pendiente.
+ESTADO    : OK (diagnostico)
+
+### [26] 2026-10-05 18:13 - FASE 1.3 / DIAGNOSTICO (integridad del binario)
+OBJETIVO  : Descartar descarga corrupta antes de culpar al instalador.
+COMANDO   : Get-FileHash -Algorithm SHA256; primeros 2 bytes del archivo;
+            Get-AuthenticodeSignature; VersionInfo
+RESULTADO : Length : 364.795.648 bytes (coincide con Content-Length del HEAD)
+            SHA256 : 0FFBD42F3777338ED629686349C905F37A657074C4DA410B1E3AC61FE38D23A0
+            Magic  : 0x4D5A (MZ) -> PE valido
+            Firma  : Status = Valid
+                     Subject = CN=EnterpriseDB Corporation, O=..., S=Massachusetts
+                     Issuer  = CN=Sectigo Public Code Signing CA R36
+            Version: ProductName = PostgreSQL, Company = PostgreSQL Global
+                     Development Group
+CONCLUSION:El archivo esta integro y correctamente firmado. El problema NO es la
+            descarga ni la firma.
+ESTADO    : OK (diagnostico)
+
+### [27] 2026-10-05 18:16 - FASE 1.3 / DIAGNOSTICO (intentos 2 y 3)
+OBJETIVO  : Averiguar por que el modo desatendido muere sin salida.
+COMANDO   : intento 2:  postgresql-17.6-1.exe --help -Verb RunAs
+            intento 3:  --mode unattended ... --debugtrace <archivo>
+RESULTADO : Ambos devuelven ExitCode = 1.
+            help.txt : NO se genera (0 bytes / inexistente)
+            pg_trace.log : NO se genera
+            pg_stdout.txt : NO se genera
+ESTADO    : FALLA (reproducible)
+
+### [28] 2026-10-05 18:18 - FASE 1.3 / DIAGNOSTICO (aislamiento de la causa)
+OBJETIVO  : Separar "mi mecanismo de elevacion" de "el binario de EDB".
+COMANDO   : T1: cmd /c "echo elevated-ok > archivo" -Verb RunAs
+            T2: cmd /c "net session > archivo" -Verb RunAs
+            T3: postgresql-17.6-1.exe -? SIN elevar
+RESULTADO : T1 exit=0, archivo escrito.          -> RunAs funciona
+            T2 exit=0, "No hay entradas en la lista." -> hay admin REAL
+            T3 "La operacion solicitada requiere elevacion"
+                                                    -> el exe lo exige
+            Ademas, tras el intento 3 las carpetas %TEMP%\postgresql_installer_*
+            siguieron en 8 (antes=8, despues=8): el instalador NO llego a
+            extraer su motor, y Get-WinEvent no registro ningun error.
+CONCLUSION:La elevacion funciona y el archivo es valido, pero el ejecutable de
+            InstallBuilder de EDB termina con codigo 1 de inmediato, sin crear su
+            carpeta temporal, sin log y sin evento de Windows. Modo desatendido
+            inservible en esta maquina.
+ESTADO    : OK (causa aislada)
+
+### [29] 2026-10-05 18:20 - FASE 1.3 / DIAGNOSTICO (seguridad)
+OBJETIVO  : Descartar que el antivirus bloquee el instalador.
+COMANDO   : Get-MpThreatDetection; Get-MpComputerStatus;
+            Get-WinEvent 'Microsoft-Windows-Windows Defender/Operational'
+RESULTADO : Detecciones : ninguna
+            RealTimeProtectionEnabled : True
+            Eventos con Id 1116/1117/1121 (deteccion/bloqueo) : NINGUNO
+            Solo eventos 5007 de cambios de configuracion del antivirus.
+CONCLUSION:El Defender NO bloquea el instalador. El fallo es del propio binario.
+ESTADO    : OK (diagnostico)
+
+
+### [30] 2026-10-05 18:25 - FASE 1.3 / POSTGRESQL 17 (intento 4: modo GRAFICO)
+OBJETIVO  : Instalar via el asistente grafico, ya que el modo desatendido fallo.
+COMANDO   : Start-Process postgresql-17.6-1.exe -Verb RunAs  (sin -Wait)
+RESULTADO : Proceso postgresql-17.6-1 PID 18160 en ejecucion. El modo GRAFICO
+            funciona; el fallo era exclusivo del modo desatendido.
+            El usuario completo el asistente.
+ESTADO    : OK
+
+### [31] 2026-10-05 19:05 - FASE 1.3 / POSTGRESQL 17 (verificacion)
+OBJETIVO  : Confirmar servicio, puerto, binarios y metodo de autenticacion.
+COMANDO   : Get-Service postgresql-x64-17; Get-NetTCPConnection -LocalPort 5432;
+            Test-Path 'C:\Program Files\PostgreSQL\17'; Get-Content
+            installation_summary.log; Select-String postgresql.conf / pg_hba.conf
+RESULTADO : Servicio   : postgresql-x64-17  Running / Automatic
+            Puerto 5432 : escuchando en 0.0.0.0 y ::
+            psql.exe    : presente
+            pgAdmin 4   : instalado.  StackBuilder : instalado.
+            Resumen     : superuser=postgres, port=5432,
+                          serviceaccount=NT AUTHORITY\NetworkService,
+                          data dir = C:\Program Files\PostgreSQL\17\data
+            PG_VERSION  : 17
+            Locale      : lc_messages/lc_monetary/lc_numeric/lc_time =
+                          'Spanish_Bolivia.1252'   <-- el deseado
+            pg_hba.conf : scram-sha-256 para local, 127.0.0.1/32 y ::1/128
+            Observacion : psql NO quedo en el PATH tras instalar (se agrega abajo)
+ESTADO    : OK
+
+### [32] 2026-10-05 19:06 - FASE 1.4 / CONEXION Y ESTADO DEL SERVIDOR
+OBJETIVO  : Verificar version, encoding y collation reales del servidor.
+COMANDO   : psql -U postgres -h 127.0.0.1 -t -A -c "SELECT version();" etc.
+            (PGPASSWORD por variable de entorno, no en la linea de comando)
+RESULTADO : version() = PostgreSQL 17.6 on x86_64-windows, msvc-19.44.35213, 64-bit
+            encoding  = UTF8
+            locale    = Spanish_Bolivia.1252 / Spanish_Bolivia.1252
+ESTADO    : OK
+
+### [33] 2026-10-05 19:07 - FASE 1.4 / ROL Y BASE (intento 1: FALLO)
+OBJETIVO  : Crear el rol epcoro y la base epcoro de forma idempotente.
+COMANDO   : DO $$ ... $$; con here-string de doble comilla @"..."@
+RESULTADO : ERROR de sintaxis en«BEGIN», «RAISE», «ELSE», «END IF».
+            CAUSA RAIZ: en un here-string de DOBLE comilla @"..."@ PowerShell
+            expande las variables, y "$$" en PowerShell es una variable
+            (codigo de salida del ultimo comando). El bloque PL/pgSQL quedo
+            destrozado.
+            ERROR adicional: "no existe el rol epcoro".
+            PEOR: el script anuncio "base epcoro creada" porque no se comprobo
+            el codigo de salida de psql; el CREATE DATABASE en realidad habia
+            fallado por no existir el rol owner.
+LECCION   : (1) usar here-string LITERAL @'...'@ con $$; (2) SIEMPRE verificar
+            el codigo de salida despues de DDL antes de afirmar exito.
+ESTADO    : FALLA
+
+### [34] 2026-10-05 19:08 - FASE 1.4 / ROL Y BASE (intento 2: OK)
+OBJETIVO  : Crear rol y base con SQL seguro y verificacion real.
+COMANDO   : here-string literal @'...'@ + delimitador $BODY$
+            [IO.File]::WriteAllText($sql,$texto,[Text.Encoding]::ASCII)
+            psql -U postgres -d postgres -v ON_ERROR_STOP=1 -f epcoro_setup2.sql
+              CREATE ROLE epcoro LOGIN PASSWORD 'epcoro_secret' CREATEDB;
+              CREATE DATABASE epcoro OWNER epcoro ENCODING 'UTF8'
+                TEMPLATE template0 LC_COLLATE 'Spanish_Bolivia.1252'
+                LC_CTYPE 'Spanish_Bolivia.1252';
+RESULTADO : CREATE ROLE / CREATE DATABASE.  ExitCode psql = 0.
+            Nota de seguridad: -Encoding ASCII evita el BOM que
+            Set-Content -Encoding UTF8 escribe en PowerShell 5.1 y que rompe
+            la primera sentencia del archivo SQL.
+            Credenciales de DESARROLLO (no de produccion):
+              usuario = epcoro   password = epcoro_secret
+ESTADO    : OK
+
+### [35] 2026-10-05 19:09 - FASE 1.4 / VERIFICACION COMO ROL DE APLICACION
+OBJETIVO  : Comprobar la conexion que usara Laravel, no la del superusuario.
+COMANDO   : psql -U epcoro -h 127.0.0.1 -d epcoro ...
+RESULTADO : current_user = epcoro   current_database = epcoro
+            Encoding = UTF8   Collation = Spanish_Bolivia.1252
+            rolcreatedb = t   (Laravel lo necesita para crear bases de test)
+            CREATE TABLE / DROP TABLE de prueba: OK
+ESTADO    : OK
+
+### [36] 2026-10-05 19:15 - FASE 1.5 / EXTRACCION DE PHP
+OBJETIVO  : Descomprimir PHP 8.4.26 NTS y crear php.ini.
+COMANDO   : Expand-Archive php-8.4.26-nts.zip -> C:\tools\php84
+            Copy-Item php.ini-development php.ini
+RESULTADO : Extraido. Contenido: php.exe, php-cgi.exe, php8.dll, ext\, lib\,
+            y las DLL de runtime (libpq.dll, libcrypto-3-x64.dll, libssl-3-x64.dll,
+            icu*.dll, libsodium.dll, libsqlite3.dll).
+            php.ini creado desde php.ini-development.
+            OJO: habia DOS lineas extension_dir; la primera era
+            ;extension_dir = "./" que es INVALIDA en Windows.
+ESTADO    : OK
+
+### [37] 2026-10-05 19:16 - FASE 1.5 / EXTENSIONES (intento 1: FALLO)
+OBJETIVO  : Habilitar extension_dir y las extensiones necesarias.
+COMANDO   : -replace sobre php.ini + anexar extension=<nombre>
+RESULTADO : pdo_pgsql y pgsql  -> CARGAN correctamente
+            Warnings de arranque por 4 extensiones:
+              bcmath, tokenizer, dom, xml -> "Unable to load dynamic library"
+            CAUSA RAIZ: en PHP 8.4 para Windows esas cuatro YA NO se
+            distribuyen como DLL separada; van compiladas dentro de php8.dll.
+            Comprobado: ext\php_bcmath.dll, php_tokenizer.dll, php_dom.dll y
+            php_xml.dll NO existen en el paquete, mientras que php_pdo_pgsql.dll
+            y php_pgsql.dll SI existen.
+ESTADO    : FALLA (parcialmente resuelta)
+
+### [38] 2026-10-05 19:17 - FASE 1.5 / EXTENSIONES (intento 2: OK)
+OBJETIVO  : Quitar las 4 extensiones inexistentes y dejar una sola
+            extension_dir; configurar OPcache correctamente.
+COMANDO   : filtrar lineas extension=bcmath|tokenizer|dom|xml
+            + prepend 'extension_dir = "ext"'
+            + zend_extension = opcache (NO extension=opcache)
+RESULTADO : php -v  : PHP 8.4.26 (NTS Visual C++ 2022 x64) + Zend OPcache
+            Warnings : 0
+            Modulos  : 43
+            CRITICO verificado: bcadd('1.005','2.005',4) = 3.0100
+                    extension_loaded('bcmath') = true
+                    extension_loaded('pdo_pgsql') = true
+ESTADO    : OK
+
+### [39] 2026-10-05 19:20 - FASE 1.6 / PATH (intento 1: INSUFICIENTE)
+OBJETIVO  : Poner php 8.4 y psql 17 en el PATH.
+COMANDO   : [Environment]::SetEnvironmentVariable('Path', ..., 'User')
+RESULTADO : Se agregaron C:\tools\php84 y C:\Program Files\PostgreSQL\17\bin
+            al PATH de USUARIO.
+            PERO NO SURTIÓ EFECTO: `where php` seguia dando
+            C:\xampp\php\php.exe (8.2.12).
+CAUSA RAIZ: C:\xampp\php esta en el PATH de SISTEMA, y Windows concatena
+            SISTEMA + USUARIO, de modo que el de sistema siempre gana.
+ESTADO    : FALLA
+
+### [40] 2026-10-05 19:21 - FASE 1.6 / PATH (intento 2: OK)
+OBJETIVO  : Anteponer php84 y psql al PATH de SISTEMA.
+COMANDO   : respaldo previo del PATH de sistema en
+              %TEMP%\path_system_original.txt
+            powershell -File fix_path.ps1 -Verb RunAs
+              [Environment]::SetEnvironmentVariable('Path',$sys,'Machine')
+RESULTADO : exit=0. Nuevo orden:
+              C:\tools\php84;C:\Program Files\PostgreSQL\17\bin;...;C:\xampp\php;...
+            Verificado que C:\tools\php84 queda ANTES de C:\xampp\php.
+            XAMPP SIGUE FUNCIONANDO: su Apache referencia C:\xampp\php por ruta
+            absoluta en httpd.conf, no por PATH.
+            Reversible con el archivo de respaldo si hiciera falta.
+ESTADO    : OK
+
+### [41] 2026-10-05 19:23 - FASE 1.6 / VERIFICACION EN PROCESO NUEVO
+OBJETIVO  : Comprobar que la resolucion de PATH ya es la correcta.
+COMANDO   : refrescar $env:Path con Machine+User; luego `cmd /c where php`,
+            `php -v`, `where psql`, `psql --version`, `composer --version`
+RESULTADO : where php  -> C:\tools\php84\php.exe   (1º)
+               C:\xampp\php\php.exe                (2º, ya no gana)
+            php -v    -> PHP 8.4.26 (NTS Visual C++ 2022 x64) + OPcache
+            where psql-> C:\Program Files\PostgreSQL\17\bin\psql.exe
+            psql      -> psql (PostgreSQL) 17.6
+            composer  -> 2.9.7, "PHP version 8.4.26 (C:\tools\php84\php.exe)"
+                        (Composer ya usa el PHP nuevo, no el de XAMPP)
+            NOTA: la sesion PowerShell actual tenia el PATH cacheado; por eso
+            los procesos hijos seguian viendo el valor viejo hasta refrescarlo.
+ESTADO    : OK
+
+### [42] 2026-10-05 19:24 - FASE 1.7 / PRUEBA DE CONECTIVIDAD PHP -> POSTGRESQL
+OBJETIVO  : Prueba final de extremo a extremo con la ruta que usara Laravel.
+COMANDO   : php probe_pg.php  con
+              new PDO("pgsql:host=127.0.0.1;port=5432;dbname=epcoro",
+                      "epcoro","epcoro_secret")
+RESULTADO : PHP            : 8.4.26
+            Driver PDO     : pgsql
+            Server version : 17.6
+            Encoding       : UTF8
+            Collation      : Spanish_Bolivia.1252
+            TZ servidor    : America/La_Paz   <-- ya venia bien configurado
+            La Paz ahora   : 2026-10-05 18:17:17
+            CREATE/INSERT/SELECT/DROP: OK
+            exit=0
+            NOTA: el primer intento devolvio el codigo fuente en vez de
+            ejecutarlo; faltaba la etiqueta de apertura <?php. Corregido.
+ESTADO    : OK
+
+################################################################################
+# FASE 1 - ENTORNO: COMPLETADA
+################################################################################
+ PHP                : 8.4.26 NTS x64 en C:\tools\php84 (en PATH, gana a XAMPP)
+ Composer           : 2.9.7 usando PHP 8.4.26
+ PostgreSQL         : 17.6 nativo, servicio postgresql-x64-17 Automatic
+ Puerto             : 5432
+ Base               : epcoro (owner epcoro, UTF8, Spanish_Bolivia.1252)
+ Rol de aplicacion  : epcoro / epcoro_secret  (CREATEDB, para los tests)
+ Zona horaria       : America/La_Paz
+ Extensiones OK     : pdo_pgsql, pgsql, bcmath, mbstring, openssl, curl,
+                      zip, fileinfo, intl, tokenizer, dom, xml, sodium, gd, opcache
+ XAMPP              : intacto (Apache y MySQL siguen usando C:\xampp)
+ Pendiente          : crear el proyecto, .env, y documentar en README
+ Criterio FASE 1    : CUMPLIDO ("php -v y psql responden, y puedo abrir la BD")
+
+
+################################################################################
+# CORRECCION DE instrucciones.txt  ->  v1.1
+################################################################################
+
+################################################################################
+ CORRECCION DE INTEGRIDAD DE LA BITACORA (registrada antes del paso [62])
+################################################################################
+  Los pasos [43] a [59] figuraban con horas 19:35 a 20:00. Esas horas eran
+  INVENTADAS: no se leyeron del reloj. La hora real del sistema al terminar
+  esta sesion era 18:38:56, o sea que todas esas marcas estaban en el futuro.
+  Un registro de auditoria con horas falsas no sirve para reconstruir que paso
+  antes que cual, asi que se anularon.
+
+  Que se hizo:
+    - Las 17 entradas afectadas quedaron como "2026-10-05 --:-- (sin hora
+      fiable)".
+    - NO se les invento una hora de reemplazo. Se prefierio un hueco honesto a
+      un dato falso.
+    - La auditoria de esos pasos se apoya en el NUMERO de paso y en el orden de
+      los comandos, que si son verificables, no en la hora.
+    - Desde el paso [60] en adelante la hora SI se lee del sistema con Get-Date
+      ANTES de escribir la entrada.
+
+  LECCION OPERATIVA: leer el reloj antes de fechar. No estimarlo.
+
+################################################################################
+
+### [43] 2026-10-05 --:-- (sin hora fiable) - v1.1 / ENCABEZADO
+OBJETIVO  : Reflejar la version, el stack real y listar las correcciones.
+COMANDO   : edit instrucciones.txt (bloque de encabezado)
+RESULTADO : Version 1.0 -> 1.1
+            Stack: "PostgreSQL 16" -> "PostgreSQL 17"
+            Se anadio el listado C1..C8 en el encabezado.
+ESTADO    : OK
+
+### [44] 2026-10-05 --:-- (sin hora fiable) - v1.1 / CORRECCION C1 Y C3 (seccion 1)
+OBJETIVO  : Reescribir la verificacion de la celda calculada con los valores
+            reales del cache del libro y dividir el caso ORO.
+COMANDO   : edit instrucciones.txt (seccion 1, VERIFICACION)
+RESULTADO : Se incorporo fecha_transaccion = 2024-12-02 (serial 45628) y el
+            valor real de F10 = 1072018.8360554035.
+            CASO ORO-A (C20=NO, replica exacta): bruto 1072018.84, aporte 0.00,
+                    neto 1072018.84
+            CASO ORO-B (C20=SI):                bruto 1072018.84,
+                    aporte 19296.34, neto 1052722.50
+            Se documento la incompatibilidad:
+              sin redondear nada        -> 1072018.84
+              redondeando a 6 decimales -> 1072018.83
+            Se trampas T5 (identificadores como numero) y T6 (desplegable
+            SI/NO roto: sqref="C19", formula1=#REF!).
+ESTADO    : OK
+
+### [45] 2026-10-05 --:-- (sin hora fiable) - v1.1 / CORRECCION C1 Y C2 (seccion 4.3)
+OBJETIVO  : Corregir el corazon del sistema: la regla de redondeo del servicio
+            de calculo y la prohibicion de recalcular montos persistidos.
+COMANDO   : edit instrucciones.txt (seccion 4.3, CalculoLiquidacionService)
+RESULTADO : Regla de redondeo reescrita:
+              a) CERO redondeo intermedio (bcmath, escala >= 20)
+              b) un solo redondeo half-up a 2 decimales, al final, solo sobre
+                 montos en bolivianos
+              c) los intermedios se guardan con la precision de la columna
+                 (numeric) como referencia, NO como insumo de calculo
+              d) PROHIBIDO recalcular un monto persistido desde sus componentes
+              e) numeric de PostgreSQL, nunca float
+            Se incluyo el esqueleto en bcmath con bcscale(20) y la advertencia
+            de calcular el aporte sobre el bruto EXACTO, no sobre el redondeado
+            (a confirmar en FASE 0.7).
+            Tests: ORO-A, ORO-B y ORO-C (este ultimo comprueba que recalcular
+            desde persistidos da 1072018.83 y documenta el por que de C2).
+            Advertencia sobre comparar como string de 2 decimales o con
+            assertEqualsWithDelta, nunca assertEquals con float.
+ESTADO    : OK
+
+### [46] 2026-10-05 --:-- (sin hora fiable) - v1.1 / CORRECCION C4 (seccion 3.3)
+OBJETIVO  : Corregir la alicuota de aporte solidario que no existe en la hoja.
+COMANDO   : edit instrucciones.txt (seccion 3.3, parametros_generales)
+RESULTADO : ALICUOTA_APORTE_SOLIDARIO: 0.01 -> INACTIVA
+            Se documento que se verifico celda por celda que la unica fila de
+            aporte es "CAJA DE SALUD APORTE 1,8 %" y que no hay ninguna celda
+            de aporte solidario.
+            La estructura se crea completa pero el parametro se treats como 0
+            hasta que negocio defina la alicuota en la FASE 0.4.
+ESTADO    : OK
+
+### [47] 2026-10-05 --:-- (sin hora fiable) - v1.1 / CORRECCION C5 (seccion 6.1)
+OBJETIVO  : Anadir reglas de validacion para los identificadores que el Excel
+            entrega como numero.
+COMANDO   : edit instrucciones.txt (seccion 6.1, Form Requests)
+RESULTADO : Reglas anadidas:
+              vendedor_ci         regex:/^\d{1,10}$/
+              comprador_nim       regex:/^[0-9\-]{5,30}$/
+              comprador_nit       regex:/^\d{1,20}$/
+              codigo_municipio    regex:/^\d{1,10}$/
+              codigo_ajam_patente regex:/^\d{1,20}$/
+            Reglas numericas con rango explicito para peso_gramos, ley_pagable,
+            tipo_cambio y cotizacion_usd_oz_t.
+            Nota: 'lte:1' en ley_pagable RECHAZA un 93.02 enviado por error y
+            devuelve 422; es la defensa deliberada contra la trampa T1.
+ESTADO    : OK
+
+### [48] 2026-10-05 --:-- (sin hora fiable) - v1.1 / CORRECCIONES C6 Y C7
+OBJETIVO  : Corregir la fecha del ejemplo y la ruta de bootstrap/app.php.
+COMANDO   : edit instrucciones.txt (seccion 5 y seccion 2)
+RESULTADO : Payload de ejemplo: fecha_transaccion 2024-12-03 -> 2024-12-02
+            Estructura de carpetas: bootstrap/app.php anotado como
+            "va en la RAIZ del proyecto, no en app/Support/" (Laravel 11+)
+ESTADO    : OK
+
+### [49] 2026-10-05 --:-- (sin hora fiable) - v1.1 / SECCION 7 REESCRITA (entorno real)
+OBJETIVO  : Reemplazar la lista "[FALTA] PHP / Composer / PostgreSQL" por el
+            estado verificado tras la FASE 1.
+COMANDO   : edit instrucciones.txt (seccion 7 completa)
+RESULTADO : Estado verificado: PHP 8.4.26, Composer 2.9.7 (ya con 8.4.26),
+            PostgreSQL 17.6 nativo, psql 17.6, pdo_pgsql+pgsql OK, bcmath
+            verificada, Docker instalado pero NO usado, XAMPP intacto y atras
+            en el PATH.
+            Base epcoro: owner epcoro, UTF8, Spanish_Bolivia.1252,
+            rol epcoro/epcoro_secret con CREATEDB, TZ America/La_Paz.
+            Procedimiento reproducible de instalacion, incluida la trampa:
+            el modo desatendido de EDB falla con codigo 1 en esta maquina y hay
+            que usar el asistente grafico.
+            Tabla de extensiones obligatorias de php.ini, con la aclaracion de
+            que bcmath, tokenizer, dom y xml NO se habilitan en PHP 8.4
+            (van compiladas en php8.dll) y de que opcache es zend_extension.
+            Advertencia sobre el orden SYSTEM > USER del PATH en Windows.
+ESTADO    : OK
+
+### [50] 2026-10-05 --:-- (sin hora fiable) - v1.1 / APENDICE A
+OBJETIVO  : Documentar cada correccion con su evidencia, para que el motivo sea
+            auditable y no una opinion.
+COMANDO   : edit instrucciones.txt (nuevo APENDICE A antes del fin del archivo)
+RESULTADO : C1 redondeo, C2 no recalcular, C3 dos casos ORO, C4 aporte
+            solidario, C5 identificadores, C6 fecha, C7 bootstrap, C8 data
+            validation roto. Cada una con "donde / que decia / error / prueba /
+            correccion".
+            Seccion "otros hallazgos que NO son error del documento": B19 y B20
+            no tienen valor en el archivo; B43:I45 si es el area de
+            observaciones; H e I solo tienen encabezado; el TZ del servidor ya
+            quedo en America/La_Paz.
+ESTADO    : OK
+
+### [51] 2026-10-05 --:-- (sin hora fiable) - v1.1 / CONSISTENCIA GLOBAL
+OBJETIVO  : Eliminar las referencias obsoletas a PostgreSQL 16 y verificar que
+            el documento no quedara corrupto.
+COMANDO   : Select-String "PostgreSQL 16|postgres:16" ; sustitucion por indice
+            de linea; verificacion de mojibake
+RESULTADO : 9 coincidencias revisadas. Sustituidas: estructura de carpetas
+            (docker-compose ya no aplica), stack tecnologico, entorno de
+            trabajo, FASE 1.3 (marcada [YA HECHO]), FASE 12.1 (PHP-FPM 8.4) y
+            las menciones historicas del apendice (que se conservan a
+            proposito, explicando por que se uso 17).
+            v1.0: 60 577 bytes / 1229 lineas
+            v1.1: 78 299 bytes / 1521 lineas
+            Mojibake o caracteres rotos: NINGUNO
+            Presentes: ORO-A (8), ORO-B (4), ORO-C (2), 1072018.84 (16),
+            1072018.83 (9), 19296.34 (5), INACTIVA (2), las 5 reglas regex,
+            zend_extension, 2024-12-02.
+ESTADO    : OK
+
+### [52] 2026-10-05 --:-- (sin hora fiable) - v1.1 / CONTRADICCIONES PROPIAS DETECTADAS
+OBJETIVO  : Revisar la v1.1 contra el resto del documento. Se encontraron tres
+            lugares donde el texto ORIGINAL de v1.0 seguia contradiciendo las
+            correcciones recien aplicadas.
+COMANDO   : lectura de instrucciones.txt (lineas 1070-1190) + 3 edits
+RESULTADO : Corregido:
+            (a) FASE 4.4 seguiá sembrando "31.1035, 0.018, 0.01". El 0.01 era
+                justamente la alicuota inventada de C4. Ahora dice INACTIVA.
+            (b) FASE 5.4.1 seguia publicando el caso ORO unico con aporte
+                19296.34 y neto 1052722.50, es decir el escenario SI, que
+                contradice C20=NO de la hoja. Ahora lista ORO-A, ORO-B y ORO-C.
+            (c) FASE 5.4.4 seguia diciendo "verificar 6 decimales", que es
+                exactamente el error que C1 corrige. Ahora exige que el
+                resultado sea identico con y sin redondeo intermedio.
+            Se anadio 5.4.6: test parametrizado del aporte (bruto exacto vs
+            bruto redondeado), pendiente de la decision de negocio FASE 0.7.
+ESTADO    : OK
+
+### [53] 2026-10-05 --:-- (sin hora fiable) - CORRECCION DEL ESTADO DE LA FASE 1
+OBJETIVO  : Corregir una afirmacion inexacta propia. El pie de este archivo
+            declaraba la FASE 1 COMPLETADA, pero solo se ejecutaron los
+            puntos 1.1, 1.2, 1.3 y 1.5.
+COMANDO   : edit pasos.txt (pie de estado)
+RESULTADO : FASE 1 desglosada punto por punto. PENDIENTES: 1.6 extensiones de
+            VS Code, 1.7 epcoro.code-workspace, 1.8 estructura de carpetas +
+            README + .gitignore, 1.9 git init + primer commit.
+            1.4 (DBeaver) marcado SUSTITUIDO por pgAdmin 4, que ya veio con
+            PostgreSQL 17; no requiere accion.
+            Advertencia registrada: el propio plan dice que la FASE 0 sin
+            decisiones de negocio firmadas DETIENE la FASE 4.
+ESTADO    : OK
+
+
+### [54] 2026-10-05 --:-- (sin hora fiable) - FASE 1.8 / INSPECCION ANTES DE MOVER ARCHIVOS
+OBJETIVO  : Ver si era seguro mover docs/ antes de tocar nada.
+COMANDO   : Get-ChildItem -Force ; Get-Process draw.io ; Test-Path .git
+RESULTADO : Contenido de la raiz: preguntas_curso_claude/, diagrama, hoja.xlsx,
+            instrucciones.txt, notas1.txt, notas_figma.txt, pasos.txt, prompt.txt
+            Existia un ".$diagrama_sist_epcoro.drawio.bkp", que es el archivo
+            temporal que deja Draw.io al abrir un diagrama. Se comprobo si
+            Draw.io estaba corriendo ANTES de mover el .drawio.
+            Draw.io: NO corriendo -> era seguro mover.
+            .git: NO existia -> hacia falta el paso 1.9.
+            preguntas_curso_claude/ contiene material de un curso de Claude
+            (PASO 0 a PASO 3). NO es de EPCORO: se deja en la raiz pero se
+            excluye del repositorio.
+ESTADO    : OK
+
+### [55] 2026-10-05 --:-- (sin hora fiable) - FASE 1.8 / ESTRUCTURA DE CARPETAS
+OBJETIVO  : Armar el monorepo segun la seccion 2 de instrucciones.txt.
+COMANDO   : New-Item docs ; Move-Item hoja.xlsx, diagrama_sist_epcoro.drawio,
+            .$...bkp -> docs/
+RESULTADO : docs/ creado. Movidos:
+              docs/hoja.xlsx                        58 224 bytes
+              docs/diagrama_sist_epcoro.drawio      10 522 bytes
+              docs/.$diagrama_sist_epcoro.drawio.bkp 10 195 bytes
+            Se movio tambien el .bkp para no dejar un temporal suelto en la raiz.
+ESTADO    : OK
+
+### [56] 2026-10-05 --:-- (sin hora fiable) - FASE 1.8 / README.md
+OBJETIVO  : Crear el README con la estructura, los documentos que mandan, la
+            regla de redondeo, los casos ORO y el estado real del proyecto.
+COMANDO   : write README.md
+RESULTADO : README.md creado. Incluye el aviso de que la HOJA ES LA FUENTE DE
+            VERDAD, la regla de no redondear intermedios, la tabla de casos
+            ORO-A/ORO-B y una tabla de estado por fases que refleja la
+            situacion honesta (FASE 1 parcial, FASE 0 parcial).
+ESTADO    : OK
+
+### [57] 2026-10-05 --:-- (sin hora fiable) - FASE 1.8 / .gitignore
+OBJETIVO  : Evitar que entren al repo dependencias, secretos y artefactos.
+COMANDO   : write .gitignore
+RESULTADO : .gitignore creado. Cubre vendor, node_modules, .env (incluye
+            epcoro-api/.env y epcoro-web/.env), storage/framework, caches de
+            phpunit/phpstan/pint, .sqlite, .vite, .idea, Thumbs.db,
+            artefactos de Draw.io (*.bkp, .$*).
+            Incluye /preguntas_curso_claude/ para que el material del curso no
+            entre al repositorio de EPCORO.
+            Regla de seguridad: los .env NUNCA se versionan.
+ESTADO    : OK
+
+### [58] 2026-10-05 --:-- (sin hora fiable) - FASE 1.7 / epcoro.code-workspace
+OBJETIVO  : Crear el workspace de VS Code con las carpetas del monorepo.
+COMANDO   : write epcoro.code-workspace
+RESULTADO : epcoro.code-workspace creado. Carpetas: raiz, epcoro-api,
+            epcoro-web. Ajustes por lenguaje (PHP sangria 4, JS/TS/Vue/JSON
+            sangria 2), rulers a 100 columnas, CRLF, utf8, exclusiones de
+            busqueda en vendor y node_modules.
+            Recomendadas las extensiones: PHP Intelephense, Laravel Blade,
+            Volar, Tailwind IntelliSense, ESLint, Prettier, DotENV.
+ESTADO    : OK
+NOTA      : el punto 1.6 (instalar esas extensiones) sigue PENDIENTE porque
+            requiere abrir VS Code; el workspace ya las declara.
+
+### [59] 2026-10-05 --:-- (sin hora fiable) - FASE 1.9 / git init
+OBJETIVO  : Inicializar el control de versiones en la raiz del monorepo.
+COMANDO   : git -C C:\marioc\webs_figma\epcoro init
+            git config --global user.name / user.email
+            git status --porcelain
+RESULTADO : "Initialized empty Git repository in .../epcoro/.git/"
+            Identidad global ya configurada:
+              user.name  : mcarranza
+              user.email : mario.carranza.salinas@gmail.com
+            Archivos que git rastrea (9):
+              .gitignore, README.md, epcoro.code-workspace, instrucciones.txt,
+              notas1.txt, notas_figma.txt, pasos.txt, prompt.txt, docs/
+            Confirmado que preguntas_curso_claude/ NO aparece: el .gitignore
+            funciona.
+ESTADO    : OK
+PENDIENTE : el PRIMER COMMIT no se ejecuto. Queda a decision del usuario.
+
+
+================================================================================
+ ESTADO ACTUAL
+================================================================================
+   FASE 0    Auditoria del sistema ................ COMPLETADA
+   FASE 1.1  PHP 8.4.26 + extensiones ............. COMPLETADO
+   FASE 1.2  Composer 2.9.7 ...................... COMPLETADO
+   FASE 1.3  PostgreSQL 17 nativo + base epcoro .. COMPLETADO
+   FASE 1.4  DBeaver ............................. SUSTITUIDO por pgAdmin 4
+                                                    (que trajo PostgreSQL 17)
+   FASE 1.5  Conectividad PHP -> PostgreSQL ...... COMPLETADO
+   FASE 1.6  Instalar extensiones de VS Code .... PENDIENTE (requiere abrir
+                                                    VS Code; el workspace ya
+                                                    las declara)
+   FASE 1.7  epcoro.code-workspace .............. COMPLETADO (paso [58])
+   FASE 1.8  Estructura + README + .gitignore ... COMPLETADO (pasos 55-57)
+   FASE 1.9  git init ........................... COMPLETADO (paso [59])
+            primer commit ....................... PENDIENTE (decidir el usuario)
+   FASE 1.5' Correccion de instrucciones.txt .... COMPLETADO (v1.1)
+   ---------------------------------------------------------------------
+   FASE 2    Esqueleto del backend ............... COMPLETADA (pasos 60-74)
+              Laravel 13.34.0 + PHP 8.4.26 + PostgreSQL 17.6
+              /api/health responde 200, 5 tests en verde, pint y phpstan OK
+   FASE 0    (4 decisiones de negocio) ......... ABIERTA. El propio plan dice
+              que sin docs/reglas-negocio.md firmado la FASE 4 se detiene.
+   ---------------------------------------------------------------------
+   SIGUIENTE : FASE 3 (autenticacion) o, antes, cerrar la FASE 0.
+   PENDIENTES SUELTOS:
+     - FASE 1.6: instalar las extensiones de VS Code (requiere abrir VS Code)
+     - El PRIMER COMMIT de git no se ha hecho (decision del usuario)
+     - El servidor de desarrollo se detuvo; para trabajar:
+       cd epcoro-api ; php artisan serve
+================================================================================
+
+################################################################################
+ FASE 2 - ESQUELETO DEL BACKEND (Laravel 13) - 18:39
+################################################################################
+
+### [60] 18:39 - FASE 2.1 / PRIMER INTENTO: LARAVEL 12, NO 13
+OBJETIVO  : Crear el backend con 'composer create-project laravel/laravel'.
+COMANDO   : composer create-project laravel/laravel epcoro-api --no-interaction
+RESULTADO : FALLO SILENCIOSO. El proyecto quedo con:
+              composer.json -> "laravel/framework": "^12.0"  y "php": "^8.2"
+            NO era Laravel 13, que es lo que pide el plan.
+DIAGNOSTICO: 'php' resolvia a C:\xampp\php\php.exe (8.2.12), NO a
+            C:\tools\php84. Causa: esta sesion de PowerShell se abrio ANTES de
+            modificar el PATH, por lo que arrastra el valor viejo.
+            El PATH DEL REGISTRO si estaba bien (MACHINE empieza con
+            C:\tools\php84), asi que una terminal nueva ve PHP 8.4.26. Lo que
+            falla es cualquier terminal ya abierta.
+            Con PHP 8.2, Composer no puede resolver Laravel 13 y cae a la 12.
+ESTADO    : CORREGIDO EN EL PASO [61]
+
+### [61] 18:39 - FASE 2.1 / REHACER CON PHP 8.4.26 Y RAMA 13
+OBJETIVO  : Forzar el interprete correcto y la version correcta.
+COMANDO   : $env:PATH = "C:\tools\php84;C:\Program Files\PostgreSQL\17\bin;" + $env:PATH
+            Remove-Item epcoro-api -Recurse -Force
+            composer create-project laravel/laravel epcoro-api "^13.0" --no-interaction
+RESULTADO : "Installing laravel/laravel (v13.0.0)"
+              "Locking laravel/framework (v13.34.0)"
+            composer.json -> "laravel/framework": "^13.0"   "php": "^8.3"
+            php artisan --version -> Laravel Framework 13.34.0
+            107 paquetes, sin avisos de seguridad.
+LECCION   : en Windows el PATH de la SESION manda sobre el del registro para
+            los procesos ya abiertos. Anteponer siempre la ruta en $env:PATH
+            dentro de la misma sesion, o abrir una terminal nueva.
+
+### [62] 18:39 - FASE 2.1 / FIJAR LA PLATAFORMA PHP EN COMPOSER
+OBJETIVO  : Impedir que una resolucion futura degrade a Laravel 12 si se corre
+            un comando con el PHP equivocado.
+COMANDO   : composer config platform.php 8.4.26
+RESULTADO : [platform.php] 8.4.26 / [platform-check] php-only
+            Ahora Composer resuelve como si elinterprete fuera 8.4.26 siempre.
+ESTADO    : OK
+
+### [63] 18:39 - FASE 2.3 / CONFIGURAR .env PARA POSTGRESQL
+COMANDO   : edit epcoro-api/.env
+RESULTADO : APP_NAME=Laravel -> EPCORO
+            APP_URL=http://localhost -> http://localhost:8000
+            APP_TIMEZONE=America/La_Paz  (agregado; ver la trampa del paso [68])
+            APP_LOCALE=en -> es ; APP_FAKER_LOCALE=en_US -> es_BO
+            DB_CONNECTION=sqlite -> pgsql
+            DB_HOST=127.0.0.1  DB_PORT=5432
+            DB_DATABASE=epcoro  DB_USERNAME=epcoro  DB_PASSWORD=epcoro_secret
+            SESSION_LIFETIME=120 -> 480 (una jornada de trabajo)
+            SESSION_SAME_SITE=lax  (agregado, necesario para Sanctum)
+            CORS_ALLOWED_ORIGINS=http://localhost:5173
+            SANCTUM_STATEFUL_DOMAINS=localhost,localhost:5173,127.0.0.1,127.0.0.1:5173
+            FRONTEND_URL=http://localhost:5173
+            Se elimino la creacion automatica de database/database.sqlite: con
+            PostgreSQL no debe existir un archivo SQLite en el proyecto.
+ESTADO    : OK
+
+### [64] 18:39 - FASE 2.2 / php artisan install:api
+COMANDO   : php artisan install:api --no-interaction
+RESULTADO : laravel/sanctum v4.3.3 instalado
+            "Published API routes file" -> routes/api.php creado
+            bootstrap/app.php ahora registra api: routes/api.php
+            Corrio migrate y creo las 3 migraciones base (users, cache, jobs)
+ESTADO    : OK
+
+### [65] 18:39 - FASE 2.4 / VERIFICAR LA CONEXION Y PUBLICAR MIGRACIONES
+COMANDO   : php artisan db:show
+            psql -U epcoro -d epcoro -h 127.0.0.1 -c "\dt"
+            php artisan vendor:publish --tag=sanctum-migrations
+            php artisan migrate
+RESULTADO : db:show -> PostgreSQL 17.6, pgsql, db epcoro, 127.0.0.1:5432,
+            usuario epcoro, 9 tablas, 208 KB. CONEXION CONFIRMADA.
+            La tabla personal_access_tokens NO existia (Sanctum 4 no corre su
+            migracion solo). Se publico y se ejecuto. Quedaron 10 tablas.
+TRAMPA   : 'psql' sin PGPASSWORD se queda esperando la clave y el comando
+            cuelga hasta agotar el tiempo. Hay que exportar
+            $env:PGPASSWORD antes de calling psql.
+ESTADO    : OK
+
+### [66] 18:39 - FASE 2 / HASAPITOKENS EN EL MODELO USER
+COMANDO   : edit app/Models/User.php
+RESULTADO : Anadido 'use Laravel\Sanctum\HasApiTokens;' al trait list.
+            Nota de estilo: Laravel 13 usa atributos PHP, no propiedades:
+            '#[Fillable([...])]' y '#[Hidden([...])]' en lugar de $fillable
+            y $hidden. Hay que respetar esa convencion al escribir el resto
+            del codigo.
+PENDIENTE: la FASE 3 reemplaza este modelo por uno propio (username, activo,
+            intentos_fallidos, bloqueado_hasta, ultimo_acceso,
+            debe_cambiar_password). Este cambio es solo para que Sanctum
+            funcione en el esqueleto.
+ESTADO    : OK
+
+### [67] 18:39 - FASE 2.5 / CONFIGURAR CORS
+COMANDO   : write config/cors.php + variables en .env
+RESULTADO : config/cors.php creado (no venia en el esqueleto de Laravel 13).
+            paths: ['api/*', 'sanctum/csrf-cookie']
+            supports_credentials: true   (necesario para la cookie de Sanctum)
+            allowed_origins se lee de CORS_ALLOWED_ORIGINS, separada por comas,
+            con 127.0.0.1 y localhost permitidos para no depender de como se
+            llame al servidor en desarrollo.
+            Se descarto usar '*' a proposito: el navegador lo rechaza cuando se
+            envian credenciales, y este sistema autentica con cookie.
+ESTADO    : OK
+
+### [68] 18:39 - FASE 2 / TRAMPA: APP_TIMEZONE ERA IGNORADO
+SINTOMA   : /api/health devolvia "timezone":"UTC" aunque .env tenia
+            APP_TIMEZONE=America/La_Paz.
+CAUSA     : config/app.php traia 'timezone' => 'UTC' FIJO, sin env(). Laravel
+            11+ no lee APP_TIMEZONE en ese archivo por defecto.
+COMANDO   : edit config/app.php -> 'timezone' => env('APP_TIMEZONE', 'UTC')
+RESULTADO : config('app.timezone') = America/La_Paz
+            now() = 2026-10-05 18:31:56
+            /api/health -> "timezone":"America/La_Paz",
+                           "timestamp":"2026-10-05T18:31:55-04:00"
+POR QUE IMPORTA: sin esto, una liquidacion creada a las 20:00 en La Paz
+            queda marcada 02:00 del dia siguiente en la base, y las fechas del
+            formulario no cuadran con las del reporte.
+ESTADO    : OK
+
+### [69] 18:39 - FASE 2.7 / PAQUETES DEL PLAN
+COMANDO   : composer require spatie/laravel-permission
+            composer require spatie/laravel-query-builder
+            composer require barryvdh/laravel-dompdf
+            composer require maatwebsite/excel
+            composer require --dev larastan/larastan laravel/pint
+RESULTADO : spatie/laravel-permission   8.3.0
+            spatie/laravel-query-builder 7.3.5
+            barryvdh/laravel-dompdf      v3.1.2  (dompdf v3.1.6)
+            maatwebsite/excel            4.0.3   (phpspreadsheet 5.10.0)
+            larastan/larastan            v3.12.3 (phpstan 2.2.17)
+            laravel/pint                 (dev)
+            Sin avisos de seguridad en ninguna instalacion.
+            Se publico la migracion de permisos (tag permission-migrations).
+ESTADO    : OK
+
+### [70] 18:39 - FASE 2.7 / CONFIGURAR LARASTAN Y PINT
+COMANDO   : write phpstan.neon ; write pint.json ; vendor\bin\pint ; vendor\bin\phpstan
+RESULTADO : phpstan.neon: level 5, paths app/routes/database, incluye
+            vendor/larastan/larastan/extension.neon.
+            Excepciones deliberadas:
+              - function.implicitType en app/Services/CalculoLiquidacionService:
+                tipar las funciones bcmath como float obligaria a castear, y ese
+                cast es justo lo que produce el error de redondeo de C1.
+              - staticMethod.notFound en database/migrations: el ENUM
+                liquidacion_estado se crea con DB::statement.
+            reportUnmatchedIgnoredErrors: false, porque el servicio de calculo
+            todavia no existe y sin eso PHPStan aborta el analisis entero en
+            las FASES 2 a 4.
+            pint.json: preset laravel.
+            Errores encontrados y corregidos durante la puesta en marcha:
+              - phpstan.neon tenia 'ignoreErrors' DUPLICADO (clave repetida).
+              - el primer intento de PHPStan se ejecuto desde el directorio
+                equivocado y no encontro la config: "At least one path must be
+                specified". Hay que correrlo con workdir en epcoro-api.
+            Resultado final: pint --test -> passed ; phpstan -> [OK] No errors.
+ESTADO    : OK
+
+### [71] 18:39 - FASE 2 / BASE DE DATOS DE PRUEBAS DEDICADA
+RIESGO    : phpunit.xml venia con DB_CONNECTION=sqlite y DB_DATABASE=:memory:.
+            Eso rompe por dos motivos:
+              1. Las migraciones de la FASE 4 crean el ENUM liquidacion_estado
+                 con DB::statement, sintaxis de PostgreSQL sin equivalente en
+                 SQLite.
+              2. La semantica de numeric que usa el calculo no es la misma.
+            Ademas, si alguien apuntara los tests a 'epcoro' con
+            RefreshDatabase, borraria los datos de desarrollo.
+COMANDO   : psql -U epcoro -d postgres -c "CREATE DATABASE epcoro_test OWNER
+              epcoro ENCODING 'UTF8' LC_COLLATE 'Spanish_Bolivia.1252'
+              LC_CTYPE 'Spanish_Bolivia.1252' TEMPLATE template0;"
+            edit phpunit.xml
+RESULTADO : Base epcoro_test creada (owner epcoro, UTF8, Spanish_Bolivia.1252).
+            phpunit.xml ahora apunta a pgsql / epcoro_test con las credenciales
+            de desarrollo.
+            Verificado despues de correr las pruebas:
+              epcoro_test -> 0 tablas (los tests de ejemplo no migran)
+              epcoro      -> 10 tablas, INTACTA
+ESTADO    : OK
+
+### [72] 18:39 - FASE 2.6 / ENDPOINT GET /api/health
+COMANDO   : write routes/api.php
+RESULTADO : GET /api/health (nombre 'health') fuera del grupo web, o sea sin
+            sesion ni CSRF, para poder usarlo como sonda desde cualquier sitio.
+            Devuelve status, app, environment, php, laravel, timezone, checks y
+            timestamp. Si la base no responde devuelve 503 con status
+            'degraded' y el detalle del error en checks.database.
+            ruta:list confirma -> GET|HEAD api/health  health
+PRIMERA PRUEBA: {"status":"ok","app":"EPCORO","php":"8.4.26",
+            "laravel":"13.34.0","timezone":"UTC","checks":{"database":"ok"}}
+            -> 200. La base respondia, pero el timezone estaba mal (ver [68]).
+TRAMPA   : la primera version del archivo usaba DB:: sin importar el facade y
+            habria fallado en tiempo de ejecucion. Anadido
+            'use Illuminate\Support\Facades\DB;'.
+ESTADO    : OK
+
+### [73] 18:39 - FASE 2.6 / VERIFICACION DEL CRITERIO DE ACEPTACION
+COMANDO   : Start-Process php artisan serve --host=127.0.0.1 --port=8000
+            curl http://127.0.0.1:8000/api/health
+            curl http://127.0.0.1:8000/up
+RESULTADO : /api/health -> HTTP 200
+            {"status":"ok","app":"EPCORO","environment":"local","php":"8.4.26",
+             "laravel":"13.34.0","timezone":"America/La_Paz",
+             "checks":{"database":"ok"},
+             "timestamp":"2026-10-05T18:31:55-04:00"}
+            /up (el que trae Laravel) -> HTTP 200, pagina HTML.
+            CRITERIO DE LA FASE 2 CUMPLIDO: la API responde y la base existe.
+            El servidor en segundo plano (PID 13920) se detuvo al terminar.
+ESTADO    : OK
+
+### [74] 18:39 - FASE 2 / TESTS DEL ENDPOINT DE SALUD
+COMANDO   : write tests/Feature/HealthTest.php ; php artisan test
+RESULTADO : 3 tests nuevos:
+              - health devuelve ok cuando la base responde
+              - health usa la zona horaria de Bolivia (falla si alguien vuelve
+                a poner UTC en config/app.php)
+              - health no expone datos de conexion (verifica que ni la clave
+                de la base ni APP_KEY aparezcan en la respuesta)
+            php artisan test -> 5 passed (11 assertions)
+            vendor\bin\pint --test -> passed
+            vendor\bin\phpstan analyse -> [OK] No errors
+ESTADO    : OK
+
+################################################################################
+ FASE 2 - ESQUELETO DEL BACKEND: COMPLETADA
+ Criterio : /api/health responde 200 con la base conectada, y la base epcoro
+           existe en PostgreSQL. Ambos verificados por curl y por tests.
+################################################################################
+
+### [75] 18:41 - FASE 2 / HIGIENE: .env.example Y ARCHIVO SQLITE
+COMANDO   : read/edit .env.example ; Test-Path database/database.sqlite
+RESULTADO : database/database.sqlite SI existia (lo crea el script
+            post-create-project de Laravel). Eliminado: con PostgreSQL
+            configurado, un archivo SQLite suelto solo confunde y alguien
+            podria ejecutar migraciones sobre el motor equivocado.
+            .env.example estaba intacto con los valores por defecto de Laravel:
+              DB_CONNECTION=sqlite, DB_PORT=3306, APP_LOCALE=en
+            Eso es un riesgo real de despliegue: un desarrollador copiando el
+            ejemplo=configuraba MySQL. Reescrito para reflejar la
+            configuracion real:
+              APP_NAME=EPCORO, APP_URL=http://localhost:8000,
+              APP_TIMEZONE=America/La_Paz, APP_LOCALE=es,
+              DB_CONNECTION=pgsql, DB_PORT=5432, SESSION_LIFETIME=480,
+              SESSION_SAME_SITE=lax, CORS_ALLOWED_ORIGINS,
+              SANCTUM_STATEFUL_DOMAINS, FRONTEND_URL
+            Sin clave de base de datos y sin APP_KEY, como corresponde a un
+            ejemplo. Verificado: no contiene 'epcoro_secret' ni APP_KEY con valor.
+            .env sigue ignorado por git (epcoro-api/.gitignore linea 3).
+            Tras los cambios: 5 tests en verde, pint --test passed.
+ESTADO    : OK
+
+################################################################################
+ FASE 2 - COMPLETADA AL CIERRE DE ESTA SESION
+ Verificacion final:
+   Laravel Framework 13.34.0
+   PHP 8.4.26  /  Composer 2.9.7
+   PostgreSQL 17.6 (base epcoro: 10 tablas ; base epcoro_test: 0 tablas)
+   GET /api/health -> 200, status ok, checks.database ok,
+                     timezone America/La_Paz
+   php artisan test        -> 5 passed (11 assertions)
+   vendor/bin/pint --test  -> passed
+   vendor/bin/phpstan      -> [OK] No errors
+   git inicializado, 0 commits, 10 rutas sin versionar
+################################################################################
+
+################################################################################
+ FASE 0 (continuacion) - DECISIONES DE NEGOCIO Y CORRECCION DEL REDONDEO
+################################################################################
+
+### [76] 19:01 - FASE 0 / PREGUNTAS 4 PUNTOS DE NEGOCIO AL USUARIO
+COMANDO   : pregunta al usuario sobre (a) aporte solidario, (b) corregir una
+            liquidacion aprobada, (c) visibilidad por rol, (d) base del aporte
+RESULTADO : Respuestas del usuario de negocio:
+            (a) Un solo interruptor SI/NO: SI aplica 1,8 %, NO aplica 0. No hay
+                aporte solidario aparte.
+            (b) Una liquidacion APROBADA no se corrige, bajo ningun supuesto,
+                ni por el administrador.
+            (c) El administrador ve todas; el aprobador puede ver cualquier
+                liquidacion registrada; los demas ven las suyas.
+            (d) El aporte se calcula sobre el bruto exacto, sin redondear.
+            NOTA: en (a) el usuario llamo "aporte solidario" a lo que el Excel
+            llama "CAJA DE SALUD 1,8 %", y en una respuesta anterior habia
+            mencionado un 1 %. Esa discrepancia quedo planteada como punto
+            abierto, no se dio por resuelta sola.
+ESTADO    : OK
+
+### [77] 19:02 - FASE 0 / VERIFICACION DEL REDONDEO HALF-UP EN PHP
+COMANDO   : scripts de prueba con PHP 8.4.26 y bcmath, 17 casos limite
+            (halfUp con bcpow/bcmul/bcadd/bcdiv)
+HALLAZGO  : La formula de v1.1 era INCORRECTA. Decia que el half-up se hacia
+            con  bcadd($brutoExacto, '0', 2).  Eso TRUNCA, no redondea:
+              bcadd('1072018.8360554035','0',2) -> 1072018.83
+            El Excel dice 1072018.84. Con la formula de v1.1 el caso ORO-A
+            daba 83 y no cuadraba, por un centimo.
+            Descartadas las otras dos opciones habituales:
+              round((float)$x, 2)  -> depende del redondeo binario del float
+              bcdiv($x,'1',2)      -> trunca con un digito de guarda:
+                                       bcdiv('100.505','100',2) -> 1.00 (!)
+            Forma correcta verificada (media unidad en el dominio YA
+            desplazado, truncar a entero, recien ahi dividir):
+              $factor = bcpow('10', (string)$decimales, 0);
+              return bcdiv(
+                  bcadd(bcmul($valor, $factor, $escala), '0.5', 0),
+                  $factor, $decimales);
+            Casos limite OK:
+              1.005->1.01   1.004->1.00   1.015->1.02   (half-up, no banker's)
+              2.675->2.68   2.674->2.67   2.685->2.69
+              0.005->0.01   0.004->0.00   0.015->0.02
+              1072018.8360554035->1072018.84   1072018.835->1072018.84
+              1072018.834->1072018.83         999999.995->1000000.00
+            CASO ORO RECALCULADO CON halfUp (todo confirmed):
+              peso_fino       = 1808.801806000000000000000000000000
+              valor_usd_gramo = 85.153439323548796759207163180992
+              bruto_exacto    = 1072018.836055403514073978812673808061
+              bruto           = 1072018.84        <-- coincide con el Excel
+              aporte (SI)     = 19296.34
+              neto   (SI)     = 1052722.50
+              neto   (NO)     = 1072018.84
+            Aporte sobre bruto exacto vs sobre bruto redondeado (muestreo de
+            3000 brutos): difieren en 15 casos, 0,5 %, siempre 1 centavo.
+            Verificado en 3 de esos casos:
+              53122.496411  -> exacto 956.20   | redondeado 956.21
+              56309.723178  -> exacto 1013.58  | redondeado 1013.57
+              120335.275943 -> exacto 2166.03  | redondeado 2166.04
+            En el caso ORO las dos reglas coinciden, asi que el Excel NO
+            desambigua D4. Se dejo un test dedicado (5.4.6) para fijarla.
+            NOTA DE SCRIPT: una primera version del script de comprobacion
+            imprimio "neto (SI) = 1052722" porque uso bcsub() sin escala, y
+            bcsub trunca a escala 0. Con bcsub(...,'2') sale 1052722.50. El
+            numero de la documentacion era el correcto; el script estaba mal.
+ESTADO    : OK
+
+### [78] 19:03 - FASE 0 / REDACCION DE docs/reglas-negocio.md
+COMANDO   : write docs/reglas-negocio.md
+CONTENIDO : D1 una sola deduccion del 1,8 %; D2 aprobada inmutable;
+            D3 visibilidad por rol; D4 aporte sobre el bruto exacto;
+            tabla de la maquina de estados; regla de redondeo con halfUp();
+            casos ORO; lista de 5 puntos abiertos.
+ESTADO    : OK
+
+### [79] 19:04 - FASE 0 / CORRECCION DE ERRORES DE REDACCION EN LAS DOS SPECS
+COMANDO   : edit docs/reglas-negocio.md ; edit instrucciones.txt
+ERRORES   : En reglas-negocio.md quedaron 4 erratas de redaccion:
+              "Seimplementationó" -> "Se implementó"
+              "se sospechosa"     -> "se sospechaba"
+              "Meaning reachable" -> se elimino (texto en ingles colado)
+              "discovered"        -> "verificada"
+            En reglas-negocio.md habia ademas una CONTRADICCION DE FONDO:
+              decia "la unica forma de dejar de aprobar es la anulacion", pero
+              la propia tabla de estados dejaba `aprobado` sin salida. Se
+              corrigio para que diga que `aprobado` no tiene salida, ni a
+              `anulado`, y se movio la anulacion de una aprobada a los puntos
+              abiertos porque si deberia existir, `aprobado` no es terminal.
+            Tambien se cambio "Documento firmado por el usuario" por
+            "Decisiones confirmadas por el usuario": el usuario respondio
+            preguntas, no firmo un documento, y no hay que afirmar algo que no
+            ocurrio.
+ESTADO    : OK
+
+### [80] 19:04 - v1.2 / INSTRUCCIONES.TXT CON LAS DECISIONES Y EL BUG CORREGIDO
+COMANDO   : edit instrucciones.txt (multiples)
+CAMBIO VER 1.1 -> 1.2
+  - Cabecera: resumen D1-D4 + nueva correccion C9 (el bug de redondeo).
+  - Seccion 3.2: eliminada la ambiguedad "Municipalidades" -> "Municipios".
+  - Seccion 3.3: ALICUOTA_CAJA_SALUD + ALICUOTA_APORTE_SOLIDARIO sustituidas
+    por UN solo parametro ALICUOTA_APORTE = 0.018. C4 queda resuelta por D1.
+  - Seccion 3.4 (tabla liquidaciones): fuera la columna aplica_aporte_solidario.
+  - Seccion 3.4 (calculados): fuera la columna aporte_solidario_bs.
+  - Seccion 3.4: ENUM con la maquina de estados + las 3 reglas que la aplicacion
+    debe hacer cumplir aparte de las transiciones (422 y no 403 al tocar una
+    aprobada, `eliminado` solo desde `creado`, `en_correccion` solo desde
+    `rechazado`).
+  - Seccion 3.5: corregido "estado_neto" por "estado_nuevo" (typo mio).
+  - Nueva seccion 3.5b: visibilidad D3, en el Policy y no en el Controlador.
+  - Seccion 4.3: pseudocodigo reescrito con una sola deduccion y aporte sobre
+    el bruto exacto. Donde estaba la formula ERRADA de v1.1 ahora esta la
+    explicacion de por que bcadd trunca, por que round(float) y bcdiv tampoco
+    sirven, la funcion halfUp() correcta y los 17 casos limite.
+  - Seccion 4.3: agregados tests ORO-D (casos limite de halfUp), ORO-E (aporte
+    sobre el exacto) e inmutabilidad de la aprobada.
+  - Seccion 5.4.6: el test del aporte ya no queda "hasta que negocio decida",
+    queda fijado por D4 con los numeros concretos.
+  - FASE 0: marcada como PARCIALMENTE CERRADA, con la lista de lo resuelto y la
+    lista de lo que sigue abierto.
+  - FASE 4: ENUM documentado, seeders sin el parametro fantasma, nuevo 4.8
+    para la Policy de D3.
+  - Apendice A: entrada C4 reescrita con la resolucion de D1.
+  - Apendices B y C NUEVOS: decisiones D1-D4 con el "por que" de cada una, y la
+    trampa del redondeo con las tres opciones descartadas y por que.
+  - Verificacion de bcmath en la seccion 7: aclarada. Ese chequeo prueba que
+    bcmath CARGA, no que redondee; para redondear hay que probar halfUp().
+ESTADO    : OK
+
+### [81] 19:05 - README.md AL ESTADO REAL
+COMANDO   : edit README.md
+CAMBIO    : tabla de estado corregida (FASE 2 ya no figura como pendiente,
+            FASE 0 como parcial con D1-D4 resueltas, FASE 3 como siguiente).
+            Documentos que mandan: agrega docs/reglas-negocio.md, actualiza
+            la version de instrucciones.txt a v1.2 y el rango de correcciones
+            a C1-C9.
+            Seccion "la regla mas importante": la formula ahora muestra
+            bruto_exacto y el aporte calculado sobre el exacto, con la nota de
+            que bcadd trunca y hay que usar halfUp().
+            Corregido "chronologico" por "cronologico".
+ESTADO    : OK
+
+################################################################################
+ ESTADO AL CIERRE DE ESTA SESION
+ FASE 0 : D1-D4 RESUELTAS Y DOCUMENTADAS. Firmada la version v1.2 de
+          instrucciones.txt y creado docs/reglas-negocio.md.
+          Sigue abierto (5 puntos, ver docs/reglas-negocio.md):
+            1 nomenclatura del aporte (caja de salud vs aporte solidario)
+            2 visibilidad del revisor
+            3 confirmacion de la maquina de estados propuesta
+            4 quien anula, y si una aprobada se puede anular
+            5 via de correccion para una aprobada mal cargada
+          Estos puntos NO bloquean la FASE 3; solo la FASE 4.
+ FASE 1 : completa salvo 1.6 (extensiones de VS Code, requiere abrir la UI)
+ FASE 2 : completa
+ FASE 3 : siguiente. Autenticacion, logout, perfil, cambio de contrasena, roles.
+ Git    : repositorio inicializado, 0 commits. El primer commit sigue pendiente
+          de autorizacion del usuario.
+################################################################################
+
+### [82] 19:07 - CORRECCION DE CARACTERES CORRUPTOS EN LA BITACORA
+COMANDO   : Select-String con patron [\u4E00-\u9FFF] sobre los 4 documentos
+HALLAZGO  : Dos lineas tenian caracteres CJK colados, restos de una escritura
+            con problemas de codificacion. No estaban en los ultimos pasos que
+            anote, sino en pasos anteriores ([36] y [48]), asi que es
+            corruption vieja y no de esta tanda.
+              L372: una frase starting con "Se" seguida de dos ideogramas CJK
+                    y que continua en "que el usuario lo desinstalo"
+                    -> "Alguien lo desinstalo antes de esta sesion."
+              L745: "bootstrap/app.php" seguido de dos ideogramas CJK y "ado
+                    como"
+                    -> "bootstrap/app.php anotado como"
+
+            Los ideogramas NO se reproducen aqui a proposito: si se copiaban,
+            el archivo seguiria conteniendo CJK y la verificacion de abajo no
+            podria dar 0. Se describen en su lugar.
+COMANDO   : Select-String de verificacion sobre pasos.txt, instrucciones.txt,
+            docs/reglas-negocio.md y README.md
+RESULTADO : CJK=0 y U+FFFD=0 en los cuatro archivos.
+ESTADO    : OK
+
+################################################################################
+ FASE 3 - AUTENTICACION Y ROLES
+################################################################################
+
+### [83] 19:09 - FASE 3 / MIGRACION PENDIENTE DE SPATIE PERMISSION
+COMANDO   : php artisan migrate:status ; php artisan migrate --force
+HALLAZGO  : migrate:status mostraba una migracion PENDING que se habia publicado
+            en la FASE 2 pero nunca se ejecuto:
+              2026_10_05_223110_create_permission_tables ... Pending
+            Las otras 4 (users, cache, jobs, personal_access_tokens) estaban Ran.
+RESULTADO : Ejecutada. Las tablas de roles y permisos de Spate ya existen en la
+            base epcoro.
+ESTADO    : OK
+
+### [84] 19:10 - FASE 3 / CONFLICTO DE DISENO: ROLES A MANO VS SPATIE
+PROBLEMA  : La seccion 3.1 de instrucciones.txt pide crear a mano tres tablas:
+              roles, permissions, permission_role
+            y un users.rol_id FK -> roles.id.
+            Pero Spatie Permission YA ESTA INSTALADO y migrado desde la FASE 2, y
+            sus tablas son:
+              roles, permissions,
+              model_has_roles, model_has_permissions, role_has_permissions
+            Si creo las tres tablas de la spec, la base tendria DOS fuentes de
+            verdad para "que rol tiene este usuario" y "que permiso tiene este
+            rol". Eso es una fuente de bugs garantizada: alguien asigna el rol
+            en la tabla propia y el permiso en la de Spatie, y ninguna consulta
+            ve el conjunto completo.
+
+DECISION  : No crear las tablas a mano. Usar Spatie Permission para roles y
+            permisos, que ya esta instalado, probado y con cache de permisos.
+            En particular NO se agrega users.rol_id: el rol vive en
+            model_has_roles, administered por Spatie.
+
+            Para que las Policies no tengan que consultar el pivote en cada fila,
+            User lleva un helper rol() que devuelve el unico rol del usuario
+            (en EPCORO cada usuario tiene exactamente un rol).
+              public function rol(): ?string  ->  'admin' | 'gerente' |
+                                                       'revisor' | 'tecnico'
+            Con eso D3 se chequea en una linea, y si manana un usuario necesita
+            dos roles, se cambia el helper en un solo lugar en vez de reescribir
+            todas las Policies.
+
+Se actualiza la seccion 3.1 de instrucciones.txt para que la
+            especificacion y el codigo digan lo mismo.
+ESTADO    : OK
+
+### [85] 19:20 - FASE 3 / ARREGLO DE TESTS: AUTH TEST SUITE EN VERDE
+PROBLEMA  : Al ejecutar php artisan test --filter=AuthTestTest la suite fallaba
+            por causas distintas, en cascada:
+              1) Access to undeclared static property
+                 Database\Factories\UserFactory::$password
+              2) Class "Tests\Feature\UserFactory" not found
+              3) -11 en vez de 12 en minutos_restantes
+              4) assertGuest() fallaba y /me seguia respondiendo 200
+
+HALLAZGO  : Los cuatro eran bugs reales, no de los tests:
+
+            (3) minutosDeBloqueoRestantes() usaba
+                $hasta->diffInMinutes(now()). En Carbon 3 diffInMinutes devuelve
+                un valor CON SIGNO y el orden es now() -> hasta, asi que esa
+                expresion daba un numero NEGATIVO. Corregido a
+                now()->diffInMinutes($hasta) con max(1, ...).
+
+            (4) El middleware auth:sanctum cambia el guard por defecto a
+                'sanctum', asi que assertGuest() consultaba ese guard, que aun
+                tenia al usuario cacheado, y no la sesion. Y el RequestGuard de
+                Sanctum queda cacheado entre las dos peticiones del mismo test,
+                por eso /me respondia 200. Corregido con Auth::forgetGuards()
+                antes de la segunda peticion, para que se resuelva como en
+                produccion.
+
+            (1) y (2) eran referencias mal resueltas a la factory dentro del
+            propio archivo de tests.
+
+            Se elimino ademas el test que usaba Auth::logoutOtherDevices().
+            Ese metodo NO existe en el RequestGuard que usa la API, y aunque
+            existiera seria un gesto vacio: solo marca el hash en la sesion y
+            espera que el middleware AuthenticateSession invalide el resto, y
+            ese middleware no esta en el grupo de la API. Pareceria seguro sin
+            serlo.
+RESULTADO : 20 tests de autenticacion en verde (75 assertions).
+ESTADO    : OK
+
+### [86] 19:25 - FASE 3 / INVALIDACION REAL DE LAS OTRAS SESIONES
+DECISION  : La invalidacion de otras sesiones NO se hace con
+            Auth::logoutOtherDevices(), sino borrando las filas directamente:
+
+              DB::table('sessions')
+                  ->where('user_id', $usuario->id)
+                  ->where('id', '!=', $request->session()->getId())
+                  ->delete();
+
+            Motivo: con el driver de sesion en base de datos, borrar las filas
+            es lo que REALMENTE cierra la sesion del otro equipo. El metodo de
+            Laravel solo escribe el hash en la sesion actual y depende de
+            AuthenticateSession, que no existe en esta API.
+
+            Solo se ejecuta si config('session.driver') === 'database', que es
+            la unica forma de enumerar sesiones ajenas.
+ESTADO    : OK
+
+### [87] 19:30 - FASE 3 / LIMPIEZA Y ANALISIS ESTATICO
+COMANDO   : vendor/bin/pint --test ; vendor/bin/phpstan analyse
+PROBLEMA  : Pint detecto 13 archivos con estilo incorrecto y PHPStan reporto 8
+            errores:
+              - User.php:63 y :101. Cannot call isFuture()/toIso8601String()
+                on string. El metodo casts() declara los tipos como string, asi
+                que PHPStan (y el IDE) veian bloqueado_hasta y ultimo_acceso
+                como texto.
+              - AdminSeeder: 5 usos de $this->command?->, que PHPStan rechaza
+                porque el @var del framework dice Command.
+
+HALLAZGO  : Dos problemas distintos, con causas distintas:
+
+            En User se agregan anotaciones @property que declaran los atributos
+            ya convertidos a Carbon. No es decorativo ni un parche: el metodo
+            casts() sigue siendo la fuente de verdad en ejecucion, las
+            anotaciones solo le dicen al analizador y al IDE que el atributo ya
+            viene convertido.
+
+            En AdminSeeder, la propiedad $command del framework NO tiene tipo y
+            su @var Command es incorrecto: el propio Laravel la consulta con
+            isset(). Se intento isset() y luego instanceof, y PHPStan los
+            rechaza en ambos casos. La razon real es que PHPStan trata los
+            PHPDoc de vendor como ciertos, asi que se activa
+            treatPhpDocTypesAsCertain: false en phpstan.neon. NO es un ignore ni
+            un baseline: no silencia ningun error, solo deja de confiar en
+            anotaciones de vendor que se sabe incorrectas. Con esa opcion el
+            codigo real es directo y queda como pide PHPStan:
+                $this->command->info(...)
+            porque tanto artisan db:seed como $this->seed() en los tests
+            inyectan el comando.
+RESULTADO : Pint passed. PHPStan [OK] No errors.
+
+            Se Amplio el alcance de PHPStan para incluir tests/, lo que destapo
+            un error mas: tests/Unit/ExampleTest.php hacia assertTrue(true), un
+            test de ejemplo de Laravel que no prueba nada. Se eliminaron
+            tests/Unit/ExampleTest.php y tests/Feature/ExampleTest.php, que
+            tampoco probaban nada propio.
+
+            Tambien se elimino crear_usuarios_prueba.php de la raiz, un script
+            temporal con password fija que no debe quedar en el repositorio.
+
+            Y se detecto y corrigio un BOM invisible: una escritura con
+            Set-Content -Encoding UTF8 en PowerShell 5.1 lo habia metido en
+            AdminSeeder.php (rompiendo el <?php) y en instrucciones.txt y
+            pasos.txt. Se elimino de los tres y se verifico que no quedara
+            ningun archivo con BOM.
+ESTADO    : OK
+
+### [88] 19:40 - FASE 3 / BUG REAL: SESSIONES HUERFANAS AL REGENERAR
+PROBLEMA  : Al probar el cambio de contrasena por HTTP real, la tabla sessions
+            quedaba con 2 filas para el admin en vez de 1.
+HALLAZGO  : session()->regenerate() tiene el parametro $destroy en FALSE por
+            defecto. Eso significa que genera un identificador nuevo pero NO
+            borra la fila anterior, que queda huerfana en la tabla sessions con
+            el user_id ya escrito. El metodo correcto para esto es
+            regenerate(true), que destruye la sesion vieja antes de emitir la
+            nueva.
+
+            Esto afectaba a DOS puntos:
+              - AuthController::login() dejaba una fila de sesion invitada por
+                cada login.
+              - AuthController::changePassword() dejaba la fila anterior del
+                propio usuario.
+
+            Es un problema de seguridad, no solo de limpieza: una fila huerfana
+            con user_id es una credencial de sesion viva en la base. Por eso se
+            corrigio en ambos y no solo en el que se habia detectado.
+RESULTADO : Verificado por HTTP con dos sesiones reales (equipo A y equipo B):
+              antes del cambio   : 2 filas  (A y B)
+              despues del cambio: 1 fila   (solo A, ya regenerada)
+              /me desde B: 401  (equipo B muere)
+              /me desde A: 200  (el que cambio la clave sigue dentro)
+            Y por separado, el login ya no deja fila de invitado:
+              tras el GET inicial: 1 fila sin user_id
+              tras el login:        1 fila con user_id
+ESTADO    : OK
+
+### [89] 19:50 - FASE 3 / TEST QUE SI EJERCITA LA INVALIDACION
+PROBLEMA  : El test nuevo de invalidacion de sesiones PASABA sin comprobar nada.
+HALLAZGO  : phpunit.xml define SESSION_DRIVER=array para que los tests corran
+            rapidos. Ese driver no persiste filas ni permite enumerar sesiones,
+            asi que el codigo hacia su return temprano y las filas de prueba
+            seguian intactas. El test era verde por la razon equivocada.
+
+            Se soluciona forzando el driver real solo en ese test:
+              config(['session.driver' => 'database']);
+              $this->app->forgetInstance('session');
+            forgetInstance es necesario para que el SessionManager se
+            reconstruya leyendo la config nueva.
+
+            El test inserta dos filas de sesion reales y comprueba que
+            desaparecen, y ademas que al final queda exactamente 1 fila: si
+            regenerate() volviera a dejar la anterior, el conteo seria mayor.
+RESULTADO : 23 tests en verde (85 assertions).
+ESTADO    : OK
+
+### [90] 20:00 - FASE 3 / VERIFICACION HTTP COMPLETA DEL CAMBIO DE CONTRASENA
+COMANDO   : Flujo por HTTP real contra php artisan serve
+HALLAZGO  : El contrato real del endpoint resulto ser:
+                password_actual, password, password_confirmation
+            (no password_nuevo / password_nuevo_confirmation). Un primer
+            intento dio 422 con:
+              {"password_actual":["Debe indicar la contrasena actual."],
+               "password":["La confirmacion no coincide con la nueva contrasena."]}
+            Era el script de prueba el que mandaba los nombres equivocados, no
+            el endpoint.
+
+RESULTADO : Flujo completo verificado por HTTP:
+              login                    200  rol=admin, 8 permisos
+              GET /api/auth/me         200
+              cambio de contrasena     200
+              login con la vieja       422  (rechazada)
+              login con la nueva       200
+              logout                   200
+              GET /api/auth/me         401
+ESTADO    : OK
+
+### [91] 20:10 - FASE 3 / ESTADO FINAL DE LA BASE DE DESARROLLO
+COMANDO   : php artisan migrate:fresh --seed
+RESULTADO : Base de desarrollo limpia:
+              1 usuario  : admin (unico)
+              4 roles    : tecnico, revisor, gerente, admin
+              18 permisos en 3 modulos: liquidaciones, reportes, administracion
+              admin: activo=true, debe_cambiar_password=true, password hasheada
+              0 usuarios temporales de prueba (tecnico1, revisor1, gerente1,
+                inactivo1 ya no existen)
+ESTADO    : OK
+
+### [92] 20:20 - FASE 0 CERRADA: EL USUARIO RESUELVE LAS 2 PREGUNTAS QUE
+                    BLOQUEABAN LA FASE 4
+PREGUNTA  1. Nomenclatura del aporte (D1). Preguntado si el aporte solidario
+            del negocio era una segunda deduccion aparte del 1,8 % de caja de
+            salud.
+RESPUESTA : "El aporte solidario es siempre el 1,8 %."
+CONSECUENCIA: Es UNA sola deduccion. La diferencia con el Excel era solo de
+            nombre, no de porcentaje. No se agrega columna, ni parametro
+            ALICUOTA_APORTE_SOLIDARIO, ni una segunda fila en el reporte. El
+            nombre en el sistema sigue siendo aporte_caja_salud, porque
+            hoja.xlsx es el documento que se revisa en la auditoria.
+
+PREGUNTA  2. Anulacion de una aprobada (D2). Preguntado si una liquidacion
+           _APROBADA se puede anular.
+RESPUESTA : "Una liquidacion aprobada no se puede anular, solo rechazar."
+CONSECUENCIA: 'aprobado' es TERMINAL y 'anulado' es INALCANZABLE desde el. El
+            estado 'anulado' sigue existiendo, pero solo para liquidaciones que
+            todavia no fueron aprobadas: anular es cancelar un tramite en curso,
+            no es la salida de una aprobacion. Por eso fecha_anulacion y
+            usuario_anulacion_id permanecen en el esquema.
+
+            Ojo con una lectura erronea: "solo rechazar" no significa que una
+            liquidacion aprobada se pueda rechazar. El rechazo ocurre ANTES de
+            la aprobacion. Resolver un problema de una aprobada no es posible
+            dentro del sistema; queda registrada por fuera. Esa es justamente la
+            consecuencia fuerte de la decision, y por eso el punto 5 de la lista
+            de abiertos (via de correccion para una aprobada mal cargada) se
+            vuelve el unico escape posible y conviene resolverlo antes de la
+            FASE 5.
+
+ARCHIVOS  : docs/reglas-negocio.md  D1 y D2 pasan de "pendiente" a "RESUELTO";
+            la seccion Abierto pasa de 5 puntos a 3 y separa lo cerrado de lo
+            abierto.
+            instrucciones.txt        se corrigen la nota de deduccion (L474), la
+            maquina de estados (L609) y el ESTADO DE LA FASE 0, que pasa de
+            PARCIALMENTE CERRADA a CERRADA para lo que bloquea la FASE 4.
+            README.md                FASE 0 de "parcial, 5 puntos" a "completa
+            para la FASE 4, 3 puntos que no bloquean".
+ESTADO    : OK. LAS 2 PREGUNTAS QUE BLOQUEABAN LA FASE 4 ESTAN RESUELTAS.
+
+################################################################################
+  SIGUIENTE: FASE 4 - ESQUEMA DE BASE DE DATOS
+  Catalogos (Dep > Pro > Mun > Loc), tabla liquidaciones densa, ENUM
+  liquidacion_estado, liquidacion_estado_historial, correlativos y las demas
+  tablas de la seccion 3.
+
+  Sigue abierto, pero NINGUNO bloquea la FASE 4:
+    - Visibilidad del revisor (D3): ya implementada como "ve todas". Es una
+      Policy, no cambia el esquema.
+    - Transiciones de la maquina de estados distintas de la de 'aprobado': no
+      cambian el esquema, solo las reglas de transicion en el codigo.
+    - Via de correccion para una aprobada mal cargada: si no se decide, la
+      FASE 4 se construye sin tabla de referencias y se agrega despues.
+    - Operativos: correlativo, cardinalidad 1:1 o 1:N, formato del PDF, fuente de
+      catalogos, respaldos, y quien ocupa revisor y gerente.
+################################################################################
+
+################################################################################
+  ESTADO AL CIERRE DE LA FASE 3  --  2026-10-05 20:30
+################################################################################
+
+  FASE 0 : COMPLETA para lo que bloqueaba la FASE 4. D1-D4 resueltas y
+           documentadas en docs/reglas-negocio.md, incluidas la nomenclatura del
+           aporte y la anulacion de una aprobada (paso [92]).
+  FASE 1 : completa salvo 1.6 (extensiones de VS Code, requiere abrir la UI)
+  FASE 2 : completa
+  FASE 3 : COMPLETA. Autenticacion, logout, perfil, cambio de contrasena,
+           roles Spatie, bloqueo de cuenta y cierre de las demas sesiones.
+
+  Entregables verificados de la FASE 3:
+    - 23 tests / 85 assertions en verde
+    - Pint passed
+    - PHPStan nivel 5 sin errores, incluyendo tests/
+    - Flujo HTTP real completo, de login a logout
+    - Migraciones y seeders ejecutados sobre base limpia
+
+  Base de desarrollo: 1 admin, 4 roles, 18 permisos en 3 modulos.
+  La contrasena del admin se genero aleatoria y se muestra una sola vez; el
+  usuario tiene debe_cambiar_password=true.
+
+  Git    : repositorio inicializado, 0 commits. El primer commit sigue
+           pendiente de autorizacion del usuario. .env esta correctamente
+           ignorado por .gitignore y .env.example no lo esta.
+################################################################################

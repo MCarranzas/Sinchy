@@ -1,0 +1,36 @@
+[✓] Leer instrucciones.txt, prompt.txt, notas_figma.txt, notas1.txt
+[✓] Auditar entorno real (PHP, Composer, PostgreSQL, Docker, Node)
+[✓] Verificar valores reales cacheados de hoja.xlsx contra el caso ORO del doc
+[✓] Contrastar diseño de BD con diagrama_sist_epcoro.drawio
+[✓] Confirmar requisitos de versión (Laravel 13 / PHP) con la web
+[ ] CREAR pasos.txt con la bitácora de comandos desde el comando #1
+[ ] Corregir instrucciones.txt a v1.1 con los 7 defectos detectados
+[ ] Actualizar el CASO DE PRUEBA ORO a 2 escenarios (C20=NO y C20=SI)
+[ ] Decidir PHP (8.4 standalone vs Laragon vs Laravel 12) y PostgreSQL (Docker vs nativo)
+[ ] FASE 1: PHP 8.3+ con pgsql + PostgreSQL 16 + verificaciones
+
+1. ¿El aporte solidario existe? En hoja.xlsx no aparece, pero dijiste "1 %". Si es real, ¿se aplica al bruto y quién lo autoriza?
+	Si dice SI, el aporte solidario es el 1.8%, si dice NO, el aporte solidario es 0
+2. ¿La liquidación puede corregirse después de aprobada? Si sí, ¿con qué estado y qué rastro de auditoría?
+	No, no se puede corregir
+3. ¿Quién puede ver liquidaciones de otras áreas mineras?
+	Un administrador podrá ver todo y la visibilidad dependerá del usuario que registro la liquidación.
+	Para aprobar no habrá restricciones un aprobador puede ver cualquier liquidaciòn registrada
+4. ¿El aporte se calcula sobre el bruto exacto o sobre el bruto ya redondeado a 2 decimales? Afecta al centavo.
+	sobre el bruto exacto
+	
+Tengo dos backuos en postgres 17
+tengo q instalar php 8.4 en C:\tools\php84
+
+
+ Todo
+• [•] FASE 4.1: migraciones de catalogos y tablas de negocio (14 tablas)
+• [ ] FASE 4.2: ENUM liquidacion_estado en PostgreSQL
+• [ ] FASE 4.3: Enums/EstadoLiquidacion.php + tests de transiciones
+• [ ] FASE 4.4: seeders de catalogos (Bolivia, presentaciones, parametros)
+• [ ] FASE 4.5: factories para cada modelo
+• [ ] FASE 4.6: vista v_liquidaciones_detalle
+• [ ] FASE 4.7: docs/diagrama-erd.md
+• [ ] FASE 4.8: LiquidacionPolicy con visibilidad D3
+• [ ] Verificar migrate:fresh --seed, rollback, tests, pint y phpstan
+• [ ] Actualizar pasos.txt y README.md

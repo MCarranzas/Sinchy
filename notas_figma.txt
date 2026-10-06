@@ -1,0 +1,41 @@
+G:\Mi unidad\lummia\proyectos\figma
+
+Objetivo: 
+	. Maquetar de forma rápida un mockup con figma pero ayudado con IA
+	. Hacerse ayudar todo con Claude local, tanto en la construcción del archivo Figma como en el desarrollo del módulo posterior
+	. Usar Laravel
+	
+Esquema del sistema:
+	. Draw.io flujo
+	. Módulos
+		. un login que pida usuario y password que se valide contra una tabla en mysql, los usuarios son de distintos tipos, debe manejar privilegios
+		. un módulo que permita capturar los campos de una liquidacion de venta de mineral basado en el excel adjunto (hay varias celdas calculadas), uno de los campos de la captura debe ser el usuario conectado y la fecha
+		. adm de liquid: la liquidacion debe pasar por varios estados (creado, revisado, aprobado o rechazado, excluyentes)
+		. pantalla de reportes
+		. que sea un sistema web completo orientado a escritorio
+	
+	. Crear Figma en base al flujo de drw.io
+	Luego crear prototipo interactivo de Figma  mediante IA
+Sistema Web
+	1. Generado por Chatgpt 
+		Visual Studio Code
+			Crea una carpeta llamada saas-documental en tu disco duro.
+			Coloca los archivos de la aplicación dentro de esa carpeta.
+			Abre la carpeta en Visual Studio Code.
+			Abre la terminal y ejecuta:
+			py -m http.server 8000
+			http://localhost:8000 
+		Cómo ejecutarla en tu computadora
+			Descarga y descomprime el ZIP.
+			Abre la carpeta SaaS_Documental_Web_Local.
+			Haz doble clic en INICIAR_WINDOWS.bat.
+			Abre tu navegador en http://127.0.0.1:8000.
+			Necesitas tener Python 3 instalado. El ZIP incluye las instrucciones de instalación y ejecución.
+			Credenciales de acceso: demo@documental.local/Demo2026!
+		Instalar Python
+	2. Otra forma:
+		Figma → Locofy → VS Code → Copilot Free → Chrome
+	en todos los casos es con Visual Studio Code y Claude Code
+		
+	
+

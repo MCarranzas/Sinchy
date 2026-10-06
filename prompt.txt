@@ -1,0 +1,8 @@
+quiero crear un sistema que:
+. tenga un login que pida usuario y password que se valide contra una tabla en postgres
+. un módulo que permita capturar los campos de una liquidacion de venta de mineral basado en el excel hoja.xlsx adjunto (hay una celda calculada)
+. uno de los campos de la captura debe ser el usuario conectado y la fecha y hora de registro
+. la liquidacion debe pasar por varios estados (creado, revisado, aprobado o rechazado, excluyentes)
+. que sea un sistema web completo orientado a escritorio, pero que se reactivo y pueda funcinar en un celular
+. deseo usar postgres y Laravel. ¿que estructura de proyecto me aconsejas? se aplican conceptos de backend y frontend?
+. no realices nada todavia, explicame los pasos a seguir y ademas crea un archivo instrucciones.txt con los pasos a seguir
