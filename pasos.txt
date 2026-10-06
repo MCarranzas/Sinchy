@@ -1888,3 +1888,170 @@ ESTADO    : OK. CRITERIO DE ACEPTACION DE LA FASE 4 CUMPLIDO.
     - Visibilidad del revisor: implementada como "ve todas", falta confirmar.
     - Transiciones de la maquina de estados distintas de 'aprobado'.
 ################################################################################
+
+### [104] 2026-10-06 17:38 - FASE 5 / SERVICIOS (5.1, 5.2, 5.3, 5.5)
+OBJETIVO  : Los cuatro bloques de logica de negocio, sin HTTP y sin tocar la
+            base salvo el numerador: Decimal, CalculoLiquidacionService,
+            ParametroRepository (5.2), NumeradorDocumento (5.3) y
+            TransicionEstadoService (5.5).
+COMANDO   : creacion de archivos (ver RESULTADO); despues:
+            php artisan test --filter "DecimalTest|CalculoLiquidacionTest"
+RESULTADO : Archivos nuevos en epcoro-api/:
+            - app/Support/Decimal.php        halfUp() escala 20 + normalizar()
+            - app/Exceptions/                ReglaNegocioException (422 en la
+              FASE 6), CalculoInvalidoException, TransicionInvalidaException
+              y ParametroInvalidoException (hereda de RuntimeException: 500,
+              porque un parametro mal sembrado no es culpa del cliente)
+            - app/Contracts/LectorParametros.php   unico metodo valor(clave)
+            - app/Repositories/ParametroRepository.php  sin cache, deliberado
+            - app/Services/CalculoLiquidacionService.php  5.1, puro
+            - app/Services/NumeradorDocumento.php  5.3
+            - app/Services/TransicionEstadoService.php  5.5
+            - AppServiceProvider: bind LectorParametros -> ParametroRepository
+              para que la FASE 6 resuelva el servicio por contenedor.
+            Decisiones tomadas:
+            1. El servicio NO consulta la base: recibe el lector por
+               constructor. Los tests unitarios usan un lector anonimo en
+               memoria y no necesitan RefreshDatabase.
+            2. valor_neto_bs = halfUp(bruto_EXACTO - total_deducciones_EXACTO)
+               (seccion 4.3, paso 7 + regla a). NO es bruto_redondeado -
+               deducciones_redondeadas, que seria un segundo redondeo: en el
+               caso D4 eso separa 52166.29 (implementado) de 52166.30. En los
+               casos ORO las dos vias dan lo mismo, asi que el test que fija
+               la interpretacion es test_el_neto_se_redondea_una_sola_vez...
+            3. Los intermedios salen con precision completa
+               (peso_fino 1808.801806, usd 85.15343932...); el redondeo a la
+               precision de la columna lo hace PostgreSQL al persistir.
+            4. numero_documento = EP-BCB-{correlativo} y codigo_formulario =
+               FORM-EP-BCB-{correlativo}/{ejercicio}, del Excel (seccion 1),
+               no el L-2024-000723 del ejemplo viejo de la 4.4.
+            5. TransicionEstadoService NO valida permisos (es la Policy) ni
+               exige motivo (es el FormRequest de la FASE 6).
+ESTADO    : OK
+
+### [105] 2026-10-06 17:39 - FASE 5 / TESTS (5.4.1-5.4.7 y 5.6)
+OBJETIVO  : Los casos del Excel y la matriz completa de transiciones.
+COMANDO   : php artisan test --filter "DecimalTest|CalculoLiquidacionTest"
+            php artisan test --filter "ParametroRepositoryTest|NumeradorDocumentoTest|TransicionEstadoTest"
+RESULTADO : 41 tests nuevos en verde (5.4.1 a 5.4.7 y 5.6).
+            tests/Unit/DecimalTest.php: 17 casos limite de halfUp, el par
+            1072018.8360554035 -> 1072018.84, la demostracion de que
+            bcadd($x,'0',2) trunca y bcdiv('100.505','100',2) da 1.00.
+            tests/Unit/CalculoLiquidacionTest.php:
+              ORO-A  peso_fino 1808.801806 / bruto 1072018.84 /
+                     aporte 0.00 / neto 1072018.84
+              ORO-B  aporte 19296.34 / neto 1052722.50
+              ORO-C  recalcular desde 1808.8018 y 85.153439 da 1072018.83,
+                     distinto del persistido 1072018.84
+              5.4.2  ley 1.00 -> 1944.53
+              5.4.3  caja NO -> aporte 0.00
+              5.4.4  ley 0.930255 / peso 1944.535 -> 1072084.98 por la via
+                     escala 20 Y por la via redondeando a 6 decimales; la via
+                     que si desplaza (usd a 6 decimales) da 1072084.97
+              5.4.5  peso 0/-1, ley 93.02/1.000001/0, cot/tc 0, campos no
+                     numericos, interruptor no booleano, deducciones invalidas
+              5.4.6  D4: insumos que producen bruto 53122.50 y 120335.28;
+                     aporte sobre el exacto 956.20 y 2166.03 (sobre el
+                     redondeado 956.21 y 2166.04, calculado a proposito para
+                     que se vea la diferencia)
+              5.4.7  los casos limite viven en DecimalTest
+              neto   52166.29 en el caso D4 (ver decision 2 de [104])
+            tests/Feature/ParametroRepositoryTest.php: lectura, null en clave
+            desconocida, "no cachea" (actualiza la fila entre dos lecturas),
+            calculo ORO con los parametros REALES del seeder y la D1 (no
+            existe ALICUOTA_APORTE_SOLIDARIO).
+            tests/Feature/NumeradorDocumentoTest.php: primer numero = EP-BCB-1,
+            correlativos en orden, ejercicios aislados, retoma 722 -> EP-BCB-723,
+            rollback no come correlativos, tipo desconocido rechazado,
+            codigoFormulario puro.
+            tests/Feature/TransicionEstadoTest.php: matriz 8x8 con 13 pares
+            validos aplicados (cada uno con su fila de historial) y 51
+            rechazados sin escribir nada; aprobado sin salida; columnas de
+            auditoria por destino; 'eliminado' solo desde 'creado';
+            registrarInicio con estado_anterior NULL; y la tercera capa: la
+            base rechaza un estado que no existe.
+            Nota sobre 5.4.6: la seccion 5.6 pide probar "bruto 53122.496411"
+            (el ejemplo de la D4). El test usa insumos reales que producen
+            53122.4954... y redondean a 53122.50; el par de aportes es el
+            mismo de la tabla (956.20 / 956.21) y esta documentado en la
+            constante CASOS_D4.
+ESTADO    : OK
+
+### [106] 2026-10-06 17:40 - FASE 5 / CRITERIO DE ACEPTACION
+OBJETIVO  : php artisan test en verde con los numeros exactos del Excel, mas
+            pint y PHPStan limpios.
+COMANDO   : php artisan test
+            vendor\bin\pint
+            vendor\bin\phpstan analyse --no-progress
+            (antes: prueba del binding con phpstan -c temporal sin el ignore
+             de function.implicitType)
+RESULTADO : 87 tests / 522 assertions en verde (45 / 202 de la FASE 4).
+            En esta misma tanda entraron dos cambios mas:
+            - AppServiceProvider ahora hace bind de LectorParametros ->
+              ParametroRepository, y el test del calculo con el seeder lo
+              resuelve por contenedor: si desaparece el binding, el fallo es
+              aqui y no dentro de un controlador de la FASE 6.
+            - test extra de la 5.6: 'eliminado' solo se alcanza desde
+              'creado', ademas de salir de la matriz completa 8x8.
+            Pint: passed despues de aplicarle los fixers a los archivos
+            nuevos (single_line_empty_body, new_with_parentheses, etc.).
+            PHPStan nivel 5: [OK] No errors. Se elimino de phpstan.neon el
+            ignore de function.implicitType para
+            app/Services/CalculoLiquidacionService.php: el archivo ya existe
+            y pasa el analisis sin el, asi que dejo de ser verdad lo que el
+            comentario decia ("todavia no existe"). Se verifico ejecutando
+            PHPStan con una copia de la configuracion sin ese ignore.
+            README.md actualizado: fila de la FASE 5, el recuento de tests y
+            la formula del neto corregida (se escribia "neto = bruto -
+            deducciones", que es la lectura que da 52166.30).
+            PENDIENTE 5.4.8 (inmutabilidad D2 con PUT/PATCH/DELETE -> 422):
+            no se puede probar porque no existen esas rutas; se mueve a la
+            FASE 6 junto con los Form Requests, y ya existe la prueba
+            equivalente a nivel Policy (LiquidacionPolicyTest) y a nivel
+            maquina de estados (TransicionEstadoTest: aprobado sin salida).
+ESTADO    : OK. CRITERIO DE ACEPTACION DE LA FASE 5 CUMPLIDO.
+
+################################################################################
+  ESTADO AL CIERRE DE LA FASE 5  --  2026-10-06 17:41
+################################################################################
+
+  FASE 0 : completa para lo que bloqueaba. D1-D4 resueltas y documentadas.
+  FASE 1 : completa salvo 1.6 (extensiones de VS Code).
+  FASE 2 : completa
+  FASE 3 : completa (ver cierre del 2026-10-05 20:30).
+  FASE 4 : COMPLETA (cierre en [103]).
+  FASE 5 : COMPLETA salvo 5.4.8 (ver abajo).
+             5.1 CalculoLiquidacionService (puro, lector inyectado)
+             5.2 ParametroRepository (sin cache)
+             5.3 NumeradorDocumento (correlativos transaccionales)
+             5.4 tests 5.4.1-5.4.7 (5.4.8 -> FASE 6, necesita la API)
+             5.5 TransicionEstadoService (validacion + historial, transaccion)
+             5.6 tests de transiciones (matriz 8x8 completa)
+
+  Entregables verificados:
+    - 87 tests / 522 assertions en verde
+    - Pint passed
+    - PHPStan nivel 5 sin errores (incluye tests/ y database/)
+
+  Decision de calculo que conviene confirmar con el negocio (no bloquea):
+    el neto se redondea desde su valor EXACTO y no como
+    "bruto redondeado - deducciones redondeadas". Coinciden en los casos ORO;
+    difieren en un centavo cuando el bruto cae en la mitad de la centesima
+    (caso D4: 52166.29 vs 52166.30). Se implemento la primera porque es la
+    lectura literal de la seccion 4.3 (paso 7 sobre valores exactos + regla
+    "no redondear en ningun paso intermedio") y esta fijada por un test.
+
+  Pendientes conocidos (no bloquean):
+    - 5.4.8 inmutabilidad de una aprobada por HTTP -> FASE 6.
+    - Via de correccion para una aprobada mal cargada (punto 5 de los
+      abiertos de docs/reglas-negocio.md).
+    - Visibilidad del revisor: implementada como "ve todas", falta confirmar.
+    - Transiciones de la maquina de estados distintas de 'aprobado'.
+
+  Git    : 2 commits (1b4b956 FASE 0-3, 4fd6849 FASE 4). Los cambios de la
+           FASE 5 quedan sin commitear a proposito: el usuario pide los
+           commits por separado.
+
+  SIGUIENTE: FASE 6 - API CRUD DE LIQUIDACIONES (Form Requests, controladores,
+  rutas, resources, inmutabilidad D2 con 422 y calculo servido desde la API).
+################################################################################

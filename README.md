@@ -41,13 +41,21 @@ precision decimal completa y se redondea half-up a 2 decimales **una sola vez,
 al final**, sobre los montos en bolivianos.
 
 ```
-peso_fino  = peso_gramos * ley_pagable
-usd_gramo  = cotizacion_usd_oz_t / 31.1035
-bruto_exacto = usd_gramo * tipo_cambio * peso_fino
-bruto      = halfUp(bruto_exacto, 2)
-aporte     = halfUp(bruto_exacto * 0.018, 2)   (si aplica, sobre el EXACTO)
-neto       = bruto - deducciones
+peso_fino     = peso_gramos * ley_pagable
+usd_gramo     = cotizacion_usd_oz_t / 31.1035
+bruto_exacto  = usd_gramo * tipo_cambio * peso_fino
+aporte        = aplica_caja_salud ? bruto_exacto * 0.018 : 0     (decision D4)
+deducciones   = aporte + deducciones_variables                   (exacto)
+bruto         = halfUp(bruto_exacto, 2)
+total_deducc  = halfUp(deducciones, 2)
+neto          = halfUp(bruto_exacto - deducciones, 2)
 ```
+
+Los cuatro montos en bolivianos se redondean **una sola vez cada uno**, y
+cada uno desde su valor exacto. En particular el neto se resta **antes** de
+redondear: `bruto_ya_redondeado - aporte_ya_redondeado` seria un segundo
+redondeo, que la regla prohíbe. En los casos ORO las dos formas coinciden;
+en el caso de la decisión D4 dan `52166.29` (la correcta) y `52166.30`.
 
 Si se redondea a 6 decimales en el medio, el resultado da `1 072 018.83` en vez
 de `1 072 018.84`. Un centavo. El Excel oficial tiene el numero sin redondear.
@@ -94,14 +102,15 @@ el PATH y no se usa para este proyecto.
 | 2 - Esqueleto del backend | completa |
 | 3 - Autenticacion y roles | completa: login por cookie Sanctum, roles Spatie, bloqueo y 23 tests en verde |
 | 4 - Esquema de base de datos | completa: 15 migraciones, ENUM de estados, catalogos sembrados, 13 factories, `LiquidacionPolicy` y 45 tests en verde |
-| 5 a 12 - Calculo, API, frontend, reportes, produccion | pendiente |
+| 5 - Servicio de calculo | completa (salvo 5.4.8, que necesita la API): calculo puro, parametros, numerador, maquina de estados y 87 tests en verde |
+| 6 a 12 - API, frontend, reportes, produccion | pendiente |
 
-Comprobacion de la FASE 4 (`epcoro-api/`):
+Comprobacion (`epcoro-api/`):
 
 ```bash
 php artisan migrate:fresh --seed   # crea todo sin errores
 php artisan migrate:rollback       # revierte todo
-php artisan test                   # 45 tests / 202 assertions
+php artisan test                   # 87 tests / 522 assertions
 vendor\bin\pint --test
 vendor\bin\phpstan analyse
 ```

@@ -20,19 +20,11 @@ parameters:
     # anotaciones de vendor que se sabe incorrectas.
     treatPhpDocTypesAsCertain: false
 
-    # Las rutas ignoradas de abajo apuntan a archivos que todavia no existen
-    # (el servicio de calculo se escribe en la FASE 5). Sin esto, PHPStan
-    # aborta el analisis entero en las FASES 2 a 4.
+    # Las rutas ignoradas de abajo apuntan a un constructo que el analizador
+    # no puede seguir (la sintaxis de PostgreSQL en las migraciones).
     reportUnmatchedIgnoredErrors: false
 
     ignoreErrors:
-        # El servicio de calculo trabaja con cadenas decimales de bcmath.
-        # Tiparlas como float obligaria a castear, y ese cast es justamente
-        # lo que produce los errores de redondeo que la correccion C1 prohibe.
-        -
-            identifier: function.implicitType
-            path: app/Services/CalculoLiquidacionService.php
-
         # Las migraciones crean el ENUM liquidacion_estado con DB::statement
         # porque la sintaxis de PostgreSQL no tiene equivalente en el analizador.
         -
