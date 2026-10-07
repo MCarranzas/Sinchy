@@ -1,0 +1,333 @@
+================================================================================
+ EPCORO - REPLICAR EL ENTORNO EN OTRA MAQUINA
+================================================================================
+ Archivo    : pasos_otra_maquina.txt
+ Fecha init : 2026-10-07
+ Fuente     : versiones LEIDAS de la maquina original (no estimadas) y de
+              composer.lock / package-lock.json
+ Project    : C:\marioc\webs_figma\epcoro
+--------------------------------------------------------------------------------
+ OS original: Microsoft Windows 10 Pro, build 19045, x64
+ Arquitectura PHP: 64-bit (PHP_INT_SIZE = 8 bytes)
+================================================================================
+
+
+################################################################################
+ # 1. HERRAMIENTAS DE SISTEMA - VERSIONES EXIGIDAS
+################################################################################
+
+  Herramienta                    Version minima   Version verificada   Nota
+  ------------------------------ ---------------- -------------------- ------------
+  Windows 10/11 x64              build 19045      10.0.19045           obligatorio
+  VC++ 2015-2022 Redist x64      14.x (vs17)      v14.50.35719.00      obligatorio
+  PHP (NTS, x64)                 8.3+ (8.4.x)     8.4.26               obligatorio
+  Composer                       2.x              2.9.7                obligatorio
+  PostgreSQL (nativo, NO Docker) 17.x             17.6                 obligatorio
+  psql (cliente)                 17.x             17.6                 obligatorio
+  Node.js                        20.19+ / 22+     v24.21.0             obligatorio
+  npm                            10+              11.19.0              obligatorio
+  Git                            2.x              2.53.0.windows.1     obligatorio
+  ----------------------------------------------------------------------------
+  pgAdmin 4                      incluido PG17    instalado             opcional
+  VS Code                        1.9x+            1.140.0              opcional
+  Python                         3.x              3.14.3               opcional*
+  Docker                         29.x             29.8.1               NO usado**
+  XAMPP                          -                8.2.12 (C:\xampp)    NO usar***
+
+  *  Python solo se uso para auditar docs/hoja.xlsx. No hace falta para
+     desarrollar.
+  ** El proyecto NO usa Docker: PostgreSQL 17 es nativo por decision [D3] de
+     pasos.txt. Docker instalado no aporta ni resta.
+  *** XAMPP puede seguir instalado, pero su PHP 8.2 NO debe ganar en el PATH
+     (ver seccion 3.3: el orden SYSTEM PATH es critico).
+
+
+################################################################################
+ # 2. PHP - RUTA, INI Y EXTENSIONES
+################################################################################
+
+  Ruta instalacion : C:\tools\php84   (php.exe, php-cgi.exe, ext\, lib\)
+  Tipo             : NTS (Non Thread Safe), Visual C++ 2022 x64
+  php.ini          : copiado de php.ini-development y ajustado
+  Interprete real  : C:\tools\php84\php.exe   (NO C:\xampp\php\php.exe)
+
+  2.1 EXTENSIONES QUE DEBEN CARGAR (verificado con `php -m` en la original)
+      Presentes y obligatorias:
+        bcmath, curl, fileinfo, gd, intl, mbstring, openssl, pdo_pgsql,
+        pgsql, soap, sodium, tokenizer, xml, zip, exif, PDO, session
+
+      CRITICAS (sin ellas Laravel no conecta a PostgreSQL ni calcula):
+        pdo_pgsql   -> Laravel / PDO
+        pgsql       -> cliente pgsql
+        bcmath      -> calculo de liquidaciones (halfUp, escala 20)
+
+  2.2 TRAMPAS DE php.ini EN PHP 8.4 WINDOWS (aplicadas en la original)
+      - Una sola linea `extension_dir = "ext"` (la de por defecto
+        `;extension_dir = "./"` es INVALIDA en Windows).
+      - bcmath, tokenizer, dom y xml NO se habilitan con extension= :
+        en PHP 8.4 van COMPILADAS dentro de php8.dll. Si se ponen,
+        arranca con "Unable to load dynamic library" x4.
+      - opcache se activa como `zend_extension = opcache`, NO como
+        `extension = opcache`.
+
+  2.3 VC++ REDISTRIBUTABLE
+      Los builds "vs17" de PHP 8.4 Windows exigen VC++ 2015-2022 x64.
+      Verificar con (Get-ItemProperty, NO Get-ChildItem - ver paso [22] de
+      pasos.txt, ese error genero un bloqueo inexistente):
+        Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64"
+      Debe devolver Installed = 1, Version >= v14.x
+
+  2.4 VERIFICACION DE PHP
+      php -v
+        -> PHP 8.4.26 (NTS Visual C++ 2022 x64) + Zend OPcache
+      php -m | findstr pdo_pgsql pgsql bcmath
+      php -r "var_dump(extension_loaded('pdo_pgsql'), extension_loaded('bcmath'));"
+        -> bool(true) bool(true)
+      php -r "echo bcadd('1.005','2.005',4);"   -> 3.0100
+
+
+################################################################################
+ # 3. PATH EN WINDOWS - EL ORDEN MANDA
+################################################################################
+
+  3.1 REGLA: Windows concatena PATH de SISTEMA + PATH de USUARIO, y el de
+      sistema va PRIMERO. Anteponer algo en el PATH de USUARIO NO SIRVE si
+      C:\xampp\php esta en el de sistema: XAMPP gana siempre (paso [39] de
+      pasos.txt).
+
+  3.2 Orden CORRECTO del PATH de SISTEMA (Machine), al inicio:
+        C:\tools\php84
+        C:\Program Files\PostgreSQL\17\bin
+        ... resto ...
+        C:\xampp\php            (al final, si XAMPP sigue instalado)
+
+      Script (elevar a Administrador):
+        $sys = [Environment]::GetEnvironmentVariable('Path','Machine')
+        [Environment]::SetEnvironmentVariable(
+            'Path', "C:\tools\php84;C:\Program Files\PostgreSQL\17\bin;$sys",
+            'Machine')
+      RESPALDAR el PATH original ANTES de tocarlo.
+
+  3.3 TRAMPA DE LA SESION: el PATH del REGISTRO no afecta a las terminales ya
+      abiertas. Tras modificarlo: abrir terminal NUEVA, o refrescar en la
+      misma sesion:
+        $env:Path = [Environment]::GetEnvironmentVariable('Path','Machine')
+                  + ';' + [Environment]::GetEnvironmentVariable('Path','User')
+
+  3.4 VERIFICACION
+        cmd /c where php    -> C:\tools\php84\php.exe   (DEBE ser el 1º)
+        cmd /c where psql   -> C:\Program Files\PostgreSQL\17\bin\psql.exe
+        composer --version  -> debe anunciar "PHP version 8.4.26
+                               (C:\tools\php84\php.exe)", no el de XAMPP
+
+
+################################################################################
+ # 4. POSTGRESQL 17 - INSTALACION Y BASES
+################################################################################
+
+  4.1 INSTALADOR
+      Fuente: https://www.postgresql.org/download/windows/ (alojado por EDB)
+      Version exacta usada: postgresql-17.6-1-windows-x64.exe
+      (la URL canonica "postgresql-17-x-windows-x64.exe" devuelve 403)
+
+      *** TRAMPA CONFIRMADA: el modo desatendido de EDB falla con ExitCode=1
+      en esta maquina (sin log, sin evento, sin carpeta temporal). NO intentar
+      --mode unattended: usar el ASISTENTE GRAFICO (paso [30] de pasos.txt).***
+
+      Opciones del asistente usadas:
+        puerto            : 5432
+        superuser         : postgres
+        service name      : postgresql-x64-17   (Automatic)
+        data dir          : C:\Program Files\PostgreSQL\17\data
+        locale            : Spanish_Bolivia.1252
+        encoding          : UTF8
+
+  4.2 VERIFICACION DEL SERVIDOR
+        Get-Service postgresql-x64-17        -> Running / Automatic
+        psql --version                       -> psql (PostgreSQL) 17.6
+        psql -U postgres -h 127.0.0.1 -t -A -c "SELECT version();"
+          -> PostgreSQL 17.6 ... 64-bit
+          (exportar $env:PGPASSWORD antes; si no, psql se queda esperando
+           la clave y el comando CUELGA - trampa del paso [65])
+
+  4.3 BASES Y ROL DE DESARROLLO (credenciales SOLO de desarrollo)
+        rol    : epcoro / epcoro_secret   (LOGIN, CREATEDB - Laravel lo
+                                          necesita para crear epcoro_test)
+        bases  : epcoro      (desarrollo)
+                 epcoro_test (tests; el phpunit.xml apunta a esta)
+        ambas  : owner epcoro, ENCODING UTF8,
+                 LC_COLLATE / LC_CTYPE = Spanish_Bolivia.1252,
+                 TEMPLATE template0
+        TZ del servidor: America/La_Paz (ya viene bien en el instalador)
+
+      Script (psql -U epcoro -h 127.0.0.1 -d postgres):
+        CREATE ROLE epcoro LOGIN PASSWORD 'epcoro_secret' CREATEDB;
+        CREATE DATABASE epcoro OWNER epcoro ENCODING 'UTF8'
+          TEMPLATE template0 LC_COLLATE 'Spanish_Bolivia.1252'
+          LC_CTYPE 'Spanish_Bolivia.1252';
+        CREATE DATABASE epcoro_test OWNER epcoro ENCODING 'UTF8'
+          TEMPLATE template0 LC_COLLATE 'Spanish_Bolivia.1252'
+          LC_CTYPE 'Spanish_Bolivia.1252';
+
+      TRAMPAS de PowerShell (pasos [33]-[34] de pasos.txt):
+        - Usar here-string LITERAL @'...'@ (no @"..."@): en el doble,
+          PowerShell expande $variables y "$$" se come el bloque PL/pgSQL.
+        - Guardar el .sql con ASCII (sin BOM); Set-Content -Encoding UTF8 en
+          PowerShell 5.1 escribe BOM y rompe la primera sentencia.
+        - SIEMPRE verificar $LASTEXITCODE tras DDL antes de afirmar exito.
+
+
+################################################################################
+ # 5. COMPOSER - VERSIONES EXACTAS DEL BACKEND (epcoro-api)
+################################################################################
+
+  Composer 2.9.7 con platform.php fijada a 8.4.26 (evita que una resolucion
+  con un PHP equivocado degrade Laravel 13 -> 12):
+      composer config platform.php 8.4.26
+
+  Versiones fijadas en composer.lock (instaladas con `composer install`):
+      laravel/framework              v13.34.0     (exige PHP ^8.3)
+      laravel/sanctum                v4.3.3
+      laravel/tinker                 v3.0.2
+      spatie/laravel-permission      8.3.0
+      spatie/laravel-query-builder   7.3.5
+      barryvdh/laravel-dompdf        v3.1.2
+      maatwebsite/excel              4.0.3
+      phpunit/phpunit                12.5.38
+      larastan/larastan              v3.12.3
+      phpstan/phpstan                2.2.17
+      laravel/pint                   v1.32.1
+      laravel/pail                   v1.2.7
+      fakerphp/faker                 v1.24.1
+      mockery/mockery                1.6.15
+      nunomaduro/collision           v8.9.5
+
+  NO instalar con otro PHP: con PHP 8.2 (XAMPP) Composer no resuelve
+  Laravel 13 y cae silenciosamente a Laravel 12 (paso [60] de pasos.txt).
+
+
+################################################################################
+ # 6. NODE / NPM - VERSIONES EXACTAS DEL FRONTEND (epcoro-web)
+################################################################################
+
+  Node.js v24.21.0 / npm 11.19.0
+
+  Versiones fijadas en package-lock.json:
+      vue                    3.5.43
+      vue-router             5.3.1
+      pinia                  4.0.3
+      axios                  1.20.0
+      @vueuse/core           15.0.0
+      vite                   8.3.3
+      typescript             6.0.3
+      vue-tsc                3.3.12
+      @vitejs/plugin-vue     6.0.9
+      tailwindcss            4.3.3
+      @tailwindcss/vite      4.3.3
+      @types/node            24.19.1
+      @vue/tsconfig          0.9.1
+
+
+################################################################################
+ # 7. PASOS DE INSTALACION, EN ORDEN
+################################################################################
+
+  [S1]  Instalar VC++ 2015-2022 Redistributable x64 (vc_redist.x64.exe,
+        https://aka.ms/vs/17/release/vc_redist.x64.exe) con /install /quiet.
+        Si devuelve 1638 = ya hay otra version instalada -> OK, seguir.
+
+  [S2]  Descargar php-8.4.26-nts-Win32-vs17-x64.zip desde
+        https://windows.php.net/downloads/releases/ y extraer a C:\tools\php84.
+
+  [S3]  Crear C:\tools\php84\php.ini desde php.ini-development:
+        - extension_dir = "ext"  (una sola linea)
+        - extension=pdo_pgsql, extension=pgsql, extension=curl,
+          extension=mbstring, extension=intl, extension=zip,
+          extension=fileinfo, extension=gd, extension=sodium, extension=soap
+        - NO poner extension= para bcmath/tokenizer/dom/xml (van en php8.dll)
+        - zend_extension = opcache
+        Verificar: php -v sin warnings, php -m con pdo_pgsql y bcmath.
+
+  [S4]  Instalar PostgreSQL 17.6 con el ASISTENTE GRAFICO (nunca desatendido),
+        puerto 5432, locale Spanish_Bolivia.1252, servicio Automatic.
+        Incluye pgAdmin 4 (sustituye a DBeaver).
+
+  [S5]  Instalar Composer 2.9.7 (https://getcomposer.org/download/).
+
+  [S6]  Instalar Node.js 24 LTS y Git 2.x.
+
+  [S7]  Ajustar el PATH de SISTEMA (seccion 3): php84 y PostgreSQL\bin ANTES
+        de C:\xampp\php. Respaldo previo. Abrir terminal NUEVA despues.
+
+  [S8]  Crear rol y bases (seccion 4.3). Verificar $LASTEXITCODE = 0.
+
+  [S9]  Clonar el repo y montar el backend:
+        git clone <repo> epcoro && cd epcoro\epcoro-api
+        composer install
+        copy .env.example .env
+        php artisan key:generate
+        (editar .env: DB_PASSWORD=epcoro_secret)
+        php artisan migrate --seed --force
+        php artisan test          -> debe dar tests en verde
+
+  [S10] Montar el frontend:
+        cd ..\epcoro-web
+        npm install
+        npm run build             -> vue-tsc + vite build sin errores
+
+  [S11] VS Code: abrir epcoro.code-workspace e instalar las extensiones
+        recomendadas: PHP Intelephense, Laravel Blade, EditorConfig,
+        Prettier, ESLint, Vue - Official (Volar), Tailwind CSS IntelliSense,
+        DotENV, Duplicate.
+
+
+################################################################################
+ # 8. COMANDOS DE ARRANQUE Y VERIFICACION FINAL
+################################################################################
+
+  Terminal 1 (backend, puerto 8000):
+      cd epcoro-api
+      php artisan serve --host=127.0.0.1 --port=8000
+
+  Terminal 2 (frontend, puerto 5173):
+      cd epcoro-web
+      npm run dev
+
+  Verificaciones:
+      curl http://127.0.0.1:8000/api/health
+        -> 200 {"status":"ok","php":"8.4.26","laravel":"13.34.0",
+                "timezone":"America/La_Paz","checks":{"database":"ok"}}
+      curl http://localhost:5173/ (SPA)
+      Login por http://localhost:5173 pasa por el proxy de Vite
+        ('/api' y '/sanctum' -> http://localhost:8000; sin el mapeo
+         /sanctum el backend responde 419 - paso [109] de pasos.txt)
+
+  Calidad de codigo (en epcoro-api):
+      php artisan test              -> tests en verde
+      vendor\bin\pint --test        -> passed
+      vendor\bin\phpstan analyse    -> [OK] No errors
+
+  Puertos requeridos:
+      5432  PostgreSQL
+      8000  php artisan serve (backend)
+      5173  Vite dev server (frontend)
+
+
+################################################################################
+ # 9. RESUMEN MINIMO - QUE INSTALAR Y QUE VERSION
+################################################################################
+
+  1. VC++ 2015-2022 Redist x64 ......... v14.50.35719.00
+  2. PHP 8.4.26 NTS x64 ............... en C:\tools\php84
+     (+ ext pdo_pgsql, pgsql, bcmath)
+  3. Composer .......................... 2.9.7
+  4. PostgreSQL (nativo) ............... 17.6, puerto 5432
+  5. Node.js ........................... v24.21.0
+  6. npm ............................... 11.19.0
+  7. Git ............................... 2.53.0
+  8. Laravel (via composer install) .... 13.34.0
+  9. VS Code (opcional) ................ 1.140.0
+
+  NO hace falta: Docker (no se usa), XAMPP (no debe ganar en el PATH),
+  Python (solo para auditar el xlsx), DBeaver (lo sustituye pgAdmin 4).
+================================================================================

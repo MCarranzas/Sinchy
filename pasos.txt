@@ -2109,3 +2109,161 @@ ESTADO    : OK. CRITERIO DE ACEPTACION DE LA FASE 5 CUMPLIDO.
 
   SIGUIENTE: FASE 7 - FRONTEND (SPA Vue 3 + Vite + Tailwind).
 ################################################################################
+
+################################################################################
+# FASE 7 - BASE DEL FRONTEND Y LOGIN
+################################################################################
+
+### [107] 2026-10-07 07:45 - FASE 7 / AUDITORIA DE PARTIDA
+OBJETIVO  : Reconstruir donde se dejo la FASE 7 antes de tocar nada.
+COMANDO   : git status --short ; git log --oneline -5
+            Get-ChildItem -Recurse epcoro-web\src ; read de router/store/menu
+RESULTADO : epcoro-web/ EXISTE completo y esta SIN VERSIONAR (?? epcoro-web/).
+            Checklist 7.1-7.9 implementado:
+              7.1 template vue-ts       7.2 deps (vue-router, pinia, axios,
+                 tailwind v4, @vueuse)  7.3 proxy /api -> :8000
+              7.4 axios /api/v1 + interceptor 401   7.5 stores/auth.ts
+              7.6 router con guard de sesion y permiso   7.7 Auth/MainLayout
+              7.8 LoginView             7.9 sidebar por permisos + version
+              7.10 no quedo ningun prototipo estatico (busqueda de *.html:
+                   solo index.html y dist/; py http.server ya no tiene restos)
+            BITACORA: pasos.txt no tiene UNA sola entrada de FASE 7, a pesar
+            de que la regla del archivo exige registrar todo comando.
+            README.md raiz sigue poniendo "7 a 12 ... pendiente".
+            epcoro-web/README.md sigue siendo la plantilla Vite sin tocar.
+ESTADO    : OK (diagnostico)
+
+### [108] 2026-10-07 07:45 - FASE 7 / VERIFICACION DE ACEPTACION (FALLO)
+OBJETIVO  : Comprobar el criterio de la FASE 7: "login real contra la API".
+COMANDO   : levantar php artisan serve (:8000) y npm run dev (:5173);
+            curl contra la SPA en 5173 con cabeceras Origin/Referer
+            stateful (como lo hace el navegador)
+RESULTADO : FALLO reproducible, dos pruebas encadenadas:
+            (1) GET http://localhost:5173/sanctum/csrf-cookie
+                -> HTTP 200 Content-Type: text/html  (el index.html de la SPA)
+                   Ninguna cookie XSRF-TOKEN. El proxy de vite SOLO mapea
+                   '/api', asi que /sanctum cae en el fallback del dev server.
+            (2) POST http://localhost:5173/api/v1/auth/login con Origin
+                http://localhost:5173 (peticion stateful) y SIN token
+                -> HTTP 419.
+            Control: el mismo POST SIN cabecera Origin no es stateful y
+            devuelve 422 (validacion), o sea que la ruta existe y funciona;
+            el 419 solo aparece cuando el navegador se declara stateful, que
+            es exactamente lo que hace la SPA.
+            Control 2: /sanctum/csrf-cookie directo contra :8000 SI funciona
+            (204 + XSRF-TOKEN + epcoro-session).
+            CONCLUSION: el login desde el navegador estaba roto aunque el
+            codigo del frontend fuera correcto. Criterio de aceptacion NO
+            cumplido hasta el paso [109].
+ESTADO    : FALLA (bug de configuracion, no de codigo)
+
+### [109] 2026-10-07 07:50 - FASE 7 / ARREGLO DEL PROXY
+OBJETIVO  : Que el pedido de la cookie CSRF llegue al backend en desarrollo.
+COMANDO   : edit epcoro-web/vite.config.ts (server.proxy)
+RESULTADO : Anadido el mapeo '/sanctum' -> http://localhost:8000 con
+            changeOrigin, documentando en el propio archivo el motivo (sin el,
+            el dev server devuelve el index.html, no hay XSRF-TOKEN y el
+            backend responde 419).
+            El proxy queda con '/api' y '/sanctum', que son las dos rutas que
+            la SPA llama fuera de su propio origen.
+ESTADO    : OK
+
+### [110] 2026-10-07 07:56 - FASE 7 / VERIFICACION END-TO-END POR EL PROXY
+OBJETIVO  : Repetir el flujo completo del usuario a traves de :5173, no del
+            backend directo, porque asi es como lo ver el navegador.
+COMANDO   : cookie jar en %TEMP%, curl con Origin/Referer stateful:
+              GET  /sanctum/csrf-cookie
+              POST /api/v1/auth/login  (header X-XSRF-TOKEN)
+              GET  /api/v1/auth/me
+              GET  /api/v1/parametros
+              POST /api/v1/auth/logout
+              GET  /api/v1/auth/me
+RESULTADO : 204 (cookie XSRF-TOKEN emitida) -> 200 login (rol=admin,
+            8 permisos, debe_cambiar_password=true) -> 200 /me -> 200
+            parametros -> 200 logout -> 401 /me. Cadena completa en verde.
+            MIENTRAS TANTO: el build sigue limpio (vue-tsc + vite build OK).
+
+            NOTA DE CREDENCIALES: la contrasena del admin se habia generado
+            aleatoria en la FASE 3 y se mostro una sola vez, asi que en la
+            practica la cuenta estaba bloqueada para cualquier prueba manual.
+            Se regenero con el mismo criterio del AdminSeeder (aleatoria de
+            24 caracteres, debe_cambiar_password=true) y se mostro UNA vez en
+            esta sesion. La clave NO se escribe en este archivo: si se pierde,
+            se vuelve a generar con el mismo procedimiento.
+ESTADO    : OK. CRITERIO DE ACEPTACION DE LA FASE 7 CUMPLIDO (verificacion
+           automatica). Falta la comprobacion visual en navegador (menu por
+           rol y drawer en celular), que es manual.
+
+  PENDIENTES DE LA FASE 7:
+    - Comprobacion visual en navegador (DevTools responsive) - manual.
+    - epcoro-web/README.md se reescribio en [113] (ya no es la plantilla Vite).
+    - README.md raiz actualizado en [113].
+    - Commit de FASE 7 (el usuario pide los commits por fase).
+
+### [111] 2026-10-07 08:00 - FASE 7 / PANTALLA DE CAMBIO OBLIGATORIO
+OBJETIVO  : Cerrar el hueco de "debe_cambiar_password lo ignora el frontend":
+            el admin nace con la bandera puesta y no tenia forma de ponerla a
+            cero desde la interfaz.
+COMANDO   : ediciones en epcoro-web/src
+RESULTADO : Contrato del backend confirmado antes de escribir:
+            POST /api/v1/auth/change-password (auth:sanctum) con
+            {password_actual, password, password_confirmation},
+            Password::min(8)->letters()->numbers(), distinta de la actual,
+            y el FormRequest limpia la bandera y cierra las demas sesiones.
+            Cambios:
+            - stores/auth.ts: getter `debeCambiarPassword` y accion
+              `cambiarPassword()` que ademas pone la bandera a false en
+              memoria (si no, el guard creeria que hay que seguir cambiando).
+            - views/CambioClaveView.vue: tarjeta en AuthLayout con los tres
+              campos, validacion en cliente que replica las reglas del
+              backend, errores 422 marcados por campo y salida "Cerrar
+              sesion".
+            - router/index.ts: ruta /cambio-clave (no publica) y el guard
+              pasa de 2 a 3 pasos: sesion -> cambio obligatorio -> permiso.
+              Mientras la bandera este puesta, /cambio-clave es el UNICO
+              destino permitido; con la bandera a false la vista manda a
+              inicio para que no quede como un callejon.
+            - api/axios.ts: `erroresDeValidacion()` para mapear el
+              errors:{campo:[...]} del 422 campo por campo.
+            - app/Http/Requests/ChangePasswordRequest.php: los mensajes del
+              regla Password salian en ingles ("The nueva contrasena field
+              must contain at least one number"); se agregan mensajes en
+              espanol. Ningun test dependia de esos textos.
+ESTADO    : OK
+
+### [112] 2026-10-07 08:07 - FASE 7 / VERIFICACION END-TO-END DEL CAMBIO
+OBJETIVO  : Probar el flujo completo real, no solo que compile.
+COMANDO   : curl por el proxy con cookie jar (Origin/Referer stateful):
+            login -> change-password (4 casos) -> /auth/me
+RESULTADO : - clave actual incorrecta  -> 422 password_actual
+            - clave sin numeros        -> 422 password (ahora en espanol)
+            - clave de 7 caracteres    -> 422 password (ahora en espanol)
+            - cambio valido            -> 200 y /auth/me devuelve
+                                           debe_cambiar_password=false
+            Todo contra http://localhost:5173, es decir, igual que lo vera
+            el navegador.
+ESTADO    : OK
+
+### [113] 2026-10-07 08:09 - FASE 7 / CONTROL DE CALIDAD Y DOCUMENTACION
+OBJETIVO  : Los tres checks del proyecto y los tres documentos de la fase.
+COMANDO   : npm run build (epcoro-web)
+            php artisan test ; vendor\bin\pint --test ; phpstan analyse
+            ediciones de README.md raiz y epcoro-web/README.md
+RESULTADO : - build: vue-tsc + vite OK, 102 modulos, 170 kB js / 21 kB css.
+            - tests: 127 passed (699 assertions), 22.67 s.
+            - pint: passed. phpstan: no errors.
+            - README.md raiz: la fila "7 a 12" se separa; la FASE 7 queda
+              "casi completa" con lo que falta explicitado.
+            - epcoro-web/README.md: se reemplaza la plantilla Vite por el
+              readme del proyecto (como correrlo, porque el proxy necesita
+              /sanctum, como autentica, estructura y faltantes).
+            - Estado preparado para el commit de FASE 7.
+ESTADO    : OK
+
+  CREDENCIALES DE PRUEBA PARA LA REVISION MANUAL EN NAVEGADOR:
+    usuario `admin`, contrasena `Epcoro2026dev1`, con la bandera de cambio
+    obligatorio REACTIVADA a proposito: al entrar se debe ver la pantalla de
+    cambio de contrasena y, hasta no cambiarla, no debe dejar pasar a ninguna
+    otra ruta. Si se prefiere otra clave, se regenera con el procedimiento de
+    [110].
+################################################################################

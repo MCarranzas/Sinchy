@@ -43,6 +43,9 @@ class ChangePasswordRequest extends FormRequest
             'password_actual.required' => 'Debe indicar la contrasena actual.',
             'password.required' => 'La nueva contrasena es obligatoria.',
             'password.confirmed' => 'La confirmacion no coincide con la nueva contrasena.',
+            'password.min' => 'La nueva contrasena debe tener al menos 8 caracteres.',
+            'password.letters' => 'La nueva contrasena debe incluir letras.',
+            'password.numbers' => 'La nueva contrasena debe incluir numeros.',
         ];
     }
 
