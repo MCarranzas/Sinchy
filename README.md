@@ -33,7 +33,34 @@ epcoro/
 | `docs/diagrama_sist_epcoro.drawio` | Roles y flujo de estados. |
 | `docs/reglas-negocio.md` | Decisiones D1-D4 del negocio y redondeo verificado. |
 | `epcoro-api/docs/api.md` | Contrato de la API `/api/v1` (endpoints, estados, recursos, errores). |
-| `pasos.txt` | Bitacora. **Toda orden ejecutada se anota aca.** |
+| `pasos.txt` | Bitacora. **Solo decisiones, bugs raros y verificaciones (ver Proceso).** |
+
+## Proceso (protocolo ligero)
+
+El costo de proceso no debe superar al de codigo. Vigente desde 2026-10-07.
+
+**Bitacora (`pasos.txt`)**: se anota SOLO lo que vale la pena guardar:
+
+- una **decision** tomada (no las que ya vienen en `instrucciones.txt`)
+- un **bug raro** y su arreglo (ej: el 419 del proxy `/sanctum`)
+- un **resultado de verificacion** que cambia el estado de una fase
+
+No se anotan comandos rutinarios: `npm install`, ediciones de documentacion,
+auditorias de partida, instalaciones exitosas. Las entradas que si se
+escriben conservan el formato `[N] fecha hora - FASE` con
+`OBJETIVO / COMANDO / RESULTADO / ESTADO`.
+
+**Verificaciones en bloque, no tras cada paso:**
+
+| Check | Cuando correrlo |
+|---|---|
+| `vendor\bin\pint` + `phpstan` | Una vez al **cerrar fase** (o en guardado del editor) |
+| `php artisan test` | Solo al tocar **logica de negocio** (calculo, estados, validaciones) |
+| `npm run build` | Solo **antes de un commit** |
+| Documentacion (README, ERD, `api.md`) | Solo **al cerrar fase** |
+
+**No se toca:** un commit por fase, los tests y la regla del half-up,
+`RETOMAR.md`.
 
 ## La regla mas importante del proyecto
 
@@ -106,7 +133,8 @@ el PATH y no se usa para este proyecto.
 | 5 - Servicio de calculo | completa (salvo 5.4.8, que necesita la API): calculo puro, parametros, numerador, maquina de estados y 87 tests en verde |
 | 6 - API CRUD de liquidaciones | completa: `/api/v1` (auth, catalogos, parametros, liquidaciones, PDF/Excel, transiciones, observaciones, historial y reportes), 127 tests en verde, pint y phpstan limpios. Ver `epcoro-api/docs/api.md` |
 | 7 - Frontend base y login | completa: SPA vue-ts con axios `/api/v1`, store auth, guard de sesion/permiso/cambio obligatorio, layouts, LoginView, pantalla de cambio de contrasena y menu por permisos. Login y cambio de contrasena verificados end-to-end por el proxy de Vite (`/api` + `/sanctum`). Queda solo la comprobacion visual en navegador |
-| 8 a 12 - Modulos, reportes UI, produccion | pendiente |
+| 8 - Captura de liquidacion | completa (8.1-8.12): planilla de captura reutilizada por crear/editar, wizard responsive de 5 pasos, validacion vee-validate espejo de `StoreLiquidacionRequest`, calculo en vivo espejo de `CalculoLiquidacionService` (BigInt, 1 solo redondeo half-up), lista con filtros y paginacion por URL, detalle con PDF/Excel e historial. Build verde y smoke test E2E via proxy (login, catalogos, alta rapida, crear `EP-BCB-1`, detalle, historial, PDF/Excel, edicion con recalculo). Queda la comprobacion visual en navegador y 2 filtros del listado (municipio/vendedor) postergados |
+| 9 a 12 - Modulos, reportes UI, produccion | pendiente |
 
 Comprobacion (`epcoro-api/`):
 

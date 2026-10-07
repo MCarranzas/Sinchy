@@ -6,8 +6,10 @@ del **estado del proyecto** y de lo que sigue.
 
 - Fecha de este estado: 2026-10-07
 - Rama: `master`
-- Bitácora: `pasos.txt` (regla: registrar ANTES el comando, DESPUÉS el
-  resultado; entradas `[N] fecha hora - FASE`)
+- Bitácora: `pasos.txt` (**protocolo ligero** desde 2026-10-07: solo
+  decisiones, bugs raros y verificaciones de cierre de fase; ver README.md
+  sección "Proceso"). Las entradas que sí se escriben conservan el formato
+  `[N] fecha hora - FASE` con OBJETIVO / COMANDO / RESULTADO / ESTADO.
 
 ---
 
@@ -136,8 +138,14 @@ backend, lista con filtros + paginación por URL, detalle con PDF/Excel.
 
 ## 7. Reglas que no se rompen
 
-- **Bitácora**: todo comando que se ejecute queda en `pasos.txt` antes
-  (OBJETIVO + COMANDO) y después (RESULTADO + ESTADO).
+- **Bitácora ligera**: en `pasos.txt` solo se registran **decisiones**,
+  **bugs raros** con su arreglo y **verificaciones** que cambian el estado
+  de una fase. Los comandos rutinarios (`npm install`, docs, auditorías de
+  partida) ya no se anotan. Las entradas que sí se escriben conservan el
+  formato `OBJETIVO / COMANDO / RESULTADO / ESTADO`.
+- **Verificaciones en bloque**: `pint` + `phpstan` al cerrar fase; tests
+  solo al tocar lógica de negocio; `npm run build` solo antes de un commit.
+  Detalle en `README.md`, sección "Proceso".
 - **Un commit por fase**, solo cuando el usuario lo confirma.
 - Versiones y trampas del entorno: `pasos_otra_maquina.txt` y los propios
   comentarios de las FASES 0-6 en `pasos.txt`.

@@ -2267,3 +2267,96 @@ ESTADO    : OK
     otra ruta. Si se prefiere otra clave, se regenera con el procedimiento de
     [110].
 ################################################################################
+
+################################################################################
+# FASE 8 - MODULO DE CAPTURA DE LIQUIDACION
+################################################################################
+
+### [114] 2026-10-07 10:50 - FASE 8 / APERTURA Y AUDITORIA DE PARTIDA
+OBJETIVO  : Abrir la FASE 8 y reconstruir el estado previo antes de tocar nada:
+            (a) que existe del backend para este modulo (rutas /api/v1 de
+            liquidaciones, catalogos, personas, cotizaciones y parametros),
+            (b) convenciones del frontend (layouts, stores, api, vistas),
+            (c) reglas de validacion del backend que el formulario debe
+            replicar, (d) dependencias actuales de epcoro-web (?vee-validate
+            esta?).
+COMANDO   : inspeccion de rutas y controladores en epcoro-api/routes y
+            app/Http/Requests; estructura de epcoro-web/src; package.json;
+            lectura de README.md seccion Estado e instrucciones.txt FASE 8
+RESULTADO : (pendiente)
+ESTADO    : (pendiente)
+RESULTADO : (a) Backend completo para FASE 8: rutas /api/v1 listas
+            (liquidaciones CRUD + pdf/excel/historial/observaciones, 8
+            catalogos con cascada por id, personas con alta rapida, y
+            cotizaciones quincenales). Reglas en StoreLiquidacionRequest:
+            numero EP-BCB-\d{1,9} unico, fecha Y-m-d, ley_pagable fraccion
+            lte:1 (T1), identificadores con regex y NO numeric (C5),
+            montos decimal:0,2. Formulas en CalculoLiquidacionService:
+            peso_fino = peso*ley ; usd_gramo = cotizacion/31.1035 ;
+            bruto = usd_gramo*tipo_cambio*peso_fino ; aporte = bruto
+            EXACTO*ALICUOTA_APORTE ; neto = bruto - (aporte+deducciones) ;
+            UN solo redondeo half-up a 2 dec al final (C1/C2/D4).
+            Index con filtros (estado, fechas, municipio, area, vendedor,
+            q, orden) y paginacion por query param `page` (pagina/
+            por_pagina). Resource agrupado: insumos/calculo/comprador/
+            vendedor/procedencia/presentacion/deducciones/auditoria y
+            transiciones_disponibles. Parametros: TIPO_CAMBIO_DEFECTO
+            6.96, GRAMOS_POR_ONZA_TROY 31.1035, ALICUOTA_APORTE 0.018,
+            NOMBRE_COMPRADOR/NIM_COMPRADOR/NIT_COMPRADOR (los tres datos
+            fijos del comprador = el autocompletado del paso 8.3).
+            (b) Frontend: api/axios.ts con erroresDeValidacion() ya
+            listo para el 422 campo por campo; stores/auth.ts estilo
+            Pinia opciones; router genera /liquidaciones* desde
+            menuPrincipal apuntando a EnConstruccionView (hay que
+            sustituirlo); menu ya define Liquidaciones (ver),
+            Nueva liquidacion (crear) y sus permisos. Estructura prevista
+            en instrucciones.txt lineas 303-331 (api/*.api.ts, stores,
+            components/liquidacion/*, composables, utils/formato.ts).
+            (c) Las secciones del formulario estan especificadas en
+            instrucciones.txt [FASE 8] lineas 1436-1455.
+            (d) vee-validate NO instalado: hay que anadirlo (npm install).
+ESTADO    : OK (diagnostico). FASE 8 abierta.
+
+### [115] 2026-10-07 10:58 - FASE 8 / DEPENDENCIA DE VALIDACION
+OBJETIVO  : Anadir vee-validate (validacion de UX espejo de las reglas del
+            backend, requisito 8.9). Sin libreria de esquemas: reglas por
+            campo en TS, para que cada mensaje refleje EXACTAMENTE la regla
+            de StoreLiquidacionRequest.
+COMANDO   : npm install vee-validate   (en epcoro-web)
+RESULTADO : vee-validate 4.15.1 instalado (0 vulnerabilidades). Uso final
+            como REGISTRO MANUAL: useForm({ keepValuesOnUnmount: true }) sin
+            useField ni handleSubmit; validar() alimenta setErrors y lo
+            reutilizan validarPaso() y enviar() del composable de captura.
+ESTADO    : OK (cerrada).
+
+### [116] 2026-10-07 11:20 - FASE 8 / IMPLEMENTACION DEL MODULO
+OBJETIVO  : Construir el modulo de captura de liquidacion segun los pasos
+            8.1 a 8.12 de instrucciones.txt: secciones, wizard responsive,
+            validaciones vee-validate espejo, lista con filtros y
+            paginacion por URL, detalle con PDF/Excel e historial.
+COMANDO   : escribir los archivos nuevos de epcoro-web (tipos, api, stores,
+            utils/calculo.ts, composable de formulario, componentes de
+            seccion, vistas) y modificar el router para las rutas reales
+RESULTADO : Modulo completo (planilla de captura reutilizada por creacion y
+            edicion; wizard 5 pasos en movil; validacion vee-validate espejo
+            de StoreLiquidacionRequest; calculo en vivo espejo de
+            CalculoLiquidacionService con BigInt; Index/Show con paginacion
+            por URL y descargas PDF/Excel). BUILD VERDE (vue-tsc + vite,
+            144 modulos, 258.88 kB JS / 87.71 kB gzip).
+            SMOKE TEST E2E via proxy de Vite (5173->8000): login admin y
+            tec_dev, /auth/me, 8 catalogos, alta rapida de persona, crear
+            liquidacion (EP-BCB-1/correlativo 1), detalle (recurso coincide
+            clave por clave con types/liquidacion.ts), historial, PDF (880 kB)
+            y Excel (7,4 kB), PUT con recalculo. Espejo de calculo verificado:
+            peso 120.00 ley 0.9302 -> bruto 59947.19 / aporte 1079.05 /
+            total deducciones 1229.05 / neto 58718.14 (igual al backend).
+            Correccion de 2 bugs en conversion de ley (porcentaje<->fraccion:
+            ahora 100% -> 1 y 0.9302 -> 93.02 sin float). Datos de prueba en
+            BD dev: admin (clave documentada Epcoro2026dev1, debe_cambiar
+            _password=true, rol asignado a mano), tec_dev (rol tecnico),
+            3 areas-mineras, 1 persona y la liquidacion 1 (seeder de areas
+            mineras no existe en el backend).
+ESTADO    : OK (cerrada). DESVIACION ANOTADA: los filtros del IndexView
+            omiten municipio y vendedor (quedan pendientes por acotar la
+            fase); la edicion carga el detalle completo y reenvia el payload
+            con numero_documento inmutable emitido por el sistema.

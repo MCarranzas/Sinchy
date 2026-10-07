@@ -1,0 +1,314 @@
+<script setup lang="ts">
+/**
+ * Detalle de una liquidacion (8.11 y 8.12).
+ *
+ * Todo lo que puede necesitar el tecnico que capturo O el que revisa: datos
+ * completos, desglose del calculo (lo que persistio el backend, T3), el
+ * historial de estados y las descargas PDF/Excel. La edicion solo aparece
+ * si el estado lo admite (creado / en_correccion).
+ */
+import { onMounted, ref } from 'vue'
+import { RouterLink, useRoute } from 'vue-router'
+
+import BadgeEstado from '@/components/BadgeEstado.vue'
+import { historialLiquidacion, obtenerLiquidacion, urlExcel, urlPdf } from '@/api/liquidaciones.api'
+import { mensajeDeError } from '@/api/axios'
+import { bs, fecha, fechaHora, gramos, numero } from '@/utils/formato'
+import { ESTADOS_EDITABLES } from '@/types/liquidacion'
+import type { HistorialEstado, Liquidacion } from '@/types/liquidacion'
+import AppIcon from '@/components/AppIcon.vue'
+
+const route = useRoute()
+const id = Number(route.params.id)
+
+const liquidacion = ref<Liquidacion | null>(null)
+const historial = ref<HistorialEstado[]>([])
+const cargando = ref(true)
+const error = ref('')
+
+const editable = ref(false)
+
+onMounted(async () => {
+  try {
+    const [detalle, filas] = await Promise.all([
+      obtenerLiquidacion(id),
+      historialLiquidacion(id),
+    ])
+    liquidacion.value = detalle
+    historial.value = filas
+    editable.value = ESTADOS_EDITABLES.includes(detalle.estado)
+  } catch (fallo) {
+    error.value = mensajeDeError(fallo)
+  } finally {
+    cargando.value = false
+  }
+})
+</script>
+
+<template>
+  <div class="mx-auto max-w-5xl">
+    <div v-if="cargando" class="p-8 text-center text-sm text-slate-500">Cargando…</div>
+
+    <p v-else-if="error" class="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+      {{ error }}
+    </p>
+
+    <template v-else-if="liquidacion">
+      <!-- Cabecera -->
+      <div class="mb-4 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div class="flex flex-wrap items-center gap-2">
+            <h1 class="text-lg font-semibold text-slate-800 lg:text-xl">
+              {{ liquidacion.numero_documento }}
+            </h1>
+            <BadgeEstado :estado="liquidacion.estado" />
+          </div>
+          <p class="mt-1 text-sm text-slate-500">
+            {{ fecha(liquidacion.fecha_transaccion) }} · Código
+            {{ liquidacion.codigo_formulario }} · Ejercicio {{ liquidacion.ejercicio }}
+          </p>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2">
+          <RouterLink
+            :to="{ name: 'liquidaciones' }"
+            class="flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50"
+          >
+            <AppIcon nombre="cerrar" :tamanio="15" />
+            Volver
+          </RouterLink>
+
+          <RouterLink
+            v-if="editable"
+            :to="{ name: 'liquidaciones-editar', params: { id: liquidacion.id } }"
+            class="flex items-center gap-1.5 rounded-lg border border-marca-300 px-3 py-2 text-sm font-medium text-marca-700 transition-colors hover:bg-marca-50"
+          >
+            Editar
+          </RouterLink>
+
+          <a
+            :href="urlPdf(liquidacion.id)"
+            target="_blank"
+            class="rounded-lg bg-marca-600 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-marca-700"
+          >
+            PDF
+          </a>
+          <a
+            :href="urlExcel(liquidacion.id)"
+            class="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-700"
+          >
+            Excel
+          </a>
+        </div>
+      </div>
+
+      <div class="grid gap-4 lg:grid-cols-2">
+        <!-- Personas -->
+        <section class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">Partes</h2>
+          <dl class="space-y-2 text-sm">
+            <div>
+              <dt class="text-slate-500">Comprador</dt>
+              <dd class="font-medium text-slate-800">{{ liquidacion.comprador.razon_social }}</dd>
+              <dd v-if="liquidacion.comprador.nim" class="text-xs text-slate-500">
+                NIM {{ liquidacion.comprador.nim }}
+              </dd>
+              <dd v-if="liquidacion.comprador.nit" class="text-xs text-slate-500">
+                NIT {{ liquidacion.comprador.nit }}
+              </dd>
+            </div>
+            <div class="border-t border-dashed border-slate-200 pt-2">
+              <dt class="text-slate-500">Vendedor</dt>
+              <dd class="font-medium text-slate-800">{{ liquidacion.vendedor.nombre }}</dd>
+              <dd class="text-xs text-slate-500">CI {{ liquidacion.vendedor.ci }}</dd>
+            </div>
+            <div class="border-t border-dashed border-slate-200 pt-2">
+              <dt class="text-slate-500">Presentación</dt>
+              <dd class="font-medium text-slate-800">{{ liquidacion.presentacion.nombre }}</dd>
+            </div>
+          </dl>
+        </section>
+
+        <!-- Procedencia -->
+        <section class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">Procedencia</h2>
+          <dl class="space-y-2 text-sm">
+            <div>
+              <dt class="text-slate-500">Área minera</dt>
+              <dd class="font-medium text-slate-800">{{ liquidacion.procedencia.nombre_area_minera }}</dd>
+              <dd v-if="liquidacion.procedencia.titular_derecho_minero" class="text-xs text-slate-500">
+                {{ liquidacion.procedencia.titular_derecho_minero }}
+              </dd>
+              <dd v-if="liquidacion.procedencia.codigo_ajam_patente" class="text-xs text-slate-500">
+                AJAM {{ liquidacion.procedencia.codigo_ajam_patente }}
+              </dd>
+            </div>
+            <div class="border-t border-dashed border-slate-200 pt-2">
+              <dt class="text-slate-500">Ubicación</dt>
+              <dd class="font-medium text-slate-800">
+                {{ liquidacion.procedencia.localidad.nombre }}, {{ liquidacion.procedencia.municipio.nombre }},
+                {{ liquidacion.procedencia.provincia.nombre }},
+                {{ liquidacion.procedencia.departamento.nombre }}
+              </dd>
+              <dd v-if="liquidacion.procedencia.municipio.codigo" class="text-xs text-slate-500">
+                Código de municipio {{ liquidacion.procedencia.municipio.codigo }}
+              </dd>
+            </div>
+          </dl>
+        </section>
+
+        <!-- Insumos -->
+        <section class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">Insumos</h2>
+          <dl class="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+            <dt class="text-slate-500">Peso</dt>
+            <dd class="text-right font-medium tabular-nums text-slate-800">
+              {{ gramos(liquidacion.insumos.peso_gramos) }}
+            </dd>
+            <dt class="text-slate-500">Ley pagable</dt>
+            <dd class="text-right font-medium tabular-nums text-slate-800">
+              {{ numero(Number(liquidacion.insumos.ley_pagable) * 100, 4) }} %
+            </dd>
+            <dt class="text-slate-500">Tipo de cambio</dt>
+            <dd class="text-right font-medium tabular-nums text-slate-800">
+              {{ numero(liquidacion.insumos.tipo_cambio, 4) }} Bs/$
+            </dd>
+            <dt class="text-slate-500">Cotización</dt>
+            <dd class="text-right font-medium tabular-nums text-slate-800">
+              {{ numero(liquidacion.insumos.cotizacion_usd_oz_t, 6) }} USD/oz t
+            </dd>
+            <dt class="text-slate-500">Caja de salud</dt>
+            <dd class="text-right font-medium text-slate-800">
+              {{ liquidacion.insumos.aplica_caja_salud ? 'Aplica' : 'No aplica' }}
+            </dd>
+          </dl>
+        </section>
+
+        <!-- Calculo -->
+        <section class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">Cálculo</h2>
+          <dl class="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+            <dt class="text-slate-500">Peso fino</dt>
+            <dd class="text-right font-medium tabular-nums text-slate-800">
+              {{ gramos(liquidacion.calculo.peso_fino_gramos) }}
+            </dd>
+            <dt class="text-slate-500">Valor USD/gramo</dt>
+            <dd class="text-right font-medium tabular-nums text-slate-800">
+              $ {{ numero(liquidacion.calculo.valor_usd_gramo, 6) }}
+            </dd>
+            <dt class="text-slate-500">Valor bruto</dt>
+            <dd class="text-right font-medium tabular-nums text-slate-800">
+              {{ bs(liquidacion.calculo.valor_bruto_bs) }}
+            </dd>
+            <dt class="text-slate-500">Aporte caja de salud</dt>
+            <dd class="text-right tabular-nums text-rose-600">
+              - {{ bs(liquidacion.calculo.aporte_caja_salud_bs) }}
+            </dd>
+            <dt class="text-slate-500">Otras deducciones</dt>
+            <dd class="text-right tabular-nums text-rose-600">
+              -
+              {{
+                bs(
+                  (
+                    Number(liquidacion.calculo.total_deducciones_bs) -
+                    Number(liquidacion.calculo.aporte_caja_salud_bs)
+                  ).toFixed(2),
+                )
+              }}
+            </dd>
+            <div class="col-span-2 mt-1 flex items-center justify-between rounded-lg bg-marca-50 px-3 py-2">
+              <dt class="text-sm font-medium text-marca-700">Valor neto</dt>
+              <dd class="text-base font-bold tabular-nums text-marca-700">
+                {{ bs(liquidacion.calculo.valor_neto_bs) }}
+              </dd>
+            </div>
+          </dl>
+        </section>
+      </div>
+
+      <!-- Deducciones -->
+      <section v-if="liquidacion.deducciones?.length" class="mt-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">
+          Desglose de deducciones
+        </h2>
+        <ul class="divide-y divide-slate-100 text-sm">
+          <li
+            v-for="deduccion in liquidacion.deducciones"
+            :key="deduccion.concepto"
+            class="flex items-center justify-between gap-3 py-2"
+          >
+            <span class="text-slate-700">
+              {{ deduccion.concepto }}
+              <span class="text-xs text-slate-400">
+                {{ deduccion.tipo === 'alicuota' ? `(${numero(deduccion.alicuota, 4)} sobre el bruto)` : '' }}
+              </span>
+            </span>
+            <span class="font-medium tabular-nums text-slate-800">{{ bs(deduccion.monto) }}</span>
+          </li>
+        </ul>
+      </section>
+
+      <!-- Observaciones -->
+      <section v-if="liquidacion.observaciones" class="mt-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <h2 class="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-500">Observaciones</h2>
+        <p class="whitespace-pre-wrap text-sm text-slate-700">{{ liquidacion.observaciones }}</p>
+      </section>
+
+      <!-- Auditoria y historial -->
+      <div class="mt-4 grid gap-4 lg:grid-cols-2">
+        <section class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">Auditoría</h2>
+          <dl class="space-y-1.5 text-sm">
+            <div class="flex justify-between gap-3">
+              <dt class="text-slate-500">Registrado por</dt>
+              <dd class="font-medium text-slate-800">
+                {{ liquidacion.auditoria.registrado_por?.nombre_completo ?? '—' }}
+              </dd>
+            </div>
+            <div class="flex justify-between gap-3">
+              <dt class="text-slate-500">Fecha de registro</dt>
+              <dd class="tabular-nums text-slate-700">{{ fechaHora(liquidacion.auditoria.fecha_registro) }}</dd>
+            </div>
+            <template v-if="liquidacion.auditoria.fecha_revision">
+              <div class="flex justify-between gap-3">
+                <dt class="text-slate-500">En revisión</dt>
+                <dd class="tabular-nums text-slate-700">{{ fechaHora(liquidacion.auditoria.fecha_revision) }}</dd>
+              </div>
+            </template>
+            <template v-if="liquidacion.auditoria.fecha_aprobacion">
+              <div class="flex justify-between gap-3">
+                <dt class="text-slate-500">Aprobada</dt>
+                <dd class="tabular-nums text-slate-700">{{ fechaHora(liquidacion.auditoria.fecha_aprobacion) }}</dd>
+              </div>
+            </template>
+            <template v-if="liquidacion.auditoria.motivo_rechazo">
+              <div class="flex justify-between gap-3">
+                <dt class="text-slate-500">Motivo de rechazo</dt>
+                <dd class="max-w-[60%] text-right text-rose-600">{{ liquidacion.auditoria.motivo_rechazo }}</dd>
+              </div>
+            </template>
+          </dl>
+        </section>
+
+        <section class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">Historial</h2>
+          <ol v-if="historial.length" class="relative space-y-3 border-l border-slate-200 pl-4">
+            <li v-for="fila in historial" :key="fila.id" class="relative">
+              <span class="absolute -left-[1.35rem] top-1 h-2.5 w-2.5 rounded-full bg-marca-500" />
+              <p class="text-sm font-medium text-slate-800">
+                {{ fila.estado_anterior ?? '—' }}
+                <span class="text-slate-400">→</span>
+                {{ fila.estado_nuevo }}
+              </p>
+              <p class="text-xs text-slate-500">
+                {{ fila.usuario.nombre_completo }} · {{ fechaHora(fila.fecha) }}
+              </p>
+              <p v-if="fila.comentario" class="text-xs text-slate-600">“{{ fila.comentario }}”</p>
+            </li>
+          </ol>
+          <p v-else class="text-sm text-slate-500">Sin movimientos registrados.</p>
+        </section>
+      </div>
+    </template>
+  </div>
+</template>

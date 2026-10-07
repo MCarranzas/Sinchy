@@ -1,0 +1,513 @@
+/**
+ * Formulario de captura (8.1-8.9).
+ *
+ * UN solo formulario para escritorio y celular: en escritorio se pintan las
+ * cinco secciones seguidas; en celular el mismo formulario avanza paso a paso
+ * (8.8) reutilizando los mismos componentes. Como los campos se registran
+ * aqui (y no dentro de cada seccion), un paso desmontado no pierde ni sus
+ * valores ni sus reglas: el wizard puede ir y venir sin borrar nada.
+ *
+ * Division de responsabilidades:
+ *   - las REGLAS espejo del backend viven en composables/validaciones.ts;
+ *   - este composable las aplica con vee-validate, arma el payload y
+ *     previsualiza el calculo (utils/calculo.ts) con los parametros del
+ *     store de catalogos;
+ *   - las secciones SOLO pintan y enlazan (`formulario.valores.x`,
+ *     `formulario.error(x)`, `formulario.tocar(x)`).
+ */
+
+import { useForm } from 'vee-validate'
+import { computed, reactive, ref, type Ref } from 'vue'
+
+import { erroresDeValidacion } from '@/api/axios'
+import { useCatalogosStore } from '@/stores/catalogos'
+import { calcular, type ResultadoCalculo } from '@/utils/calculo'
+import { porcentajeAFraccion, fraccionAPorcentaje, reglas, type Regla } from '@/composables/validaciones'
+import type { Liquidacion, LiquidacionPayload } from '@/types/liquidacion'
+
+export interface ValoresCaptura {
+  numero_documento: string
+  fecha_transaccion: string
+  tipo_cambio: string
+  cotizacion_usd_oz_t: string
+  cotizacion_id: number | null
+  aplica_caja_salud: boolean
+  comprador_razon_social: string
+  comprador_nim: string
+  comprador_nit: string
+  vendedor_persona_id: number | null
+  vendedor_ci: string
+  area_minera_id: number | null
+  departamento_id: number | null
+  provincia_id: number | null
+  municipio_id: number | null
+  localidad_id: number | null
+  codigo_municipio: string
+  codigo_ajam_patente: string
+  presentacion_mineral_id: number | null
+  peso_gramos: string
+  /** En PORCENTAJE (input con %, 8.6); la fraccion va solo en el payload. */
+  ley_pagable: string
+  observaciones: string
+}
+
+export interface FilaDeduccion {
+  concepto: string
+  monto: string
+}
+
+export interface PasoCaptura {
+  id: string
+  titulo: string
+  campos: (keyof ValoresCaptura)[]
+}
+
+export const PASOS: PasoCaptura[] = [
+  {
+    id: 'transaccion',
+    titulo: 'Transacción',
+    campos: ['numero_documento', 'fecha_transaccion', 'tipo_cambio', 'cotizacion_usd_oz_t'],
+  },
+  {
+    id: 'comprador',
+    titulo: 'Comprador',
+    campos: ['comprador_razon_social', 'comprador_nim', 'comprador_nit'],
+  },
+  {
+    id: 'vendedor',
+    titulo: 'Vendedor',
+    campos: ['vendedor_persona_id', 'vendedor_ci'],
+  },
+  {
+    id: 'procedencia',
+    titulo: 'Procedencia',
+    campos: [
+      'area_minera_id',
+      'departamento_id',
+      'provincia_id',
+      'municipio_id',
+      'localidad_id',
+      'codigo_municipio',
+      'codigo_ajam_patente',
+    ],
+  },
+  {
+    id: 'tecnico',
+    titulo: 'Técnico',
+    campos: ['presentacion_mineral_id', 'peso_gramos', 'ley_pagable', 'observaciones'],
+  },
+]
+
+const REGLAS: Record<keyof ValoresCaptura, Regla> = {
+  numero_documento: reglas.numeroDocumento,
+  fecha_transaccion: reglas.fechaTransaccion,
+  tipo_cambio: reglas.tipoCambio,
+  cotizacion_usd_oz_t: reglas.cotizacion,
+  cotizacion_id: () => true,
+  aplica_caja_salud: () => true,
+  comprador_razon_social: reglas.razonSocial,
+  comprador_nim: reglas.nim,
+  comprador_nit: reglas.nit,
+  vendedor_persona_id: reglas.vendedor,
+  vendedor_ci: reglas.cedulaIdentidad,
+  area_minera_id: reglas.catalogo,
+  departamento_id: reglas.catalogo,
+  provincia_id: reglas.catalogo,
+  municipio_id: reglas.catalogo,
+  localidad_id: reglas.catalogo,
+  codigo_municipio: reglas.codigoMunicipio,
+  codigo_ajam_patente: reglas.codigoAjam,
+  presentacion_mineral_id: reglas.catalogo,
+  peso_gramos: reglas.pesoGramos,
+  ley_pagable: reglas.leyPagable,
+  observaciones: reglas.observaciones,
+}
+export function valoresPorDefecto(): ValoresCaptura {
+  return {
+    numero_documento: '',
+    fecha_transaccion: new Date().toISOString().slice(0, 10),
+    tipo_cambio: '',
+    cotizacion_usd_oz_t: '',
+    cotizacion_id: null,
+    aplica_caja_salud: true,
+    comprador_razon_social: '',
+    comprador_nim: '',
+    comprador_nit: '',
+    vendedor_persona_id: null,
+    vendedor_ci: '',
+    area_minera_id: null,
+    departamento_id: null,
+    provincia_id: null,
+    municipio_id: null,
+    localidad_id: null,
+    codigo_municipio: '',
+    codigo_ajam_patente: '',
+    presentacion_mineral_id: null,
+    peso_gramos: '',
+    ley_pagable: '',
+    observaciones: '',
+  }
+}
+
+/**
+ * Carga inicial de un formulario de EDICION a partir de lo que devuelve el
+ * backend. La ley vuelve a porcentaje (fraccion * 100) para que el input la
+ * muestre como la escribio el usuario.
+ */
+export function valoresDesdeLiquidacion(liquidacion: Liquidacion): ValoresCaptura {
+  return {
+    numero_documento: liquidacion.numero_documento ?? '',
+    fecha_transaccion: liquidacion.fecha_transaccion,
+    tipo_cambio: liquidacion.insumos.tipo_cambio,
+    cotizacion_usd_oz_t: liquidacion.insumos.cotizacion_usd_oz_t,
+    cotizacion_id: liquidacion.insumos.cotizacion_id,
+    aplica_caja_salud: liquidacion.insumos.aplica_caja_salud,
+    comprador_razon_social: liquidacion.comprador.razon_social,
+    comprador_nim: liquidacion.comprador.nim ?? '',
+    comprador_nit: liquidacion.comprador.nit ?? '',
+    vendedor_persona_id: liquidacion.vendedor.persona_id,
+    vendedor_ci: liquidacion.vendedor.ci,
+    area_minera_id: liquidacion.procedencia.area_minera_id,
+    departamento_id: liquidacion.procedencia.departamento.id,
+    provincia_id: liquidacion.procedencia.provincia.id,
+    municipio_id: liquidacion.procedencia.municipio.id,
+    localidad_id: liquidacion.procedencia.localidad.id,
+    codigo_municipio: liquidacion.procedencia.municipio.codigo ?? '',
+    codigo_ajam_patente: liquidacion.procedencia.codigo_ajam_patente ?? '',
+    presentacion_mineral_id: liquidacion.presentacion.id,
+    peso_gramos: liquidacion.insumos.peso_gramos,
+    ley_pagable: fraccionAPorcentaje(liquidacion.insumos.ley_pagable),
+    observaciones: liquidacion.observaciones ?? '',
+  }
+}
+
+export interface OpcionesFormulario {
+  /** Se ejecuta con el payload listo; la vista decide navegacion y mensaje. */
+  guardar: (payload: LiquidacionPayload) => Promise<Liquidacion>
+}
+
+export interface FormularioCaptura {
+  valores: ValoresCaptura
+  errores: Ref<Record<string, string | undefined>>
+  tocados: Record<string, boolean>
+  intentado: Ref<boolean>
+  enviando: Ref<boolean>
+  mensajeError: Ref<string>
+  pasoActual: Ref<number>
+  deducciones: FilaDeduccion[]
+  resultado: Ref<ResultadoCalculo>
+  enlazar: (campo: keyof ValoresCaptura) => {
+    // any a proposito: cada seccion enlaza campos de tipo distinto contra
+    // componentes que aceptan uniones mas anchas que el tipo del campo.
+    modelValue: any
+    'onUpdate:modelValue': (valor: any) => void
+  }
+  error: (campo: string) => string | undefined
+  visible: (campo: string) => boolean
+  tocar: (campo: string) => void
+  asignar: (campo: keyof ValoresCaptura, valor: unknown) => void
+  validarPaso: () => Promise<boolean>
+  irAPaso: (indice: number) => Promise<boolean>
+  agregarDeduccion: () => void
+  quitarDeduccion: (indice: number) => void
+  enviar: () => Promise<void>
+  aplicarDefaults: () => void
+}
+
+export function useLiquidacionForm(opciones: OpcionesFormulario): FormularioCaptura {
+  const catalogos = useCatalogosStore()
+
+  const deducciones = reactive<FilaDeduccion[]>([{ concepto: '', monto: '' }])
+
+  const tocados = reactive<Record<string, boolean>>({})
+  const intentado = ref(false)
+  const enviando = ref(false)
+  const mensajeError = ref('')
+  const pasoActual = ref(0)
+
+  function validarDeducciones(): Record<string, string> {
+    const errores: Record<string, string> = {}
+
+    deducciones.forEach((fila, indice) => {
+      const concepto = fila.concepto.trim()
+      const monto = fila.monto.trim()
+
+      if (concepto === '' && monto === '') {
+        return // fila vacia: se ignora
+      }
+
+      if (concepto === '') {
+        errores[`deducciones.${indice}.concepto`] = 'Indique el concepto.'
+      } else if (concepto.length > 100) {
+        errores[`deducciones.${indice}.concepto`] = 'Máximo 100 caracteres.'
+      }
+
+      if (monto === '') {
+        errores[`deducciones.${indice}.monto`] = 'Indique el monto.'
+      } else if (!/^\d+(\.\d{1,2})?$/.test(monto)) {
+        errores[`deducciones.${indice}.monto`] = 'Debe ser un número con hasta 2 decimales.'
+      } else if (Number(monto) > 99999999.99) {
+        errores[`deducciones.${indice}.monto`] = 'El monto supera el máximo permitido.'
+      }
+    })
+
+    return errores
+  }
+
+  const { setErrors, errors, values, setFieldValue } = useForm<ValoresCaptura>({
+    initialValues: valoresPorDefecto(),
+    // Las secciones se desmontan al pasar de paso en el wizard: sin esto
+    // vee-validate borraria los valores de los pasos ya visitados.
+    keepValuesOnUnmount: true,
+  })
+
+  /**
+   * Valida el formulario COMPLETO contra el espejo del backend. Es la misma
+   * funcion para el avance de pasos (que filtra solo su subset) y para el
+   * envio final, de modo que un dato valido en un paso sigue validandose al
+   * enviar y el server 422 es informacion nueva, no un detalle repetido.
+   */
+  function validar(v: ValoresCaptura): Record<string, string> {
+    const fallas: Record<string, string> = {}
+
+    for (const [campo, regla] of Object.entries(REGLAS)) {
+      const resultado = regla(v[campo as keyof ValoresCaptura])
+
+      if (resultado !== true) {
+        fallas[campo] = resultado
+      }
+    }
+
+    return { ...fallas, ...validarDeducciones() }
+  }
+
+  const resultado = computed<ResultadoCalculo>(() => {
+    const leyFraccion = porcentajeAFraccion(String(values.ley_pagable ?? ''))
+
+    return calcular(
+      {
+        peso_gramos: String(values.peso_gramos ?? ''),
+        ley_pagable: leyFraccion,
+        tipo_cambio: String(values.tipo_cambio ?? ''),
+        cotizacion_usd_oz_t: String(values.cotizacion_usd_oz_t ?? ''),
+        aplica_caja_salud: values.aplica_caja_salud === true,
+        deducciones: deducciones
+          .filter((fila) => fila.monto.trim() !== '')
+          .map((fila) => fila.monto.trim()),
+      },
+      catalogos.gramosPorOnzaTroy,
+      catalogos.alicuotaAporte,
+    )
+  })
+
+  function error(campo: string): string | undefined {
+    if (!intentado.value && !tocados[campo]) {
+      return undefined
+    }
+
+    return (errors.value as Record<string, string | undefined>)[campo]
+  }
+
+  function visible(campo: string): boolean {
+    return error(campo) !== undefined
+  }
+
+  function tocar(campo: string): void {
+    tocados[campo] = true
+  }
+
+  function asignar(campo: keyof ValoresCaptura, valor: unknown): void {
+    setFieldValue(campo, valor as never)
+    tocados[campo] = true
+  }
+
+  function enlazar(campo: keyof ValoresCaptura): {
+    modelValue: any
+    'onUpdate:modelValue': (valor: any) => void
+  } {
+    return {
+      get modelValue() {
+        return values[campo]
+      },
+      'onUpdate:modelValue': (valor: unknown) => {
+        asignar(campo, valor)
+      },
+    }
+  }
+
+  async function validarPaso(): Promise<boolean> {
+    const paso = PASOS[pasoActual.value]
+    const fallas = validar(values as unknown as ValoresCaptura)
+    setErrors(fallas)
+
+    let fallo = false
+    for (const campo of paso.campos) {
+      tocados[campo] = true
+      if (fallas[campo]) {
+        fallo = true
+      }
+    }
+
+    if (paso.id === 'tecnico') {
+      for (const clave of Object.keys(fallas)) {
+        if (clave.startsWith('deducciones.') && fallas[clave]) {
+          fallo = true
+        }
+      }
+    }
+
+    return !fallo
+  }
+
+  async function irAPaso(indice: number): Promise<boolean> {
+    // Solo se puede saltar hacia adelante validando todos los pasos previos.
+    while (pasoActual.value < indice) {
+      const paso = pasoActual.value
+      const valido = await validarPaso()
+
+      if (!valido) {
+        pasoActual.value = paso
+        return false
+      }
+
+      pasoActual.value = paso + 1
+    }
+
+    pasoActual.value = indice
+    return true
+  }
+
+  function agregarDeduccion(): void {
+    deducciones.push({ concepto: '', monto: '' })
+  }
+
+  function quitarDeduccion(indice: number): void {
+    deducciones.splice(indice, 1)
+
+    if (deducciones.length === 0) {
+      deducciones.push({ concepto: '', monto: '' })
+    }
+  }
+
+  function armarPayload(valores: ValoresCaptura): LiquidacionPayload {
+    const renglones = deducciones
+      .filter((fila) => fila.concepto.trim() !== '' && fila.monto.trim() !== '')
+      .map((fila) => ({ concepto: fila.concepto.trim(), monto: fila.monto.trim() }))
+
+    const texto = (valor: string | null | undefined): string => (valor ?? '').trim()
+    const id = (campo: keyof ValoresCaptura): number => Number(valores[campo]) || 0
+
+    return {
+      numero_documento: texto(valores.numero_documento) || null,
+      fecha_transaccion: valores.fecha_transaccion,
+      observaciones: texto(valores.observaciones) || null,
+      tipo_cambio: texto(valores.tipo_cambio),
+      cotizacion_usd_oz_t: texto(valores.cotizacion_usd_oz_t),
+      cotizacion_id: valores.cotizacion_id ?? null,
+      aplica_caja_salud: valores.aplica_caja_salud,
+      peso_gramos: texto(valores.peso_gramos),
+      ley_pagable: porcentajeAFraccion(texto(valores.ley_pagable)),
+      deducciones: renglones,
+      comprador_razon_social: texto(valores.comprador_razon_social),
+      comprador_nim: texto(valores.comprador_nim) || null,
+      comprador_nit: texto(valores.comprador_nit) || null,
+      vendedor_ci: texto(valores.vendedor_ci),
+      vendedor_persona_id: id('vendedor_persona_id'),
+      area_minera_id: id('area_minera_id'),
+      departamento_id: id('departamento_id'),
+      provincia_id: id('provincia_id'),
+      municipio_id: id('municipio_id'),
+      localidad_id: id('localidad_id'),
+      codigo_municipio: texto(valores.codigo_municipio) || null,
+      codigo_ajam_patente: texto(valores.codigo_ajam_patente) || null,
+      presentacion_mineral_id: id('presentacion_mineral_id'),
+    }
+  }
+
+  /**
+   * Envio final: valida TODO el formulario (incluso pasos desmontados en el
+   * wizard) y, si pasa, delega el guardado en `guardar`. Un 422 del backend
+   * se mapea campo por campo y se marca como tocado para que el error se
+   * vea donde corresponde.
+   */
+  async function enviar(): Promise<void> {
+    const fallas = validar(values as unknown as ValoresCaptura)
+    setErrors(fallas)
+
+    if (Object.keys(fallas).length > 0) {
+      for (const clave of Object.keys(fallas)) {
+        tocados[clave] = true
+      }
+
+      return
+    }
+
+    enviando.value = true
+    mensajeError.value = ''
+
+    try {
+      await opciones.guardar(armarPayload(values as unknown as ValoresCaptura))
+    } catch (errorDeRed) {
+      const porCampo = erroresDeValidacion(errorDeRed)
+
+      if (Object.keys(porCampo).length > 0) {
+        setErrors(porCampo)
+
+        for (const clave of Object.keys(porCampo)) {
+          tocados[clave] = true
+        }
+      }
+
+      mensajeError.value = Object.values(porCampo)[0] ?? 'No se pudo guardar la liquidación.'
+    } finally {
+      enviando.value = false
+    }
+  }
+
+  /**
+   * Defaults al abrir (8.2 y 8.3): tipo de cambio sugerido, cotizacion
+   * quincenal mas reciente y los tres datos fijos del comprador, que vienen
+   * de parametros_generales (celdas C11-C13 de hoja.xlsx).
+   */
+  function aplicarDefaults(): void {
+    if (!values.tipo_cambio && catalogos.tipoCambioDefecto) {
+      setFieldValue('tipo_cambio', catalogos.tipoCambioDefecto)
+    }
+
+    if (!values.cotizacion_usd_oz_t && catalogos.cotizacionSugerida) {
+      setFieldValue('cotizacion_usd_oz_t', catalogos.cotizacionSugerida.valor_usd_oz_t)
+      setFieldValue('cotizacion_id', catalogos.cotizacionSugerida.id)
+    }
+
+    const comprador = catalogos.compradorFijo
+
+    if (!values.comprador_razon_social && comprador.razonSocial) {
+      setFieldValue('comprador_razon_social', comprador.razonSocial)
+      setFieldValue('comprador_nim', comprador.nim)
+      setFieldValue('comprador_nit', comprador.nit)
+    }
+  }
+
+  return {
+    valores: values as unknown as ValoresCaptura,
+    errores: errors as unknown as Ref<Record<string, string | undefined>>,
+    tocados,
+    intentado,
+    enviando,
+    mensajeError,
+    pasoActual,
+    deducciones,
+    resultado,
+    enlazar,
+    error,
+    visible,
+    tocar,
+    asignar,
+    validarPaso,
+    irAPaso,
+    agregarDeduccion,
+    quitarDeduccion,
+    enviar,
+    aplicarDefaults,
+  }
+}

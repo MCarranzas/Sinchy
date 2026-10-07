@@ -11,6 +11,13 @@ import EnConstruccionView from '@/views/EnConstruccionView.vue'
 import LoginView from '@/views/LoginView.vue'
 import NoAutorizadoView from '@/views/NoAutorizadoView.vue'
 import NoEncontradoView from '@/views/NoEncontradoView.vue'
+import CreateView from '@/views/Liquidaciones/CreateView.vue'
+import EditView from '@/views/Liquidaciones/EditView.vue'
+import IndexView from '@/views/Liquidaciones/IndexView.vue'
+import ShowView from '@/views/Liquidaciones/ShowView.vue'
+
+/** Rutas (name) que dejan de ser provisionales en esta fase. */
+const MODULOS_CONSTRUIDOS = new Set(['liquidaciones', 'liquidaciones-nueva'])
 
 /**
  * Rutas de los modulos que todavia no se construyen. Se derivan del menu para
@@ -20,6 +27,10 @@ import NoEncontradoView from '@/views/NoEncontradoView.vue'
  */
 const rutasModulos: RouteRecordRaw[] = menuPrincipal
   .filter((item) => item.ruta !== '/')
+  .filter((item) => {
+    const nombre = item.ruta.slice(1).replace(/\//g, '-')
+    return !MODULOS_CONSTRUIDOS.has(nombre)
+  })
   .map((item) => ({
     path: item.ruta,
     name: item.ruta.slice(1).replace(/\//g, '-'),
@@ -66,6 +77,32 @@ const rutas: RouteRecordRaw[] = [
         component: DashboardView,
         meta: { titulo: 'Inicio' },
       },
+      // ---------------------------------------------------- Liquidaciones
+      {
+        path: '/liquidaciones',
+        name: 'liquidaciones',
+        component: IndexView,
+        meta: { titulo: 'Liquidaciones', permiso: 'liquidaciones.ver' },
+      },
+      {
+        path: '/liquidaciones/nueva',
+        name: 'liquidaciones-nueva',
+        component: CreateView,
+        meta: { titulo: 'Nueva liquidación', permiso: 'liquidaciones.crear' },
+      },
+      {
+        path: '/liquidaciones/:id',
+        name: 'liquidaciones-detalle',
+        component: ShowView,
+        meta: { titulo: 'Detalle de liquidación', permiso: 'liquidaciones.ver' },
+      },
+      {
+        path: '/liquidaciones/:id/editar',
+        name: 'liquidaciones-editar',
+        component: EditView,
+        meta: { titulo: 'Editar liquidación', permiso: 'liquidaciones.editar' },
+      },
+      // -------------------------------------------------------
       ...rutasModulos,
     ],
   },
