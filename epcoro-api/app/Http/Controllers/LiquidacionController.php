@@ -80,7 +80,11 @@ class LiquidacionController extends Controller
 
         $this->filtrar($consulta, $request);
 
-        $pagina = max(1, (int) $request->integer('pagina', 1));
+        // `page` es el nombre con el que el paginador GENERA los links
+        // (?page=2), asi que es con el que hay que LEERLO: con `pagina` el
+        // navegador pedia la pagina 2 y el backend devolvia siempre la 1.
+        // Se conserva `pagina` como alias por compatibilidad con api.md.
+        $pagina = max(1, (int) $request->integer('page', $request->integer('pagina', 1)));
         $porPagina = min(100, max(1, (int) $request->integer('por_pagina', 15)));
 
         $paginator = $consulta->paginate($porPagina, ['*'], 'page', $pagina);

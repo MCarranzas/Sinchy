@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\BandejaController;
 use App\Http\Controllers\CatalogoController;
 use App\Http\Controllers\LiquidacionController;
 use App\Http\Controllers\ParametrosController;
@@ -91,6 +92,9 @@ Route::prefix('v1')->middleware('auth:sanctum')->name('v1.')->group(function () 
     Route::put('/parametros', [ParametrosController::class, 'update'])->name('parametros.update');
 
     // --------------------------------------------------- liquidaciones
+    // `/bandeja` va antes de `/liquidaciones/{liquidacion}`: como es una
+    // ruta fija, si se declarara despues Laravel la resolveria como un id.
+    Route::get('/bandeja', [BandejaController::class, '__invoke'])->name('bandeja');
     Route::get('/liquidaciones', [LiquidacionController::class, 'index'])->name('liquidaciones.index');
     Route::post('/liquidaciones', [LiquidacionController::class, 'store'])->name('liquidaciones.store');
     Route::get('/liquidaciones/{liquidacion}', [LiquidacionController::class, 'show'])

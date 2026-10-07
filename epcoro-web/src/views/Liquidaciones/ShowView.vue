@@ -1,22 +1,34 @@
 <script setup lang="ts">
 /**
- * Detalle de una liquidacion (8.11 y 8.12).
+ * Detalle de una liquidacion (8.11 y 8.12 + FASE 9).
  *
  * Todo lo que puede necesitar el tecnico que capturo O el que revisa: datos
  * completos, desglose del calculo (lo que persistio el backend, T3), el
- * historial de estados y las descargas PDF/Excel. La edicion solo aparece
- * si el estado lo admite (creado / en_correccion).
+ * historial de estados y las descargas PDF/Excel. La barra de acciones
+ * (9.1) se pinta con lo que el recurso promete en `transiciones_disponibles`
+ * y, al ejecutar una, el detalle se refresca con lo que el backend devuelve.
+ *
+ * La edicion solo aparece para el AUTOR y mientras el estado lo admita
+ * (creado / en_correccion) y el usuario tenga el permiso (9.4).
  */
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 
 import BadgeEstado from '@/components/BadgeEstado.vue'
-import { historialLiquidacion, obtenerLiquidacion, urlExcel, urlPdf } from '@/api/liquidaciones.api'
+import BarraEstado from '@/components/liquidacion/BarraEstado.vue'
+import HistorialEstados from '@/components/liquidacion/HistorialEstados.vue'
+import ModalTransicion from '@/components/liquidacion/ModalTransicion.vue'
 import { mensajeDeError } from '@/api/axios'
+import { historialLiquidacion, obtenerLiquidacion, transicionarLiquidacion, urlExcel, urlPdf } from '@/api/liquidaciones.api'
 import { bs, fecha, fechaHora, gramos, numero } from '@/utils/formato'
 import { ESTADOS_EDITABLES } from '@/types/liquidacion'
-import type { HistorialEstado, Liquidacion } from '@/types/liquidacion'
+import type { EstadoLiquidacion, HistorialEstado, Liquidacion, TransicionPayload } from '@/types/liquidacion'
+import { accionTransicion } from '@/utils/transiciones'
+import type { AccionTransicion } from '@/utils/transiciones'
+import { useAuthStore } from '@/stores/auth'
 import AppIcon from '@/components/AppIcon.vue'
+
+const auth = useAuthStore()
 
 const route = useRoute()
 const id = Number(route.params.id)
@@ -26,23 +38,75 @@ const historial = ref<HistorialEstado[]>([])
 const cargando = ref(true)
 const error = ref('')
 
-const editable = ref(false)
+// ----------------------------------------------------- barra de estado (9.1)
+const accionPendiente = ref<AccionTransicion | null>(null)
+const modalAbierto = ref(false)
+const enviandoTransicion = ref(false)
+const aviso = ref('')
+
+/** El autor de la fila, para decidir que puede tocar la barra de accion. */
+const esPropia = computed(
+  () => liquidacion.value?.auditoria.registrado_por?.id === auth.usuario?.id,
+)
+
+const editable = computed(() => {
+  const actual = liquidacion.value
+  if (!actual) {
+    return false
+  }
+
+  return ESTADOS_EDITABLES.includes(actual.estado)
+    && esPropia.value
+    && auth.puede('liquidaciones.editar')
+})
+
+async function cargar(): Promise<void> {
+  const [detalle, filas] = await Promise.all([
+    obtenerLiquidacion(id),
+    historialLiquidacion(id),
+  ])
+
+  liquidacion.value = detalle
+  historial.value = filas
+}
 
 onMounted(async () => {
   try {
-    const [detalle, filas] = await Promise.all([
-      obtenerLiquidacion(id),
-      historialLiquidacion(id),
-    ])
-    liquidacion.value = detalle
-    historial.value = filas
-    editable.value = ESTADOS_EDITABLES.includes(detalle.estado)
+    await cargar()
   } catch (fallo) {
     error.value = mensajeDeError(fallo)
   } finally {
     cargando.value = false
   }
 })
+
+function abrirAccion(destino: EstadoLiquidacion): void {
+  if (!liquidacion.value) {
+    return
+  }
+
+  accionPendiente.value = accionTransicion(liquidacion.value.estado, destino)
+  modalAbierto.value = true
+}
+
+async function ejecutarTransicion(payload: TransicionPayload): Promise<void> {
+  enviandoTransicion.value = true
+  error.value = ''
+
+  try {
+    const actualizado = await transicionarLiquidacion(id, payload)
+    liquidacion.value = actualizado
+    historial.value = await historialLiquidacion(id)
+    modalAbierto.value = false
+    aviso.value = 'Movimiento registrado. La liquidación quedó en “'
+      + (actualizado.estado_label ?? payload.estado_destino)
+      + '”.'
+  } catch (fallo) {
+    error.value = mensajeDeError(fallo)
+  } finally {
+    enviandoTransicion.value = false
+  }
+}
 </script>
 
 <template>
@@ -101,6 +165,13 @@ onMounted(async () => {
           </a>
         </div>
       </div>
+
+      <p v-if="aviso" class="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+        {{ aviso }}
+      </p>
+
+      <!-- Estado y acciones del flujo (9.1) -->
+      <BarraEstado :liquidacion="liquidacion" @accion="abrirAccion" />
 
       <div class="grid gap-4 lg:grid-cols-2">
         <!-- Personas -->
@@ -292,23 +363,17 @@ onMounted(async () => {
 
         <section class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">Historial</h2>
-          <ol v-if="historial.length" class="relative space-y-3 border-l border-slate-200 pl-4">
-            <li v-for="fila in historial" :key="fila.id" class="relative">
-              <span class="absolute -left-[1.35rem] top-1 h-2.5 w-2.5 rounded-full bg-marca-500" />
-              <p class="text-sm font-medium text-slate-800">
-                {{ fila.estado_anterior ?? '—' }}
-                <span class="text-slate-400">→</span>
-                {{ fila.estado_nuevo }}
-              </p>
-              <p class="text-xs text-slate-500">
-                {{ fila.usuario.nombre_completo }} · {{ fechaHora(fila.fecha) }}
-              </p>
-              <p v-if="fila.comentario" class="text-xs text-slate-600">“{{ fila.comentario }}”</p>
-            </li>
-          </ol>
-          <p v-else class="text-sm text-slate-500">Sin movimientos registrados.</p>
+          <HistorialEstados :filas="historial" />
         </section>
       </div>
     </template>
+
+    <ModalTransicion
+      :abierto="modalAbierto"
+      :accion="accionPendiente"
+      :enviando="enviandoTransicion"
+      @cancelar="modalAbierto = false"
+      @confirmar="ejecutarTransicion"
+    />
   </div>
 </template>

@@ -14,6 +14,8 @@ class DatabaseSeeder extends Seeder
      *    usuario falla si el rol todavia no existe.
      *  - Los catalogos antes que cualquier seeder que los referencie.
      *  - ParametrosSeeder al final: es el que deja listo el formulario.
+     *  - UsuariosEjemploSeeder despues de AdminSeeder: son las cuentas del
+     *    flujo de estados (FASE 9) y no deben pisar al administrador.
      */
     public function run(): void
     {
@@ -23,6 +25,7 @@ class DatabaseSeeder extends Seeder
             PresentacionesSeeder::class,
             ParametrosSeeder::class,
             AdminSeeder::class,
+            UsuariosEjemploSeeder::class,
         ]);
     }
 }

@@ -12,6 +12,7 @@ import type { UbicacionArea } from '@/types/catalogos'
 export type EstadoLiquidacion =
   | 'creado'
   | 'en_revision'
+  | 'revisado'
   | 'en_correccion'
   | 'aprobado'
   | 'rechazado'
@@ -22,6 +23,7 @@ export type EstadoLiquidacion =
 export const ETIQUETAS_ESTADO: Record<EstadoLiquidacion, string> = {
   creado: 'Creado',
   en_revision: 'En revisión',
+  revisado: 'Revisado',
   en_correccion: 'En corrección',
   aprobado: 'Aprobado',
   rechazado: 'Rechazado',
@@ -155,10 +157,35 @@ export interface FiltrosLiquidacion {
   area_minera_id?: number | null
   vendedor_id?: number | null
   q?: string
+  registrado_por?: number | string
   orden?: 'fecha' | 'numero' | 'neto' | 'bruto'
   direccion?: 'asc' | 'desc'
   page?: number
   por_pagina?: number
+}
+
+/**
+ * Conteos de la bandeja (GET /api/v1/bandeja, FASE 9.5). El backend pone en
+ * cero las colas que el rol del usuario no puede tocar, asi que la UI no
+ * necesita saber de permisos para esconder pestanas: las esconde cuando el
+ * conteo de la cola es irrelevante para su rol.
+ */
+export interface BandejaConteos {
+  mis_liquidaciones: number
+  por_revisar: number
+  por_aprobar: number
+}
+
+/** Payload del POST /liquidaciones/{id}/transiciones (TransicionRequest). */
+export interface TransicionPayload {
+  estado_destino: EstadoLiquidacion
+  /** Opcional siempre: es el comentario de la fila de historial. */
+  comentario?: string
+  /**
+   * Obligatorio en `rechazado` y `anulado`: es la razon que el tecnico
+   * necesita para saber que arreglar. En el resto de destinos no se manda.
+   */
+  motivo?: string
 }
 
 export interface HistorialEstado {

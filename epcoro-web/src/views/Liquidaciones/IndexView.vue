@@ -121,6 +121,7 @@ const esUltima = computed(() => Number(route.query.page ?? 1) >= (pagina.value?.
 const opcionesEstado: { valor: string; etiqueta: string }[] = [
   { valor: 'creado', etiqueta: ETIQUETAS_ESTADO.creado },
   { valor: 'en_revision', etiqueta: ETIQUETAS_ESTADO.en_revision },
+  { valor: 'revisado', etiqueta: ETIQUETAS_ESTADO.revisado },
   { valor: 'en_correccion', etiqueta: ETIQUETAS_ESTADO.en_correccion },
   { valor: 'aprobado', etiqueta: ETIQUETAS_ESTADO.aprobado },
   { valor: 'rechazado', etiqueta: ETIQUETAS_ESTADO.rechazado },

@@ -210,10 +210,10 @@ Listado paginado. Filtros (todos opcionales):
 | `registrado_por` | Id del usuario que registro                        |
 | `q`              | Busqueda libre                                     |
 | `orden`          | `fecha`, `numero`, `neto`, `bruto` (con `-` para desc) |
-| `pagina`         | Numero de pagina                                   |
+| `page`           | Numero de pagina (estandar Laravel: los `links` del paginador ya apuntan a `?page=N`) |
 | `por_pagina`     | 15 por defecto, maximo 100                          |
 
-Respuesta: `{ "data": [...], "meta": { "pagina", "por_pagina", "total", ... } }`.
+Respuesta: `{ "data": [...], "links": {...}, "meta": { "current_page", "per_page", "total", "last_page", ... } }`. (`pagina` se acepta como alias de `page` por compatibilidad.)
 
 Los tecnicos ven solo lo propio (`registrado_por` = ellos); los que tienen
 `liquidaciones.ver_todas` ven todo. Las eliminadas no aparecen.
@@ -268,11 +268,15 @@ El formulario oficial en Excel. `200`
 
 ### `POST /api/v1/liquidaciones/{id}/transiciones`
 
-Aplica una transicion de estado (seccion 6.7). Validaciones: estado actual
-(`422` si no es alcanzable) y permiso (`403`).
+Aplica una transicion de estado (seccion 6.7). Validaciones en orden fijo:
+primero el **estado** (`422` si el actual no admite el destino o no es
+editable) y recien despues el **permiso** (`403`): un no-tecnico que intenta
+editar lo editar-lo-ajeno recibe 403, pero sobre una liquidacion aprobada
+recibe 422 por estado.
 
 - Body: `{ "estado_destino": "aprobado", "comentario"?: string, "motivo"?: string }`.
-- `motivo` es obligatorio para `rechazado` (asentado como `motivo_rechazo`).
+- `motivo` es obligatorio para `rechazado` (asentado como `motivo_rechazo`)
+  y para `anulado` (asentado como `motivo_anulacion`).
 - `200` con `{ "message": "Transicion aplicada: en_revision -> rechazado.",
   "data": <recurso> }`.
 
@@ -288,15 +292,40 @@ Comentario en el flujo (permiso `liquidaciones.comentar`, revisor).
 
 ### `GET /api/v1/liquidaciones/{id}/historial`
 
-Bitacora de cambios de estado, mas reciente primero:
+Bitacora de cambios de estado, en orden cronologico (primera transicion primero):
 
 ```json
 { "data": [
   { "id": 2, "estado_anterior": "creado", "estado_nuevo": "en_revision",
-    "comentario": null, "usuario": { "id": 1, "nombre_completo": "...", "username": "..." },
-    "registrado_en": "2026-01-15T10:00:00-04:00" }
+    "comentario": null, "usuario": { "id": 1, "nombre_completo": "..." },
+    "fecha": "2026-01-15T10:00:00-04:00" }
 ] }
 ```
+
+`fecha` sigue el orden de los registros (`id`), mas reciente al final.
+
+### `GET /api/v1/bandeja`
+
+Conteos de las colas del flujo para el usuario de la sesion (permiso: estar
+autenticado). El backend pone en **cero** la cola que el rol no puede tocar,
+asi la UI esconde la pestana sin duplicar logica de permisos:
+
+```json
+{ "data": {
+  "mis_liquidaciones": 6,
+  "por_revisar": 2,
+  "por_aprobar": 1
+} }
+```
+
+- `mis_liquidaciones`: las que el usuario registro (propiedad; siempre).
+- `por_revisar`: estado `en_revision`, solo si el rol tiene
+  `liquidaciones.revisar` o `liquidaciones.solicitar_correccion`.
+- `por_aprobar`: estado `revisado`, solo si el rol tiene `liquidaciones.aprobar`.
+
+Las listas de cada cola se piden al mismo `GET /api/v1/liquidaciones`:
+`?registrado_por=<id>` para mis liquidaciones y `?estado=en_revision` /
+`?estado=revisado` para las otras dos.
 
 ## Reportes
 

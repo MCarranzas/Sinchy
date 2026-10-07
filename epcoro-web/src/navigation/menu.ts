@@ -41,11 +41,10 @@ export const menuPrincipal: ItemMenu[] = [
     descripcion: 'Captura de una nueva liquidación de venta de mineral.',
   },
   {
-    titulo: 'Revisión',
-    ruta: '/revision',
-    icono: 'sello',
-    permiso: 'liquidaciones.revisar',
-    descripcion: 'Bandeja de liquidaciones enviadas a revisión.',
+    titulo: 'Mi bandeja',
+    ruta: '/bandeja',
+    icono: 'bandeja',
+    descripcion: 'Mis liquidaciones, las que esperan revisión y las listas para aprobar.',
   },
   {
     titulo: 'Reportes',

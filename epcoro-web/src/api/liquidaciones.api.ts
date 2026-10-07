@@ -8,10 +8,12 @@
 
 import { api } from '@/api/axios'
 import type {
+  BandejaConteos,
   FiltrosLiquidacion,
   HistorialEstado,
   Liquidacion,
   LiquidacionPayload,
+  TransicionPayload,
 } from '@/types/liquidacion'
 
 /** Lo que Laravel devuelve en `links`/`meta` del paginador. */
@@ -69,6 +71,30 @@ export async function historialLiquidacion(id: number): Promise<HistorialEstado[
 
 export async function observarLiquidacion(id: number, comentario: string): Promise<void> {
   await api.post(`/liquidaciones/${id}/observaciones`, { comentario })
+}
+
+/**
+ * Mueve una liquidacion por la maquina de estados (9.1).
+ *
+ * El backend devuelve el recurso recalculado (con su nuevo estado y sus
+ * `transiciones_disponibles`), asi que el detalle se refresca con la misma
+ * respuesta y no hace falta una segunda peticion de lectura.
+ */
+export async function transicionarLiquidacion(id: number, payload: TransicionPayload): Promise<Liquidacion> {
+  const { data } = await api.post<{ message: string; data: Liquidacion }>(
+    `/liquidaciones/${id}/transiciones`,
+    payload,
+  )
+  return data.data
+}
+
+/**
+ * Conteos de la bandeja (9.5). El backend deja en cero la cola que el rol no
+ * puede tocar, y la vista esconde esa pestana.
+ */
+export async function obtenerBandeja(): Promise<BandejaConteos> {
+  const { data } = await api.get<{ data: BandejaConteos }>('/bandeja')
+  return data.data
 }
 
 export async function eliminarLiquidacion(id: number): Promise<void> {

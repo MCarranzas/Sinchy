@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\EstadoLiquidacion;
+use App\Exceptions\RegistroNoEditableException;
 use App\Http\Requests\Concerns\ValidaUbicacionDelArea;
 use App\Models\Liquidacion;
 use Illuminate\Contracts\Validation\Validator;
@@ -31,9 +33,47 @@ class UpdateLiquidacionRequest extends FormRequest
 {
     use ValidaUbicacionDelArea;
 
+    /**
+     * Orden documentado en LiquidacionController: ESTADO primero (422),
+     * despues PERMISO (403), y recien ahi la validacion.
+     *
+     * Si aqui se cortara con el permiso, un gerente (que no tiene
+     * `liquidaciones.editar`) que intente tocar una aprobada recibira 403 y
+     * la pantalla no podria distinguir "usted no puede editar" de "este
+     * expediente ya esta cerrado". Ademas se resuelve ANTES de validar: una
+     * fila no editable no admite ningun payload, ni siquiera uno invalido.
+     *
+     * @throws RegistroNoEditableException si la fila es de solo lectura
+     */
     public function authorize(): bool
     {
+        $this->cortarPorEstado();
+
         return $this->user()?->can('liquidaciones.editar') ?? false;
+    }
+
+    /**
+     * El mismo corte que hace `sinEscritura()` en el controlador, pero aqui
+     * llega primero: el FormRequest se resuelve antes del cuerpo del
+     * metodo, y sin esto el orden 422 -> 403 quedaria invertido.
+     *
+     * @throws RegistroNoEditableException
+     */
+    private function cortarPorEstado(): void
+    {
+        $liquidacion = $this->route('liquidacion');
+
+        if (! $liquidacion instanceof Liquidacion) {
+            return;
+        }
+
+        if ($liquidacion->estado === EstadoLiquidacion::Aprobado) {
+            throw RegistroNoEditableException::aprobada();
+        }
+
+        if (! $liquidacion->estado->esEditable()) {
+            throw RegistroNoEditableException::porEstado($liquidacion->estado);
+        }
     }
 
     /**

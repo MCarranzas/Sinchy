@@ -2360,3 +2360,98 @@ ESTADO    : OK (cerrada). DESVIACION ANOTADA: los filtros del IndexView
             omiten municipio y vendedor (quedan pendientes por acotar la
             fase); la edicion carga el detalle completo y reenvia el payload
             con numero_documento inmutable emitido por el sistema.
+
+################################################################################
+# FASE 9 - FLUJO DE ESTADOS Y PERMISOS
+################################################################################
+
+### [117] 2026-10-07 15:24 - FASE 9 / APERTURA Y AUDITORIA DE PARTIDA
+OBJETIVO  : Abrir la FASE 9 y reconstruir el estado previo antes de tocar nada:
+            (a) que ya entrega el backend para transiciones, permisos y
+            historial, (b) que ya hay en el frontend, (c) que falta para los
+            puntos 9.1 a 9.7 de instrucciones.txt (lineas 1458-1472).
+COMANDO   : inspeccion de routes/api.php, TransicionController, Policy,
+            TransicionesDisponibles, LiquidacionResource, EstadoLiquidacion,
+            seeders y tests; estructura de epcoro-web/src, ShowView.vue,
+            liquidaciones.api.ts, types/liquidacion.ts, stores/auth.ts,
+            router y menu
+RESULTADO : (a) Backend MAYORMENTE LISTO: POST /liquidaciones/{id}/transiciones
+            valida estado (422) -> habilidad -> Policy (403) en ese orden;
+            transiciones_disponibles se calcula por usuario en
+            LiquidacionResource (enum del origen intersectado con Policy);
+            GET /historial y POST /observaciones listos; bloqueo de edicion
+            por estado ya implementado y probado (sinEscritura() en el
+            controlador + Policy::update con esEditable() + tests 422/403).
+            TransicionRequest exige `motivo` en rechazado y anulado
+            (comentario siempre opcional, max 2000).
+            (b) Frontend: ShowView pinta BadgeEstado, Editar/PDF/Excel,
+            observaciones de captura, auditoria y una lista plana del
+            historial (valores crudos en snake_case); el tipo del recurso ya
+            declara transiciones_disponibles pero NADIE lo lee ni lo pinta;
+            api/liquidaciones.api.ts no tiene el POST de transiciones;
+            stores/auth.ts ya expone puede(permiso).
+            (c) FALTA: 9.1 BarraEstado.vue (no existe); 9.2 modal de
+            transicion (no hay ningun dialog/Teleport en el proyecto);
+            9.3 timeline con etiquetas y badges; 9.4 permisos/propiedad en
+            la UI (hoy ShowView solo mira el estado, no el permiso); 9.5
+            "Mi bandeja" (no existe ni la ruta ni el endpoint de conteos);
+            9.7 matriz rol x transicion x propiedad (hoy los casos estan
+            dispersos en 3 archivos, sin data provider) ni seeder de los
+            4 usuarios de ejemplo (solo existe AdminSeeder con 1 admin).
+            BUG DETECTADO: el estado `revisado` NO existe en
+            types/liquidacion.ts ni en BadgeEstado.vue, asi que el badge lo
+            pintaria como undefined.
+            MATIZ 9.6: UpdateLiquidacionRequest::authorize() devuelve 403
+            ANTES que el corte por estado (422) para quien no tiene
+            liquidaciones.editar; el docblock del controlador promete lo
+            contrario.
+            DESVIACIONES ABIERTAS de FASE 8 que se arrastran: filtros
+            municipio/vendedor del IndexView y comprobacion visual en
+            navegador.
+ESTADO    : OK (diagnostico). FASE 9 abierta.
+
+### [118] 2026-10-07 16:20 - FASE 9 / CIERRE
+OBJETIVO  : Completar 9.1-9.7 (frontend del flujo, bandeja, matriz de tests
+            y seeder) y cerrar la fase con verificacion en bloque.
+COMANDO   : (edicion) BarraEstado.vue, ModalTransicion.vue, HistorialEstados.vue,
+            BandejaView.vue, transiciones.ts, ShowView.vue, IndexView props,
+            BadgeEstado, menu.ts, router/index.ts, AppIcon.vue, api liquidaciones,
+            types/liquidacion.ts; vendor\bin\pint --test; vendor\bin\phpstan
+            analyse; php artisan test; npm run build; README; docs/api.md
+RESULTADO : (9.1) BarraEstado pinta botones desde `transiciones_disponibles`
+            con etiqueta humana (accionTransicion espejo de
+            TransicionesDisponibles::habilidad): "Solicitar corrección" solo
+            en en_revision; "Solo lectura" cuando no hay transiciones.
+            (9.2) ModalTransicion por Teleport: `motivo` obligatorio (422 en
+            el cliente tambien) para rechazado/anulado, comentario opcional
+            para el resto; boton Confirmar procesando.
+            (9.3) HistorialEstados: timeline con punto de color por estado,
+            etiquetas legibles (antes el ShowView pintaba los valores crudos).
+            (9.4) ShowView: editable = ESTADOS_EDITABLES + esPropia
+            (auditoria.registrado_por.id == auth.usuario.id) + permiso
+            liquidaciones.editar; tras cada transicion el detalle se refresca
+            con la respuesta del backend + historial, con aviso en verde.
+            (9.5) BandejaView con pestanas recortadas por permiso (las mismas
+            reglas de BandejaController) y listas sobre GET /liquidaciones
+            (registrado_por / estado); menu "Revisión /revision+permiso" ->
+            "Mi bandeja /bandeja SIN permiso" (icono bandeja en AppIcon);
+            MODULOS_CONSTRUIDOS += 'bandeja' y ruta literal antes de
+            ...rutasModulos.
+            (9.7) FlujoPermisosTest: 26 tests (matriz 20 casos rol x
+            transicion x propiedad via #[DataProvider], disponibles por
+            rol/propiedad, 9.6 estado-antes-que-permiso, bandeja por rol y
+            sin-sesion, paginacion page). UsuariosEjemploSeeder: 4 cuentas
+            demo (admin-tecnico-revisor-gerente), impresion de claves.
+            BUG CORREGIDO: `revisado` agregado a EstadoLiquidacion,
+            ETIQUETAS_ESTADO, paleta BadgeEstado y opciones del IndexView.
+            BUG CORREGIDO: paginacion (el backend leia ?pagina= pero los
+            links usan ?page=); ahora lee page con alias pagina, y api.md
+            documenta page. Otros docs: README fila FASE 9 + 153 tests;
+            api.md endpoint /bandeja, orden 422/403, page.
+            VERIFICACION: pint OK, phpstan OK (110), php artisan test:
+            153 passed / 804 assertions, npm run build OK (vue-tsc + vite).
+            Confirmado el matiz 9.6 de la apertura: editar lo no-editable
+            responde 422 antes que 403, y tambien para quien carece del
+            permiso de edicion.
+ESTADO    : OK. FASE 9 cerrada. Siguen pendientes heredados de FASE 8
+            (filtros municipio/vendedor y comprobacion visual en navegador).
