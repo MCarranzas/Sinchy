@@ -258,6 +258,51 @@ class LiquidacionApiTest extends AuthTestCase
             ->assertJsonCount(1, 'data');
     }
 
+    public function test_filtros_municipio_y_vendedor_recortan_la_lista(): void
+    {
+        $gerente = $this->gerente();
+        $tecnico = $this->tecnico();
+
+        // Una liquidacion que cae en un municipio Y de un vendedor concretos...
+        $area = AreaMinera::factory()->create();
+        $vendedor = Persona::factory()->create();
+        $buscada = $this->liquidacionDe($tecnico, [
+            'municipio_id' => $area->municipio_id,
+            'municipio_nombre' => $area->municipio->nombre,
+            'vendedor_persona_id' => $vendedor->id,
+            'vendedor_nombre' => $vendedor->nombre_completo,
+            'vendedor_ci' => (string) $vendedor->ci,
+        ]);
+
+        // ...y otra que no cae en ninguno de los dos.
+        $this->liquidacionDe($tecnico);
+
+        $porMunicipio = $this->identificarseComo($gerente, 'web')
+            ->getJson('/api/v1/liquidaciones?municipio_id='.$area->municipio_id)
+            ->assertOk()
+            ->assertJsonPath('meta.total', 1)
+            ->assertJsonPath('data.0.id', $buscada->id)
+            ->assertJsonCount(1, 'data');
+
+        $porVendedor = $this->identificarseComo($gerente, 'web')
+            ->getJson('/api/v1/liquidaciones?vendedor_id='.$vendedor->id)
+            ->assertOk()
+            ->assertJsonPath('meta.total', 1)
+            ->assertJsonPath('data.0.id', $buscada->id)
+            ->assertJsonCount(1, 'data');
+
+        // Combinados y con el resto de filtros siguen siendo un solo filtro.
+        $combinados = $this->identificarseComo($gerente, 'web')
+            ->getJson('/api/v1/liquidaciones?municipio_id='.$area->municipio_id.'&vendedor_id='.$vendedor->id.'&estado=creado')
+            ->assertOk()
+            ->assertJsonPath('meta.total', 1)
+            ->assertJsonPath('data.0.id', $buscada->id);
+
+        $this->assertSame($buscada->id, $porMunicipio->json('data.0.id'));
+        $this->assertSame($buscada->id, $porVendedor->json('data.0.id'));
+        $this->assertSame($buscada->id, $combinados->json('data.0.id'));
+    }
+
     public function test_un_estado_desconocido_en_el_filtro_responde_422_con_los_validos(): void
     {
         $gerente = $this->gerente();

@@ -24,6 +24,12 @@ export interface Municipio {
   provincia_id: number
   codigo: string | null
   nombre: string
+  /**
+   * Solo llegan con el buscador por `q` (filtro del listado): el detalle del
+   * autocompletado. En la cascada del formulario no se piden y vienen nulos.
+   */
+  provincia_nombre?: string | null
+  departamento_nombre?: string | null
 }
 
 export interface Localidad {

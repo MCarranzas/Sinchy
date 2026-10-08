@@ -12,12 +12,12 @@ import { RouterLink, useRoute, useRouter } from 'vue-router'
 
 import Autocompletar from '@/components/Autocompletar.vue'
 import BadgeEstado from '@/components/BadgeEstado.vue'
-import { buscarAreasMineras } from '@/api/catalogos.api'
+import { buscarAreasMineras, buscarMunicipios, buscarPersonas } from '@/api/catalogos.api'
 import { listarLiquidaciones, type PaginaLiquidaciones } from '@/api/liquidaciones.api'
 import { bs, fecha } from '@/utils/formato'
 import { mensajeDeError } from '@/api/axios'
 import { ETIQUETAS_ESTADO } from '@/types/liquidacion'
-import type { AreaMinera } from '@/types/catalogos'
+import type { AreaMinera, Municipio, Persona } from '@/types/catalogos'
 import type { OpcionBusqueda } from '@/components/Autocompletar.vue'
 
 const route = useRoute()
@@ -32,6 +32,8 @@ const estado = ref(String(route.query.estado ?? ''))
 const fechaDesde = ref(String(route.query.fecha_desde ?? ''))
 const fechaHasta = ref(String(route.query.fecha_hasta ?? ''))
 const areaMineraId = ref<number | null>(route.query.area_minera_id ? Number(route.query.area_minera_id) : null)
+const municipioId = ref<number | null>(route.query.municipio_id ? Number(route.query.municipio_id) : null)
+const vendedorId = ref<number | null>(route.query.vendedor_id ? Number(route.query.vendedor_id) : null)
 
 // ------------ area minera (filtro con autocompletado)
 const areas = ref<AreaMinera[]>([])
@@ -62,6 +64,65 @@ function quitarFiltroArea(): void {
   aplicar()
 }
 
+// ------------ municipio (filtro con autocompletado, 8.10)
+const municipios = ref<Municipio[]>([])
+const opcionesMunicipio = ref<OpcionBusqueda[]>([])
+const cargandoMunicipios = ref(false)
+
+async function buscarMunicipio(texto: string): Promise<void> {
+  cargandoMunicipios.value = true
+
+  try {
+    municipios.value = await buscarMunicipios(texto || undefined)
+    opcionesMunicipio.value = municipios.value.map((m) => ({
+      id: m.id,
+      titulo: m.nombre,
+      detalle:
+        [m.departamento_nombre, m.provincia_nombre].filter(Boolean).join(', ') || undefined,
+    }))
+  } finally {
+    cargandoMunicipios.value = false
+  }
+}
+
+function elegirMunicipio(opcion: OpcionBusqueda): void {
+  municipioId.value = opcion.id
+}
+
+function quitarFiltroMunicipio(): void {
+  municipioId.value = null
+  aplicar()
+}
+
+// ------------ vendedor (filtro con autocompletado, 8.10)
+const vendedores = ref<Persona[]>([])
+const opcionesVendedor = ref<OpcionBusqueda[]>([])
+const cargandoVendedores = ref(false)
+
+async function buscarVendedor(texto: string): Promise<void> {
+  cargandoVendedores.value = true
+
+  try {
+    vendedores.value = await buscarPersonas(texto || undefined)
+    opcionesVendedor.value = vendedores.value.map((p) => ({
+      id: p.id,
+      titulo: p.nombre_completo,
+      detalle: `CI ${p.ci}`,
+    }))
+  } finally {
+    cargandoVendedores.value = false
+  }
+}
+
+function elegirVendedor(opcion: OpcionBusqueda): void {
+  vendedorId.value = opcion.id
+}
+
+function quitarFiltroVendedor(): void {
+  vendedorId.value = null
+  aplicar()
+}
+
 // ---------------- carga de datos con los filtros de la URL
 async function cargar(): Promise<void> {
   cargando.value = true
@@ -76,6 +137,8 @@ async function cargar(): Promise<void> {
       fecha_desde: fechaDesde.value || undefined,
       fecha_hasta: fechaHasta.value || undefined,
       area_minera_id: areaMineraId.value ?? undefined,
+      municipio_id: municipioId.value ?? undefined,
+      vendedor_id: vendedorId.value ?? undefined,
       page: Number.isFinite(numeroPagina) && numeroPagina > 0 ? numeroPagina : 1,
       por_pagina: 12,
     })
@@ -96,6 +159,8 @@ function aplicar(): void {
       fecha_desde: fechaDesde.value || undefined,
       fecha_hasta: fechaHasta.value || undefined,
       area_minera_id: areaMineraId.value ?? undefined,
+      municipio_id: municipioId.value ?? undefined,
+      vendedor_id: vendedorId.value ?? undefined,
       page: undefined,
     },
   })
@@ -147,8 +212,8 @@ const opcionesEstado: { valor: string; etiqueta: string }[] = [
     </div>
 
     <!-- Filtros -->
-    <div class="mb-4 grid gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm sm:grid-cols-2 lg:grid-cols-5">
-      <div class="lg:col-span-1">
+    <div class="mb-4 grid gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm sm:grid-cols-2 lg:grid-cols-4">
+      <div class="lg:col-span-2">
         <label class="mb-1 block text-xs font-medium text-slate-600">Buscar</label>
         <input
           v-model="busqueda"
@@ -202,6 +267,50 @@ const opcionesEstado: { valor: string; etiqueta: string }[] = [
           @click="quitarFiltroArea"
         >
           Quitar filtro de área
+        </button>
+      </div>
+
+      <div>
+        <label class="mb-1 block text-xs font-medium text-slate-600">Municipio</label>
+        <Autocompletar
+          v-model="municipioId"
+          etiqueta=""
+          texto=""
+          :opciones="opcionesMunicipio"
+          :cargando="cargandoMunicipios"
+          placeholder="Buscar municipio…"
+          @buscar="buscarMunicipio"
+          @seleccion="elegirMunicipio"
+        />
+        <button
+          v-if="municipioId"
+          type="button"
+          class="mt-1 text-xs font-medium text-slate-500 hover:text-slate-700"
+          @click="quitarFiltroMunicipio"
+        >
+          Quitar filtro de municipio
+        </button>
+      </div>
+
+      <div>
+        <label class="mb-1 block text-xs font-medium text-slate-600">Vendedor</label>
+        <Autocompletar
+          v-model="vendedorId"
+          etiqueta=""
+          texto=""
+          :opciones="opcionesVendedor"
+          :cargando="cargandoVendedores"
+          placeholder="Buscar vendedor…"
+          @buscar="buscarVendedor"
+          @seleccion="elegirVendedor"
+        />
+        <button
+          v-if="vendedorId"
+          type="button"
+          class="mt-1 text-xs font-medium text-slate-500 hover:text-slate-700"
+          @click="quitarFiltroVendedor"
+        >
+          Quitar filtro de vendedor
         </button>
       </div>
     </div>

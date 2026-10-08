@@ -2455,3 +2455,35 @@ RESULTADO : (9.1) BarraEstado pinta botones desde `transiciones_disponibles`
             permiso de edicion.
 ESTADO    : OK. FASE 9 cerrada. Siguen pendientes heredados de FASE 8
             (filtros municipio/vendedor y comprobacion visual en navegador).
+
+### [119] 2026-10-07 17:10 - FASE 8 / CIERRE DE PENDIENTES
+OBJETIVO  : Cerrar los heredados de FASE 8 que quedaron abiertos al pasar a
+            la 9: filtros del listado por municipio y vendedor (8.10), y
+            aplazar la comprobacion visual al navegador (ver ESTADO).
+COMANDO   : (edicion) IndexView.vue, catalogos.api.ts, types/catalogos.ts,
+            CatalogoController::municipios, LiquidacionApiTest,
+            ReportesYCatalogosApiTest; luego pint, phpstan, artisan test,
+            npm run build.
+RESULTADO : (8.10) El listado ya filtraba por estado/fechas/area/busqueda
+            con paginacion por URL; faltaban los dos filtros de la seccion.
+            Ahora tambien filtra por Municipio y Vendedor, ambos con
+            Autocompletar (municipio: GET /catalogos/municipios?q= que
+            ademas devuelve provincia_nombre y departamento_nombre para el
+            detalle de cada opcion; vendedor: el ya existente /catalogos/
+            personas). Cada campo escribe su id en la URL (?municipio_id=,
+            ?vendedor_id=) y tiene su boton "Quitar filtro". El grid de
+            filtros pasa a 4 columnas con Buscar a media fila.
+            La cascada del formulario no cambia: sin `q` la respuesta de
+            municipios sigue siendo la lista completa sin recortes.
+            TEST: filtros_municipio_y_vendedor_recortan_la_lista (2 filas,
+            1 match solo con municipio_id / solo con vendedor_id / combinado)
+            y el_buscador_de_municipios_responde_a_q_con_su_ubicacion.
+            VERIFICACION: pint OK, phpstan OK (110), php artisan test:
+            155 passed / 810 assertions, npm run build OK (vue-tsc + vite).
+            El test del filtro estado desconocido (422) quedo restaurado en
+            su cuerpo (habia perdido el bloque al editar, se detecto solo).
+ESTADO    : OK. FASE 8 cerrada. Pendiente manual: comprobacion visual en el
+            navegador (decidido por el usuario: saltar el paso automatizado
+            con Playwright y revisar a mano). Datos demo creados en la BD de
+            desarrollo para esa revision: cuentas de UsuariosEjemploSeeder +
+            2 liquidaciones con historial (una en_revision y una aprobada).

@@ -48,14 +48,42 @@ class CatalogoController extends Controller
         );
     }
 
+    /**
+     * Municipios. Con `provincia_id` filtra como en la cascada del formulario;
+     * con `q` busca por nombre como el autocompletado del Index (8.10), y en
+     * ese modo trae tambien el nombre de la provincia y el departamento para
+     * el detalle de cada opcion. `limit(50)` solo vale cuando hay busqueda,
+     * para que la cascada nunca recorte una provincia.
+     */
     public function municipios(Request $request): JsonResponse
     {
-        return $this->lista(
-            Municipio::query()
-                ->when($request->filled('provincia_id'), fn ($q) => $q->where('provincia_id', $request->integer('provincia_id')))
-                ->orderBy('nombre')
-                ->get(['id', 'provincia_id', 'codigo', 'nombre'])
-        );
+        $municipios = Municipio::query()
+            ->with([
+                'provincia:id,nombre,departamento_id',
+                'provincia.departamento:id,nombre',
+            ])
+            ->when($request->filled('provincia_id'), fn ($q) => $q->where('provincia_id', $request->integer('provincia_id')))
+            ->when($request->filled('q'), function ($q) use ($request): void {
+                $busqueda = '%'.trim((string) $request->input('q')).'%';
+
+                $q->where(
+                    fn ($buscar) => $buscar
+                        ->where('nombre', 'ilike', $busqueda)
+                        ->orWhereHas('provincia', fn ($provincia) => $provincia->where('nombre', 'ilike', $busqueda))
+                )->limit(50);
+            })
+            ->orderBy('nombre')
+            ->get()
+            ->map(fn (Municipio $municipio): array => [
+                'id' => $municipio->id,
+                'provincia_id' => $municipio->provincia_id,
+                'codigo' => $municipio->codigo,
+                'nombre' => $municipio->nombre,
+                'provincia_nombre' => $municipio->provincia?->nombre,
+                'departamento_nombre' => $municipio->provincia?->departamento?->nombre,
+            ]);
+
+        return $this->lista($municipios);
     }
 
     public function localidades(Request $request): JsonResponse

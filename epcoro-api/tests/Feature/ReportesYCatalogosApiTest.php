@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Liquidacion;
+use App\Models\Municipio;
 use App\Models\ParametroGeneral;
 use App\Models\User;
 use App\Services\TransicionEstadoService;
@@ -277,6 +278,34 @@ class ReportesYCatalogosApiTest extends AuthTestCase
             ->getJson('/api/v1/cotizaciones')
             ->assertOk()
             ->assertJsonPath('data', []);
+    }
+
+    public function test_el_buscador_de_municipios_responde_a_q_con_su_ubicacion(): void
+    {
+        $tecnico = $this->tecnico();
+
+        // Dos municipios con nombre distinto: la busqueda tiene que devolver
+        // solo el que coincide y, para el filtro del Index, su provincia y su
+        // departamento (el autocompletado los muestra como detalle).
+        $elegido = Municipio::factory()->create();
+        Municipio::factory()->create();
+
+        $respuesta = $this->actingAs($tecnico, 'web')
+            ->getJson('/api/v1/catalogos/municipios?q='.rawurlencode($elegido->nombre));
+
+        $respuesta->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', $elegido->id)
+            ->assertJsonPath('data.0.nombre', $elegido->nombre)
+            ->assertJsonPath('data.0.provincia_nombre', $elegido->provincia->nombre)
+            ->assertJsonPath('data.0.departamento_nombre', $elegido->provincia->departamento->nombre);
+
+        // Sin q la cascada sigue sirviendo la lista completa y no recorta.
+        $cascada = $this->actingAs($tecnico, 'web')
+            ->getJson('/api/v1/catalogos/municipios?provincia_id='.$elegido->provincia_id)
+            ->assertOk();
+
+        $this->assertTrue($cascada->json('data.0.id') === $elegido->id);
     }
 
     // --------------------------------------------------------- utilidades

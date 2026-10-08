@@ -37,6 +37,15 @@ export function listarMunicipios(provinciaId: number): Promise<Municipio[]> {
   return lista<Municipio>('/catalogos/municipios', { provincia_id: provinciaId })
 }
 
+/**
+ * Buscador de municipios por nombre o provincia (8.10, filtro del listado).
+ * El backend trae ademas `provincia_nombre` y `departamento_nombre` para el
+ * detalle de cada opcion del autocompletado.
+ */
+export function buscarMunicipios(q?: string): Promise<Municipio[]> {
+  return lista<Municipio>('/catalogos/municipios', q ? { q } : undefined)
+}
+
 export function listarLocalidades(municipioId: number): Promise<Localidad[]> {
   return lista<Localidad>('/catalogos/localidades', { municipio_id: municipioId })
 }
