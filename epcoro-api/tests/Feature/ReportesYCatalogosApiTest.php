@@ -77,7 +77,11 @@ class ReportesYCatalogosApiTest extends AuthTestCase
             ->assertJsonPath('data.por_estado.filas.0.bruto_total', '1000.25')
             ->assertJsonPath('data.por_estado.filas.0.neto_total', '862.25')
             ->assertJsonPath('data.por_municipio.grupo', 'municipio')
-            ->assertJsonPath('data.por_municipio.filas.0.valor', $aprobada->municipio_nombre);
+            ->assertJsonPath('data.por_municipio.filas.0.valor', $aprobada->municipio_nombre)
+            ->assertJsonPath('data.por_area_minera.grupo', 'area_minera')
+            ->assertJsonPath('data.por_area_minera.filas.0.valor', $aprobada->nombre_area_minera)
+            ->assertJsonPath('data.por_mes.grupo', 'mes')
+            ->assertJsonPath('data.por_mes.filas.0.valor', '2026-05');
     }
 
     public function test_el_tecnico_sin_permiso_de_reportes_recibe_403(): void

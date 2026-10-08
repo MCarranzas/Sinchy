@@ -2487,3 +2487,37 @@ ESTADO    : OK. FASE 8 cerrada. Pendiente manual: comprobacion visual en el
             con Playwright y revisar a mano). Datos demo creados en la BD de
             desarrollo para esa revision: cuentas de UsuariosEjemploSeeder +
             2 liquidaciones con historial (una en_revision y una aprobada).
+
+### [120] 2026-10-07 18:25 - FASE 10 / CIERRE
+OBJETIVO  : Construir el frontend de reportes (10.1-10.6): rango de fechas,
+            tarjetas, agrupados, graficos y exportacion. La API ya existia
+            desde la FASE 6 (resumen/liquidaciones/exportar).
+COMANDO   : (backend) ReporteController agrega por_area_minera y por_mes al
+            resumen y ReportesYCatalogosApiTest los verifica; (frontend)
+            npm install chart.js, types/reportes.ts, api/reportes.api.ts,
+            components/Reportes (GraficoDona, GraficoBarras, TablaGrupo),
+            views/ReportesView.vue, ruta /reportes + MODULOS_CONSTRUIDOS;
+            luego pint, phpstan, artisan test, npm run build.
+RESULTADO : (10.1) Selector de periodo Quincenal/Mensual/Anual que traduce a
+            fecha_desde/fecha_hasta (quincenal 01-15/16-fin de mes, anual
+            01-01 a 12-31) y par de fechas editable con "Aplicar rango"; el
+            rango vive en la URL como el listado (10.6). (10.2) Siete
+            tarjetas: n liquidaciones, peso, peso fino, bruto, aportes,
+            deducciones y neto (todos con los formatos bs/gramos/numero).
+            (10.3) Tablas agrupadas por estado, municipio, area minera,
+            presentacion y mes; el backend sumo por_area_minera y por_mes
+            (TO_CHAR 'YYYY-MM', orden lexicografico = cronologico) a la
+            respuesta de /reportes/resumen, con sus asserts en el test del
+            resumen. (10.4) Graficos con Chart.js: dona por estado,
+            evolucion mensual del valor neto y barra top 8 municipios por
+            neto (los montos pasan a Number SOLO en el grafico; las tablas
+            siguen con las cadenas del backend). (10.5) Enlaces Excel/PDF a
+            /reportes/exportar con el mismo rango (misma tecnica que el
+            PDF/excel de una liquidacion). Ruta real /reportes sale de
+            EnConstruccionView (MODULOS_CONSTRUIDOS += 'reportes').
+            VERIFICACION: pint OK, phpstan OK (110), php artisan test:
+            155 passed / 830 assertions, npm run build OK (vue-tsc + vite,
+            165 modulos; chart.js agrega ~200 KB al bundle JS).
+ESTADO    : OK. FASE 10 cerrada. Sigue pendiente la comprobacion visual en
+            el navegador (manual; ahora tambien incluye /reportes). Proxima:
+            FASE 11 (calidad, seguridad y auditoria).

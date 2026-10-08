@@ -16,9 +16,10 @@ import EditView from '@/views/Liquidaciones/EditView.vue'
 import IndexView from '@/views/Liquidaciones/IndexView.vue'
 import ShowView from '@/views/Liquidaciones/ShowView.vue'
 import BandejaView from '@/views/Liquidaciones/BandejaView.vue'
+import ReportesView from '@/views/ReportesView.vue'
 
 /** Rutas (name) que dejan de ser provisionales en esta fase. */
-const MODULOS_CONSTRUIDOS = new Set(['liquidaciones', 'liquidaciones-nueva', 'bandeja'])
+const MODULOS_CONSTRUIDOS = new Set(['liquidaciones', 'liquidaciones-nueva', 'bandeja', 'reportes'])
 
 /**
  * Rutas de los modulos que todavia no se construyen. Se derivan del menu para
@@ -109,6 +110,13 @@ const rutas: RouteRecordRaw[] = [
         name: 'bandeja',
         component: BandejaView,
         meta: { titulo: 'Mi bandeja' },
+      },
+      // ----------------------------------------------------------- Reportes
+      {
+        path: '/reportes',
+        name: 'reportes',
+        component: ReportesView,
+        meta: { titulo: 'Reportes', permiso: 'reportes.ver' },
       },
       // -------------------------------------------------------
       ...rutasModulos,

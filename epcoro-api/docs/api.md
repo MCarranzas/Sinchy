@@ -345,7 +345,7 @@ servicio; nunca se recalculan en el reporte. El estado `eliminado` se excluye.
       "peso_total": "5432.10",
       "peso_fino_total": "4800.5555",
       "bruto_total": "482950.00",
-      "aporte_total": "8693.10",
+      "aportes_total": "8693.10",
       "deducciones_total": "12032.50",
       "neto_total": "470917.50"
     },
@@ -353,7 +353,11 @@ servicio; nunca se recalculan en el reporte. El estado `eliminado` se excluye.
       { "valor": "aprobado", "liquidaciones": 3, "bruto_total": "90000.00", "neto_total": "88000.00" }
     ]},
     "por_municipio": { "grupo": "municipio", "filas": [] },
-    "por_mineral": { "grupo": "presentacion", "filas": [] }
+    "por_mineral": { "grupo": "presentacion", "filas": [] },
+    "por_area_minera": { "grupo": "area_minera", "filas": [] },
+    "por_mes": { "grupo": "mes", "filas": [
+      { "valor": "2026-05", "liquidaciones": 3, "bruto_total": "90000.00", "neto_total": "88000.00" }
+    ]}
   }
 }
 ```

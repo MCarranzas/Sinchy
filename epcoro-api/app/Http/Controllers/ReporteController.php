@@ -73,6 +73,8 @@ class ReporteController extends Controller
                 'por_estado' => $this->agrupado($request, 'estado'),
                 'por_municipio' => $this->agrupado($request, 'municipio_nombre'),
                 'por_mineral' => $this->agrupado($request, 'presentacion_nombre'),
+                'por_area_minera' => $this->agrupado($request, 'nombre_area_minera'),
+                'por_mes' => $this->agrupadoMes($request),
             ],
         ]);
     }
@@ -179,10 +181,44 @@ class ReporteController extends Controller
             'estado' => 'estado',
             'municipio_nombre' => 'municipio',
             'presentacion_nombre' => 'presentacion',
+            'nombre_area_minera' => 'area_minera',
         ];
 
         return [
             'grupo' => $etiquetas[$columna] ?? $columna,
+            'filas' => $filas,
+        ];
+    }
+
+    /**
+     * La evolucion mes a mes del periodo, con la misma forma que el resto de
+     * agrupados pero partiendo la fecha de transaccion. `TO_CHAR` con formato
+     * `YYYY-MM` deja un orden lexicografico que ya es cronologico.
+     *
+     * @return array{grupo: string, filas: array<int, array<string, mixed>>}
+     */
+    private function agrupadoMes(Request $request): array
+    {
+        $filas = $this->baseTabla($request)
+            ->selectRaw("
+                TO_CHAR(fecha_transaccion, 'YYYY-MM') AS grupo,
+                COUNT(*) AS n,
+                COALESCE(SUM(valor_bruto_bs), 0) AS bruto_total,
+                COALESCE(SUM(valor_neto_bs), 0) AS neto_total
+            ")
+            ->groupBy(DB::raw("TO_CHAR(fecha_transaccion, 'YYYY-MM')"))
+            ->orderBy('grupo')
+            ->get()
+            ->map(fn ($fila): array => [
+                'valor' => $fila->grupo,
+                'liquidaciones' => (int) $fila->n,
+                'bruto_total' => (string) $fila->bruto_total,
+                'neto_total' => (string) $fila->neto_total,
+            ])
+            ->all();
+
+        return [
+            'grupo' => 'mes',
             'filas' => $filas,
         ];
     }
