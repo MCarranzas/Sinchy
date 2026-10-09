@@ -37,9 +37,7 @@ watch(
  * Menu filtrado por permisos: es lo que hace que cada rol vea solo sus
  * modulos. Las entradas sin permiso (Inicio) son visibles para todos.
  */
-const items = computed(() =>
-  menuPrincipal.filter((item) => !item.permiso || auth.puede(item.permiso)),
-)
+const items = computed(() => menuPrincipal.filter((item) => auth.puedeAcceder(item.permiso)),)
 
 function estaActivo(ruta: string): boolean {
   return ruta === '/' ? route.path === '/' : route.path.startsWith(ruta)

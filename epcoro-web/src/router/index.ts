@@ -84,7 +84,10 @@ const rutas: RouteRecordRaw[] = [
         path: '/liquidaciones',
         name: 'liquidaciones',
         component: IndexView,
-        meta: { titulo: 'Liquidaciones', permiso: 'liquidaciones.ver' },
+        meta: {
+          titulo: 'Liquidaciones',
+          permiso: ['liquidaciones.ver', 'liquidaciones.ver_todas'],
+        },
       },
       {
         path: '/liquidaciones/nueva',
@@ -96,7 +99,10 @@ const rutas: RouteRecordRaw[] = [
         path: '/liquidaciones/:id',
         name: 'liquidaciones-detalle',
         component: ShowView,
-        meta: { titulo: 'Detalle de liquidación', permiso: 'liquidaciones.ver' },
+        meta: {
+          titulo: 'Detalle de liquidación',
+          permiso: ['liquidaciones.ver', 'liquidaciones.ver_todas'],
+        },
       },
       {
         path: '/liquidaciones/:id/editar',
@@ -182,8 +188,8 @@ router.beforeEach(async (to) => {
     return { name: 'inicio' }
   }
 
-  const permiso = to.meta.permiso as string | undefined
-  if (permiso && !auth.puede(permiso)) {
+  const permiso = to.meta.permiso as string | string[] | undefined
+  if (!auth.puedeAcceder(permiso)) {
     return { name: 'no-autorizado' }
   }
 

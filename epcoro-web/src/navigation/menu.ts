@@ -5,10 +5,12 @@ export interface ItemMenu {
   ruta: string
   icono: NombreIcono
   /**
-   * Permiso requerido para ver el item y entrar a la ruta. Si falta, el item
-   * es publico dentro de la sesion (p. ej. el tablero de inicio).
+   * Permiso(s) requeridos para ver el item y entrar a la ruta. Si es un
+   * array basta con tener cualquiera de ellos (p. ej. `ver` o `ver_todas`
+   * abren el listado). Si falta, el item es publico dentro de la sesion
+   * (p. ej. el tablero de inicio).
    */
-  permiso?: string
+  permiso?: string | string[]
   /** Descripcion corta que se muestra en la vista provisional del modulo. */
   descripcion: string
 }
@@ -30,7 +32,7 @@ export const menuPrincipal: ItemMenu[] = [
     titulo: 'Liquidaciones',
     ruta: '/liquidaciones',
     icono: 'documento',
-    permiso: 'liquidaciones.ver',
+    permiso: ['liquidaciones.ver', 'liquidaciones.ver_todas'],
     descripcion: 'Listado, consulta y descarga de liquidaciones registradas.',
   },
   {

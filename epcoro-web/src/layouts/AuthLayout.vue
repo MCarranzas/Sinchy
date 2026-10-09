@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { RouterView } from 'vue-router'
 
 const version = computed(() => __APP_VERSION__)
 </script>
@@ -13,7 +14,7 @@ const version = computed(() => __APP_VERSION__)
       </div>
 
       <div class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-        <slot />
+        <RouterView />
       </div>
 
       <p class="mt-6 text-center text-xs text-slate-400">Versión {{ version }}</p>

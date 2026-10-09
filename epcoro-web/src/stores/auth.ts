@@ -46,6 +46,25 @@ export const useAuthStore = defineStore('auth', {
       return (permiso: string): boolean =>
         estado.usuario?.permisos.includes(permiso) ?? false
     },
+
+    /**
+     * Comprueba el acceso a una ruta o item de menu cuyo `permiso` puede ser
+     * uno o varios (cualquiera de ellos basta). Sin permiso declarado el
+     * acceso es libre dentro de la sesion. Es espejo del backend: en la
+     * seccion 4.2 `ver` y `ver_todas`/`ver_propias` conviven y un rol con
+     * `ver_todas` tambien ve el listado.
+     */
+    puedeAcceder: (estado) => {
+      return (permiso: string | string[] | undefined): boolean => {
+        if (!permiso) {
+          return true
+        }
+
+        const lista = Array.isArray(permiso) ? permiso : [permiso]
+
+        return lista.some((p) => estado.usuario?.permisos.includes(p) ?? false)
+      }
+    },
   },
 
   actions: {

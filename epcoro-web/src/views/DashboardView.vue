@@ -9,9 +9,7 @@ import { useAuthStore } from '@/stores/auth'
 const auth = useAuthStore()
 
 const modulos = computed(() =>
-  menuPrincipal.filter(
-    (item) => item.ruta !== '/' && (!item.permiso || auth.puede(item.permiso)),
-  ),
+  menuPrincipal.filter((item) => item.ruta !== '/' && auth.puedeAcceder(item.permiso)),
 )
 </script>
 
