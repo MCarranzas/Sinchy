@@ -12,7 +12,8 @@ use Illuminate\Support\Facades\DB;
  *
  * Lectura para todos los usuarios autenticados: el formulario muestra el
  * tipo de cambio por defecto y la cotizacion sugerida. Escritura solo para
- * `parametros.gestionar` (admin), decidido en el Form Request.
+ * `parametros.gestionar` (admin), decidido en ParametroGeneralPolicy, no en
+ * el controller ni en el Form Request: la autorizacion vive en la policy.
  *
  * El cambio se hace de uno en uno y con updateOrCreate sobre la clave, que
  * es la primary key: el cliente manda un MAPA {clave: valor} y las claves
@@ -27,6 +28,8 @@ class ParametrosController extends Controller
 {
     public function index(): JsonResponse
     {
+        $this->authorize('viewAny', ParametroGeneral::class);
+
         return response()->json([
             'data' => ParametroGeneral::query()
                 ->orderBy('clave')
@@ -43,6 +46,7 @@ class ParametrosController extends Controller
 
     public function update(ParametrosRequest $request): JsonResponse
     {
+        $this->authorize('update', ParametroGeneral::class);
         /** @var array<string, string> $parametros */
         $parametros = $request->validated('parametros');
 

@@ -74,6 +74,51 @@ class EstadoLiquidacionTest extends TestCase
         }
     }
 
+    public function test_es_terminal_solo_los_tres_estados_sin_salida(): void
+    {
+        $terminales = [
+            EstadoLiquidacion::Aprobado,
+            EstadoLiquidacion::Anulado,
+            EstadoLiquidacion::Eliminado,
+        ];
+
+        $noTerminales = [
+            EstadoLiquidacion::Creado,
+            EstadoLiquidacion::EnRevision,
+            EstadoLiquidacion::Revisado,
+            EstadoLiquidacion::Rechazado,
+            EstadoLiquidacion::EnCorreccion,
+        ];
+
+        foreach ($terminales as $estado) {
+            $this->assertTrue($estado->esTerminal(), $estado->value.' debe ser terminal');
+        }
+
+        foreach ($noTerminales as $estado) {
+            $this->assertFalse($estado->esTerminal(), $estado->value.' no debe ser terminal');
+        }
+    }
+
+    public function test_las_etiquetas_son_las_de_la_interfaz(): void
+    {
+        $etiquetas = [];
+
+        foreach (EstadoLiquidacion::cases() as $estado) {
+            $etiquetas[$estado->value] = $estado->etiqueta();
+        }
+
+        $this->assertSame([
+            'creado' => 'Creado',
+            'en_revision' => 'En revision',
+            'revisado' => 'Revisado',
+            'aprobado' => 'Aprobado',
+            'rechazado' => 'Rechazado',
+            'en_correccion' => 'En correccion',
+            'anulado' => 'Anulado',
+            'eliminado' => 'Eliminado',
+        ], $etiquetas);
+    }
+
     public function test_un_estado_no_transiciona_si_mismo(): void
     {
         foreach (EstadoLiquidacion::cases() as $estado) {

@@ -28,7 +28,10 @@ class ParametrosRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->can('parametros.gestionar') ?? false;
+        // El permiso `parametros.gestionar` lo exige la POLICY
+        // (ParametroGeneralPolicy::update), no este request: la capa de
+        // autorizacion es la policy y el request solo valida los datos.
+        return $this->user() !== null;
     }
 
     /**

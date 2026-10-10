@@ -381,6 +381,153 @@ final class CalculoLiquidacionTest extends TestCase
     }
 
     /**
+     * Los insumos tambien llegan como int y float desde JSON, no como string
+     * forzado. El cast de PHP imprime la repr mas corta que coincide con el
+     * literal, asi que calcular con numeros tiene que dar EXACTAMENTE lo mismo
+     * que calcular con sus strings: la formula no distingue como llego el dato.
+     * Tambien cubre las deducciones como float (10.5) e int (5).
+     */
+    public function test_los_insumos_int_y_float_producen_lo_mismo_que_sus_strings(): void
+    {
+        $numeros = [
+            'peso_gramos' => 1944.53,
+            'ley_pagable' => 0.9302,
+            'cotizacion_usd_oz_t' => 2648.57,
+            'tipo_cambio' => 6.96,
+            'aplica_caja_salud' => true,
+            'deducciones' => [10.5, 5],
+        ];
+
+        $desdeNumeros = $this->calcular($numeros);
+
+        $strings = array_map(
+            fn (mixed $v): mixed => is_array($v) ? array_map('strval', $v) : (is_bool($v) ? $v : (string) $v),
+            $numeros,
+        );
+
+        $this->assertSame($desdeNumeros, $this->calcular($strings));
+    }
+
+    /**
+     * NAN e infinito no son numeros usables: el servicio los descarta en
+     * texto() antes de asomarse a bcmath, porque un peso NAN dejaria un bruto
+     * NAN que PostgreSQL ni siquiera puede persistir.
+     */
+    public function test_nan_e_infinito_se_rechazan_como_no_numericos(): void
+    {
+        foreach ([NAN, INF, -INF] as $peso) {
+            $e = $this->rechazado($this->oro([
+                'peso_gramos' => $peso,
+                'aplica_caja_salud' => false,
+            ]));
+
+            $this->assertStringContainsString('peso_gramos', $e->getMessage());
+        }
+    }
+
+    /**
+     * Los insumos vienen de un JSON, donde " 1944.53 " es tan valido como
+     * "1944.53": el servicio recorta y el resultado no se corre un centavo.
+     */
+    public function test_el_espacio_alrededor_de_un_insumo_no_descuadra(): void
+    {
+        $r = $this->calcular($this->oro([
+            'peso_gramos' => ' 1944.53 ',
+            'cotizacion_usd_oz_t' => ' 2648.57 ',
+            'aplica_caja_salud' => false,
+        ]));
+
+        $this->assertSame('1072018.84', $r['valor_bruto_bs']);
+    }
+
+    /**
+     * deducciones es opcional, pero si viene tiene que ser una LISTA: un
+     * string, un numero o un booleano son errores de serializacion, no una
+     * deduccion de cero. (null no llega aqui: el ?? [] lo convierte en lista
+     * vacia, que es justamente "sin deducciones".)
+     */
+    public function test_deducciones_sin_ser_lista_se_rechazan(): void
+    {
+        foreach (['10.00', 10.0, true] as $deducciones) {
+            $e = $this->rechazado($this->oro([
+                'aplica_caja_salud' => false,
+                'deducciones' => $deducciones,
+            ]));
+
+            $this->assertSame('deducciones debe ser una lista de montos.', $e->getMessage());
+        }
+    }
+
+    /**
+     * GRAMOS_POR_ONZA_TROY en cero o negativo no es un 31.1035 extraño: es
+     * una division por cero. Error de configuracion (ParametroInvalidoException),
+     * igual que un parametro faltante.
+     */
+    public function test_el_divisor_en_cero_o_negativo_es_un_parametro_invalido(): void
+    {
+        foreach (['0', '-31.1035'] as $divisor) {
+            $servicio = new CalculoLiquidacionService(
+                $this->lector([
+                    CalculoLiquidacionService::CLAVE_GRAMOS_POR_ONZA_TROY => $divisor,
+                    CalculoLiquidacionService::CLAVE_ALICUOTA_APORTE => '0.018',
+                ]),
+            );
+
+            try {
+                $servicio->calcular($this->oro(['aplica_caja_salud' => false]));
+                $this->fail("GRAMOS_POR_ONZA_TROY={$divisor} debio rechazarse");
+            } catch (ParametroInvalidoException $e) {
+                $this->assertStringContainsString('GRAMOS_POR_ONZA_TROY', $e->getMessage());
+                $this->assertStringContainsString('fuera de rango', $e->getMessage());
+            }
+        }
+    }
+
+    /**
+     * La alicuota es una FRACCION entre 0 y 1, excluidos los bordes (como la
+     * ley): 0, 1 y 1.5 son imposibles y el corte >=1 atrapa un '1.8' que
+     * multiplicaria el aporte cien veces.
+     */
+    public function test_la_alicuota_fuera_del_rango_fraccion_es_un_parametro_invalido(): void
+    {
+        foreach (['0', '1', '1.50', '-0.01'] as $alicuota) {
+            $servicio = new CalculoLiquidacionService(
+                $this->lector([
+                    CalculoLiquidacionService::CLAVE_GRAMOS_POR_ONZA_TROY => '31.1035',
+                    CalculoLiquidacionService::CLAVE_ALICUOTA_APORTE => $alicuota,
+                ]),
+            );
+
+            try {
+                $servicio->calcular($this->oro(['aplica_caja_salud' => true]));
+                $this->fail("ALICUOTA_APORTE={$alicuota} debio rechazarse");
+            } catch (ParametroInvalidoException $e) {
+                $this->assertStringContainsString('ALICUOTA_APORTE', $e->getMessage());
+            }
+        }
+    }
+
+    /**
+     * Los parametros tambien vienen de la tabla y pueden traer espacios; se
+     * recortan igual que los insumos y el divisor que se persiste es el
+     * recortado, no el crudo.
+     */
+    public function test_los_parametros_tambien_se_limpian_de_espacios(): void
+    {
+        $servicio = new CalculoLiquidacionService(
+            $this->lector([
+                CalculoLiquidacionService::CLAVE_GRAMOS_POR_ONZA_TROY => ' 31.1035',
+                CalculoLiquidacionService::CLAVE_ALICUOTA_APORTE => '0.018 ',
+            ]),
+        );
+
+        $r = $servicio->calcular($this->oro(['aplica_caja_salud' => false]));
+
+        $this->assertSame('31.1035', $r['gramos_por_onza_troy']);
+        $this->assertSame('1072018.84', $r['valor_bruto_bs']);
+    }
+
+    /**
      * Los insumos del caso ORO con las sobrescrituras del caso concreto.
      *
      * @param array<string, mixed> $sobrescritura

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\PersonaRequest;
 use App\Models\AreaMinera;
 use App\Models\CotizacionQuincenal;
 use App\Models\Departamento;
@@ -142,6 +143,8 @@ class CatalogoController extends Controller
 
     public function personas(Request $request): JsonResponse
     {
+        $this->authorize('viewAny', Persona::class);
+
         $personas = Persona::query()
             ->where('activo', true)
             ->when($request->filled('q'), function ($q) use ($request): void {
@@ -173,19 +176,14 @@ class CatalogoController extends Controller
      * `ci` va con los mismos cortes C5 que vendedor_ci en la liquidacion:
      * es un identificador, y si aqui se guardara con puntos o en notacion
      * cientifica, despues no pasaria la validacion del expediente.
+     *
+     * La validacion vive en PersonaRequest, como toda escritura de la API.
      */
-    public function guardarPersona(Request $request): JsonResponse
+    public function guardarPersona(PersonaRequest $request): JsonResponse
     {
-        $datos = $request->validate([
-            'nombres' => ['required', 'string', 'max:100'],
-            'apellidos' => ['required', 'string', 'max:100'],
-            'ci' => ['required', 'string', 'regex:/^\d{1,10}$/'],
-            'nit' => ['nullable', 'string', 'regex:/^\d{1,20}$/'],
-            'tipo_documento' => ['nullable', 'string', 'in:CI,NIT,PAS'],
-            'email' => ['nullable', 'email', 'max:150'],
-            'telefono' => ['nullable', 'string', 'max:30'],
-            'direccion' => ['nullable', 'string', 'max:200'],
-        ]);
+        $this->authorize('create', Persona::class);
+
+        $datos = $request->validated();
 
         // El vendedor puede venir del Excel externo (N5): si el CI ya esta,
         // se devuelve la persona existente y no se crea un duplicado. La
