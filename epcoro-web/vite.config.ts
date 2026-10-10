@@ -12,7 +12,7 @@ const pkg = JSON.parse(
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   // El destino del proxy SOLO afecta el servidor de desarrollo: en produccion
-  // el sitio es estatico y Nginx enruta /api y /sanctum al backend (FASE 12).
+  // el sitio es estatico y el servidor web enruta /api y /sanctum al backend.
   // Se lee del entorno para no tener que editar este archivo al cambiar de
   // maquina; por defecto apunta al `php artisan serve` local.
   const env = loadEnv(mode, process.cwd(), '')

@@ -1502,22 +1502,6 @@ FASE 11 - CALIDAD, SEGURIDAD Y AUDITORIA
   11.9 README con instrucciones de instalacion para otro desarrollador
 
 --------------------------------------------------------------------------------
-FASE 12 - PUESTA EN PRODUCCION
---------------------------------------------------------------------------------
-  12.1 Servidor: Ubuntu 24.04 + Nginx + PHP-FPM 8.4 + PostgreSQL 17
-  12.2 `composer install --no-dev --optimize-autoloader`
-       `php artisan migrate --force`
-  12.3 `npm ci && npm run build`
-  12.4 Nginx como root de ambas apps; proxy /api al backend
-  12.5 HTTPS con Let's Encrypt (obligatorio: se manejan datos fiscales)
-  12.6 Copias de seguridadautomaticas y verificacion de restauracion
-  12.7 Variables de entorno seguras, nunca en el repositorio
-  12.8 Despliegue inicial: restaurar catalogos y parametros
-  12.9 Capacitacion al personal: login, captura, flujo de aprobacion
-  Criterio de aceptacion: la app responde por HTTPS y un usuario real completa
-  el flujo de punta a punta en un celular con datos reales.
-
---------------------------------------------------------------------------------
 FASE 13 (OPCIONAL) - AMPLIACIONES
 --------------------------------------------------------------------------------
   13.1 App movil (React Native / Flutter) reutilizando la MISMA API
@@ -1546,9 +1530,8 @@ FASE 13 (OPCIONAL) - AMPLIACIONES
                                                       completo
   FASE 10  3 dias      reportes                -> demo: totales coinciden
   FASE 11  2 dias      calidad y seguridad
-  FASE 12  2 dias      produccion
   ------------------------------------------------------------------
-  TOTAL estimado: ~31 dias de trabajo efectivo de 1 desarrollador
+  TOTAL estimado: ~29 dias de trabajo efectivo de 1 desarrollador
 
   Secretos del cronograma:
    - No se puede empezar la Fase 5 hasta cerrar la Fase 0. El calculo depende

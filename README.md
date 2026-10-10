@@ -182,7 +182,7 @@ cd ../epcoro-web
 npm run build                     # vue-tsc + vite build
 ```
 
-### Produccion (resumen; detalle en la FASE 12)
+### Produccion (resumen)
 
 ```bash
 # backend
@@ -224,7 +224,6 @@ El respaldo diario (`epcoro:respaldar`) queda programado en
 | 9 - Flujo de estados y permisos | completa (9.1-9.7): barra de estado con `transiciones_disponibles`, modal de transicion (motivo obligatorio en rechazado/anulado), timeline de historial, edicion condicionada a auth+propiedad+estado, banda `GET /api/v1/bandeja` con pestanas por rol (tambien el item "Mi bandeja" en el menu y la ruta `/bandeja`), seeder de 4 usuarios de ejemplo, fix de paginacion (`page`, no `pagina`) y 153 tests en verde (26 nuevos). El backend ya cortaba por estado (422) antes que por permiso (403) |
 | 10 - Reportes | completa (10.1-10.6): pantalla de reportes con rango quincenal/mensual/anual y por URL (`?fecha_desde=&fecha_hasta=`), tarjetas de resumen (n, pesos, bruto, aportes, deducciones y neto), tablas agrupadas por estado/municipio/area minera/presentacion/mes (grupos `por_area_minera` y `por_mes` agregados al resumen del backend), graficos Chart.js (dona por estado, evolucion mensual del neto, top municipios) y exportacion a Excel/PDF reutilizando los parametros del periodo |
 | 11 - Calidad, seguridad y auditoria | completa (11.1-11.9): canal de log `auditoria` con registro de login/logout/fallos, cambios de estado, parametros, exportaciones y respaldos (`App\Support\Auditoria`); respaldo diario con `pg_dump` y purga por retencion (`epcoro:respaldar`); preflight de produccion (`epcoro:revisar-produccion`); `.env.production.example` y proxy de Vite por entorno; scripts `composer check` (pint + phpstan + tests); esta guia de instalacion; 179 tests en verde |
-| 12 - Puesta en produccion | pendiente |
 
 Comprobacion (`epcoro-api/`):
 
