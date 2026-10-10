@@ -73,6 +73,22 @@ return [
             'replace_placeholders' => true,
         ],
 
+        /*
+        | Auditoria (FASE 11.5): acciones sensibles en un archivo aparte, para
+        | que no se pierdan entre el ruido de depuracion y para que el log se
+        | pueda entregar a quien audite el sistema sin exponer trazas internas.
+        | Un registro por accion sensible: login, cambios de estado, cambios de
+        | parametros y exportaciones. Se rota a diario y se guarda 180 dias,
+        | que es mas de un ejercicio fiscal.
+        */
+        'auditoria' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/auditoria.log'),
+            'level' => env('LOG_AUDITORIA_LEVEL', 'info'),
+            'days' => env('LOG_AUDITORIA_DAYS', 180),
+            'replace_placeholders' => true,
+        ],
+
         'slack' => [
             'driver' => 'slack',
             'url' => env('LOG_SLACK_WEBHOOK_URL'),

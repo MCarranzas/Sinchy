@@ -2521,3 +2521,56 @@ RESULTADO : (10.1) Selector de periodo Quincenal/Mensual/Anual que traduce a
 ESTADO    : OK. FASE 10 cerrada. Sigue pendiente la comprobacion visual en
             el navegador (manual; ahora tambien incluye /reportes). Proxima:
             FASE 11 (calidad, seguridad y auditoria).
+
+################################################################################
+# FASE 11 - CALIDAD, SEGURIDAD Y AUDITORIA
+################################################################################
+
+### [121] 2026-10-08 12:40 - FASE 11 / CIERRE
+OBJETIVO  : Cerrar los nueve puntos de la FASE 11 (11.1 a 11.9): cobertura,
+            FormRequest, policies, validacion de entorno, log de acciones
+            sensibles, respaldo diario, .env por entorno, pint+phpstan en el
+            flujo y guia de instalacion para otro desarrollador.
+COMANDO   : (11.2/11.3 verificacion) no quedan $request->all() en app/
+            (grep 0) ni funciones store/update con Request generico; los
+            FormRequest cubren login, cambio de clave, liquidaciones store/
+            update, transiciones, observaciones, parametros y personas; las
+            policies son Liquidacion, ParametroGeneral y Persona (los unicos
+            modelos con escritura). (11.5) canal `auditoria` en
+            config/logging.php (daily, logs/auditoria.log, 180 dias),
+            app/Support/Auditoria.php con acciones LOGIN, LOGOUT,
+            LOGIN_FALLIDO, CUENTA_BLOQUEADA, PASSWORD_CAMBIADA, TRANSICION,
+            PARAMETROS, EXPORTACION y RESPALDO, y llamadas en AuthController,
+            TransicionController, LiquidacionController (pdf/excel),
+            ParametrosController y ReporteController. (11.6)
+            config/respaldo.php, app/Support/Respaldos.php (nombre, purga por
+            retencion y tamano legible) y comando epcoro:respaldar (pg_dump
+            -Fc, PGPASSWORD por env del hijo, purga); programado en
+            routes/console.php a las 02:30 sin solapamiento. (11.4)
+            comando epcoro:revisar-produccion (APP_ENV/DEBUG/KEY/URL/
+            TIMEZONE, DB_PASSWORD, SESSION_SECURE_COOKIE/ENCRYPT,
+            SANCTUM_STATEFUL_DOMAINS, CORS_ALLOWED_ORIGINS y nivel de log;
+            avisos con --estricto). (11.7) epcoro-api/.env.production.example
+            (APP_ENV=production, APP_DEBUG=false, HTTPS, sin localhost) y
+            epcoro-web/.env.example + vite.config.ts leen
+            VITE_API_PROXY_TARGET con loadEnv (el proxy solo afecta a dev).
+            (11.8) scripts composer lint / lint:fix / analyse / check
+            (= pint + phpstan + tests). (11.9) README: seccion "Instalacion
+            (otro desarrollador)" para API y web, verificacion y resumen de
+            produccion; fila FASE 11 en la tabla de estado. BUG CORREGIDO:
+            phpstan (larastan.noEnvCallsOutsideOfConfig) marcaba un env() en
+            VerificarProduccion; ahora lee config('sanctum.stateful') y
+            config('cors.allowed_origins'), y el nivel de log se resuelve del
+            canal por defecto (stack -> primer hijo). BUG CORREGIDO: el test
+            de la purga usaba File::touch (no existe en el facade); se usa
+            touch() nativo; y el tamano se formatea con coma decimal.
+            TEST: AuditoriaTest (6, canal real driver single a archivo
+            temporal), RespaldosTest (4, purga/respeto del patron/tamano) y
+            ConsolaDeProduccionTest (5, fallo de respaldo sin dejar archivo y
+            entorno de produccion ok/mal). VERIFICACION: pint OK, phpstan OK
+            (120), php artisan test: 179 passed / 901 assertions, npm run
+            build OK (vue-tsc + vite, 165 modulos), composer check OK.
+ESTADO    : OK. FASE 11 cerrada. Sigue pendiente la comprobacion visual en
+            el navegador (heredada). Proxima: FASE 12 (puesta en produccion:
+            Ubuntu + Nginx + PHP-FPM 8.4 + PostgreSQL 17, HTTPS y respaldos
+            con verificacion de restauracion).

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\ChangePasswordRequest;
 use App\Http\Requests\LoginRequest;
 use App\Models\User;
+use App\Support\Auditoria;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -40,6 +41,11 @@ class AuthController extends Controller
             ->first();
 
         if ($usuarioBloqueado !== null && $usuarioBloqueado->estaBloqueado()) {
+            Auditoria::registrar(Auditoria::CUENTA_BLOQUEADA, [
+                'usuario' => $credentials['username'],
+                'minutos_restantes' => $usuarioBloqueado->minutosDeBloqueoRestantes(),
+            ]);
+
             return response()->json([
                 'message' => 'La cuenta esta bloqueada por intentos fallidos. Intenten de nuevo mas tarde.',
                 'minutos_restantes' => $usuarioBloqueado->minutosDeBloqueoRestantes(),
@@ -51,6 +57,11 @@ class AuthController extends Controller
             if ($usuarioBloqueado !== null) {
                 $this->registrarIntentoFallido($usuarioBloqueado, $intentosMaximos);
             }
+
+            Auditoria::registrar(Auditoria::LOGIN_FALLIDO, [
+                'usuario' => $credentials['username'],
+                'intentos_fallidos' => $usuarioBloqueado?->fresh()?->intentos_fallidos,
+            ]);
 
             throw ValidationException::withMessages([
                 'username' => 'Las credenciales no son correctas.',
@@ -84,6 +95,11 @@ class AuthController extends Controller
         // que evita el fixation y ademas no acumula filas.
         $request->session()->regenerate(true);
 
+        Auditoria::registrar(Auditoria::LOGIN, [
+            'usuario_id' => $usuario->id,
+            'usuario' => $usuario->username,
+        ]);
+
         return response()->json([
             'message' => 'Sesion iniciada correctamente.',
             'usuario' => $usuario->fresh()->perfilParaApi(),
@@ -99,10 +115,19 @@ class AuthController extends Controller
      */
     public function logout(Request $request): JsonResponse
     {
+        $usuario = $request->user();
+
         Auth::guard('web')->logout();
 
         $request->session()->invalidate();
         $request->session()->regenerateToken();
+
+        if ($usuario instanceof User) {
+            Auditoria::registrar(Auditoria::LOGOUT, [
+                'usuario_id' => $usuario->id,
+                'usuario' => $usuario->username,
+            ]);
+        }
 
         return response()->json([
             'message' => 'Sesion cerrada correctamente.',
@@ -147,6 +172,11 @@ class AuthController extends Controller
 
         $this->cerrarLasOTRASSesiones($request, $usuario);
         $request->session()->regenerate(true);
+
+        Auditoria::registrar(Auditoria::PASSWORD_CAMBIADA, [
+            'usuario_id' => $usuario->id,
+            'usuario' => $usuario->username,
+        ]);
 
         return response()->json([
             'message' => 'Contrasena actualizada correctamente.',

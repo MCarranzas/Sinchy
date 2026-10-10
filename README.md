@@ -121,6 +121,93 @@ cambio `6.96`:
 XAMPP sigue instalado y sus Apache y MySQL funcionan; su PHP 8.2 quedo atras en
 el PATH y no se usa para este proyecto.
 
+## Instalacion (otro desarrollador)
+
+Requisitos: **PHP 8.3+** con las extensiones `pdo_pgsql`, `pgsql`, `mbstring`,
+`openssl`, `bcmath`, `gd`; **Composer 2**; **PostgreSQL 17**; **Node.js 22+** y
+**npm**. En Windows, el cliente de PostgreSQL (`pg_dump`) debe estar en el
+`PATH` para los respaldos.
+
+### Backend (`epcoro-api/`)
+
+```bash
+cd epcoro-api
+composer install
+copy .env.example .env            # bash: cp .env.example .env
+php artisan key:generate
+```
+
+Editar `.env` y apuntar la base de datos:
+
+```env
+DB_CONNECTION=pgsql
+DB_HOST=127.0.0.1
+DB_PORT=5432
+DB_DATABASE=epcoro
+DB_USERNAME=epcoro
+DB_PASSWORD=epcoro_secret
+```
+
+Crear la base y sembrarla (esquema, catalogos, parametros y 4 usuarios de
+ejemplo):
+
+```bash
+php artisan migrate --seed
+php artisan serve                 # http://localhost:8000
+```
+
+El seeding imprime por consola las contrasenas de `admin`, `tecnico`,
+`revisor` y `gerente`. Son **aleatorias y se muestran una sola vez**: copiarlas
+o regenerarlas con `php artisan db:seed`. No existen en produccion.
+
+### Frontend (`epcoro-web/`)
+
+```bash
+cd epcoro-web
+npm ci
+copy .env.example .env.local      # opcional: solo cambia el proxy de Vite
+npm run dev                       # http://localhost:5173
+```
+
+En desarrollo, Vite proxea `/api` y `/sanctum` al backend
+(`VITE_API_PROXY_TARGET`, por defecto `http://localhost:8000`). La app siempre
+llama a rutas relativas: en produccion es Nginx quien enruta al backend.
+
+### Verificacion (antes de dar por bueno un cambio)
+
+```bash
+cd epcoro-api
+composer check                    # pint + phpstan + php artisan test
+cd ../epcoro-web
+npm run build                     # vue-tsc + vite build
+```
+
+### Produccion (resumen; detalle en la FASE 12)
+
+```bash
+# backend
+cp .env.production.example .env   # y completar los valores reales
+php artisan key:generate
+composer install --no-dev --optimize-autoloader
+php artisan migrate --force
+php artisan epcoro:revisar-produccion   # falla si APP_DEBUG=true, CORS/Sanctum
+                                        # en localhost, base sin clave, etc.
+php artisan config:cache route:cache view:cache
+
+# frontend
+npm ci && npm run build           # el dist/ lo sirve Nginx
+
+# respaldos diarios (programador de tareas del sistema)
+php artisan schedule:work         # o un cron: * * * * * php artisan schedule:run
+php artisan epcoro:respaldar      # respaldo manual inmediato (pg_dump -Fc)
+```
+
+La plantilla `.env.production.example` marca los valores obligatorios
+(`APP_ENV=production`, `APP_DEBUG=false`, HTTPS, sin `localhost`, respaldos).
+El respaldo diario (`epcoro:respaldar`) queda programado en
+`routes/console.php` a las 02:30 y purga los que superan la retencion de
+`config/respaldo.php`.
+
 ## Estado
 
 | Fase | Estado |
@@ -136,14 +223,15 @@ el PATH y no se usa para este proyecto.
 | 8 - Captura de liquidacion | completa (8.1-8.12): planilla de captura reutilizada por crear/editar, wizard responsive de 5 pasos, validacion vee-validate espejo de `StoreLiquidacionRequest`, calculo en vivo espejo de `CalculoLiquidacionService` (BigInt, 1 solo redondeo half-up), lista con filtros y paginacion por URL (incluye municipio y vendedor con autocompletado), detalle con PDF/Excel e historial. Build verde y smoke test E2E via proxy. Queda solo la comprobacion visual en navegador |
 | 9 - Flujo de estados y permisos | completa (9.1-9.7): barra de estado con `transiciones_disponibles`, modal de transicion (motivo obligatorio en rechazado/anulado), timeline de historial, edicion condicionada a auth+propiedad+estado, banda `GET /api/v1/bandeja` con pestanas por rol (tambien el item "Mi bandeja" en el menu y la ruta `/bandeja`), seeder de 4 usuarios de ejemplo, fix de paginacion (`page`, no `pagina`) y 153 tests en verde (26 nuevos). El backend ya cortaba por estado (422) antes que por permiso (403) |
 | 10 - Reportes | completa (10.1-10.6): pantalla de reportes con rango quincenal/mensual/anual y por URL (`?fecha_desde=&fecha_hasta=`), tarjetas de resumen (n, pesos, bruto, aportes, deducciones y neto), tablas agrupadas por estado/municipio/area minera/presentacion/mes (grupos `por_area_minera` y `por_mes` agregados al resumen del backend), graficos Chart.js (dona por estado, evolucion mensual del neto, top municipios) y exportacion a Excel/PDF reutilizando los parametros del periodo |
-| 11 a 12 - Calidad, seguridad, produccion | pendiente |
+| 11 - Calidad, seguridad y auditoria | completa (11.1-11.9): canal de log `auditoria` con registro de login/logout/fallos, cambios de estado, parametros, exportaciones y respaldos (`App\Support\Auditoria`); respaldo diario con `pg_dump` y purga por retencion (`epcoro:respaldar`); preflight de produccion (`epcoro:revisar-produccion`); `.env.production.example` y proxy de Vite por entorno; scripts `composer check` (pint + phpstan + tests); esta guia de instalacion; 179 tests en verde |
+| 12 - Puesta en produccion | pendiente |
 
 Comprobacion (`epcoro-api/`):
 
 ```bash
 php artisan migrate:fresh --seed   # crea todo sin errores
 php artisan migrate:rollback       # revierte todo
-php artisan test                   # 155 tests / 830 assertions
+php artisan test                   # 179 tests / 901 assertions
 vendor\bin\pint --test
 vendor\bin\phpstan analyse
 ```

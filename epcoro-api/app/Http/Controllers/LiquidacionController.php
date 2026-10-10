@@ -21,6 +21,7 @@ use App\Models\User;
 use App\Services\CalculoLiquidacionService;
 use App\Services\NumeradorDocumento;
 use App\Services\TransicionEstadoService;
+use App\Support\Auditoria;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -121,6 +122,12 @@ class LiquidacionController extends Controller
     {
         $this->authorize('view', $liquidacion);
 
+        Auditoria::registrar(Auditoria::EXPORTACION, [
+            'formato' => 'pdf',
+            'liquidacion_id' => $liquidacion->id,
+            'numero_documento' => $liquidacion->numero_documento,
+        ]);
+
         return Pdf::setPaper('a4', 'portrait')
             ->loadView('liquidaciones.pdf', [
                 'liquidacion' => $this->cargada($liquidacion),
@@ -131,6 +138,12 @@ class LiquidacionController extends Controller
     public function excel(Liquidacion $liquidacion): Response
     {
         $this->authorize('view', $liquidacion);
+
+        Auditoria::registrar(Auditoria::EXPORTACION, [
+            'formato' => 'xlsx',
+            'liquidacion_id' => $liquidacion->id,
+            'numero_documento' => $liquidacion->numero_documento,
+        ]);
 
         return Excel::download(
             new LiquidacionExport($liquidacion),

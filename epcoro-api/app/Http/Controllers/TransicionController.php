@@ -8,6 +8,7 @@ use App\Http\Requests\TransicionRequest;
 use App\Http\Resources\LiquidacionResource;
 use App\Models\Liquidacion;
 use App\Services\TransicionEstadoService;
+use App\Support\Auditoria;
 use App\Support\TransicionesDisponibles;
 use Illuminate\Http\JsonResponse;
 
@@ -60,6 +61,13 @@ class TransicionController extends Controller
             $datos['comentario'] ?? null,
             $datos['motivo'] ?? null,
         );
+
+        Auditoria::registrar(Auditoria::TRANSICION, [
+            'liquidacion_id' => $liquidacion->id,
+            'numero_documento' => $liquidacion->numero_documento,
+            'estado_anterior' => $origen->value,
+            'estado_nuevo' => $destino->value,
+        ]);
 
         return response()->json([
             'message' => 'Transicion aplicada: '.$origen->value.' -> '.$destino->value.'.',

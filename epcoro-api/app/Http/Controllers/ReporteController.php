@@ -6,6 +6,7 @@ use App\Enums\EstadoLiquidacion;
 use App\Exports\LiquidacionesExport;
 use App\Http\Resources\LiquidacionResource;
 use App\Models\Liquidacion;
+use App\Support\Auditoria;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -136,6 +137,14 @@ class ReporteController extends Controller
         $liquidaciones = $this->base($request)->orderBy('fecha_transaccion')->orderBy('id')->get();
 
         $archivo = 'reporte-liquidaciones-'.($desde ?? 'inicio').'-'.($hasta ?? 'hoy');
+
+        Auditoria::registrar(Auditoria::EXPORTACION, [
+            'formato' => $formato,
+            'reporte' => 'liquidaciones',
+            'fecha_desde' => $desde,
+            'fecha_hasta' => $hasta,
+            'filas' => $liquidaciones->count(),
+        ]);
 
         if ($formato === 'xlsx') {
             return Excel::download(new LiquidacionesExport($liquidaciones), $archivo.'.xlsx');

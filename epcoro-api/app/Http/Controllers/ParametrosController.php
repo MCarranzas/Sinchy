@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\ParametrosRequest;
 use App\Models\ParametroGeneral;
+use App\Support\Auditoria;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 
@@ -19,10 +20,11 @@ use Illuminate\Support\Facades\DB;
  * es la primary key: el cliente manda un MAPA {clave: valor} y las claves
  * desconocidas se rechazan alla (ParametrosRequest), no aqui.
  *
- * Falta la bitacora de cambios que pide R3 (quien cambio que y cuando).
- * No existe la tabla en el esquema de la FASE 4 y meterla ahora obligaria a
- * decidir el formato del historial sin el usuario de negocio al lado; queda
- * anotado como pendiente para la FASE 11, donde esta la auditoria.
+ * El cambio queda en el canal `auditoria` (FASE 11.5): se anota quien toco
+ * que claves, cuando y desde que IP. No es todavia una tabla consultable, que
+ * era el alcance grande de R3, sino la traza de auditoria que pide la seccion
+ * 11.5; si el negocio necesita consultar el historico desde el sistema, se
+ * promueve a tabla en una fase posterior.
  */
 class ParametrosController extends Controller
 {
@@ -60,6 +62,10 @@ class ParametrosController extends Controller
 
             return $parametros;
         });
+
+        Auditoria::registrar(Auditoria::PARAMETROS, [
+            'claves' => array_keys($actualizados),
+        ]);
 
         return response()->json([
             'message' => 'Parametros actualizados correctamente.',

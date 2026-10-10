@@ -8,8 +8,14 @@
 .env
 .env.local
 .env.*.local
+.env.production
+.env.development
 /epcoro-api/.env
+/epcoro-api/.env.production
+/epcoro-api/.env.development
 /epcoro-web/.env
+/epcoro-web/.env.production
+/epcoro-web/.env.development
 
 # Compilados
 /build/
