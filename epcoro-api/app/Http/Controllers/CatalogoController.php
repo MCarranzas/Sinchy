@@ -11,6 +11,7 @@ use App\Models\Municipio;
 use App\Models\Persona;
 use App\Models\PresentacionMineral;
 use App\Models\Provincia;
+use App\Models\TipoCambio;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -223,6 +224,31 @@ class CatalogoController extends Controller
                 ->limit(24)
                 ->get()
         );
+    }
+
+    /**
+     * Tipo de cambio oficial de una fecha (tabla `tipos_cambio`).
+     *
+     * El formulario de captura lo consume para MOSTRARLO de solo lectura: el
+     * tipo de cambio ya no se captura por liquidacion, lo resuelve el backend
+     * al guardar. `data` es null cuando ese dia no tiene valor cargado, y el
+     * formulario lo muestra como aviso en vez de dejar enviar.
+     */
+    public function tipoCambio(Request $request): JsonResponse
+    {
+        $datos = $request->validate([
+            'fecha' => ['required', 'date_format:Y-m-d'],
+        ]);
+
+        $tipoCambio = TipoCambio::delDia($datos['fecha']);
+
+        return response()->json([
+            'data' => $tipoCambio === null ? null : [
+                'fecha' => $tipoCambio->fecha->toDateString(),
+                'valor' => $tipoCambio->valor,
+                'fuente' => $tipoCambio->fuente,
+            ],
+        ]);
     }
 
     /**

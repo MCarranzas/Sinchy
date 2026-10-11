@@ -15,6 +15,12 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
 ->withMiddleware(function (Middleware $middleware): void {
+        // Detras de Vite (dev) o Nginx (prod) la IP del cliente real viene en
+        // X-Forwarded-For. ConfiarProxies aplica TRUST_PROXIES a tiempo de
+        // request: aqui no vale env() porque el .env todavia no cargo. En
+        // produccion TRUST_PROXIES debe ser la IP del proxy, nunca '*'.
+        $middleware->prepend(\App\Http\Middleware\ConfiarProxies::class);
+
         $middleware->statefulApi();
     })
     ->withExceptions(function (Exceptions $exceptions): void {

@@ -41,6 +41,11 @@ onMounted(async () => {
 
     const valores = valoresDesdeLiquidacion(liquidacion)
 
+    // La fecha del expediente ya tiene su tipo de cambio resuelto (la copia
+    // guardada): se marca antes de volcar los valores para que el watch no la
+    // pise. Solo si el usuario cambia la fecha se resuelve el valor nuevo.
+    formulario.marcarTipoCambioDelDia(valores.fecha_transaccion)
+
     // Vuelca el registro al formulario. La cascada de SelectorUbicacion se
     // entera por los watch y precarga cada nivel sin tocar la seleccion.
     for (const [campo, valor] of Object.entries(valores)) {

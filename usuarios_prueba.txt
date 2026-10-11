@@ -1,0 +1,10 @@
+
+Usuarios de ejemplo del flujo de estados:
++---------+--------------------------+---------+
+| usuario | contrasena               | rol     |
++---------+--------------------------+---------+
+| admin   | Admin123	             | admin   |
+| tecnico | Tecnico123               | tecnico |
+| revisor | Revisor123				 | revisor |
+| gerente | Gerente123				 | gerente |
++---------+--------------------------+---------+

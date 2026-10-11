@@ -17,6 +17,7 @@ use App\Models\Liquidacion;
 use App\Models\LiquidacionEstadoHistorial;
 use App\Models\Persona;
 use App\Models\PresentacionMineral;
+use App\Models\TipoCambio;
 use App\Models\User;
 use App\Services\CalculoLiquidacionService;
 use App\Services\NumeradorDocumento;
@@ -159,6 +160,10 @@ class LiquidacionController extends Controller
         $usuario = $request->user();
         $renglones = $this->renglones($datos);
 
+        // El tipo de cambio ya no lo manda el formulario: se toma del valor
+        // diario cargado para la fecha de la transaccion.
+        $datos['tipo_cambio'] = $this->tipoCambioDelDia($datos['fecha_transaccion']);
+
         $liquidacion = DB::transaction(function () use ($datos, $usuario, $renglones): Liquidacion {
             $ejercicio = (int) substr($datos['fecha_transaccion'], 0, 4);
 
@@ -216,6 +221,14 @@ class LiquidacionController extends Controller
         $validados = $request->validated();
         $renglones = $this->renglones($validados, $liquidacion);
         $datos = array_merge($this->base($liquidacion), $validados);
+
+        // El tipo de cambio se vuelve a resolver SOLO si cambia la fecha de la
+        // transaccion. Mientras la fecha no cambie, la liquidacion conserva la
+        // copia que ya tenia: editar el peso no debe alterar el tipo de cambio.
+        if (array_key_exists('fecha_transaccion', $validados)) {
+            $datos['tipo_cambio'] = $this->tipoCambioDelDia($datos['fecha_transaccion']);
+        }
+
         $ejercicio = (int) substr($datos['fecha_transaccion'], 0, 4);
 
         $liquidacion = DB::transaction(function () use ($liquidacion, $datos, $ejercicio, $renglones): Liquidacion {
@@ -528,6 +541,27 @@ class LiquidacionController extends Controller
                 : filter_var($datos['aplica_caja_salud'], FILTER_VALIDATE_BOOLEAN),
             'deducciones' => array_column($renglones, 'monto'),
         ];
+    }
+
+    /**
+     * El tipo de cambio oficial Bs/$ de la fecha de la transaccion.
+     *
+     * Ya no se captura por liquidacion: se toma de la tabla diaria
+     * `tipos_cambio`. Si no hay valor cargado para ese dia se corta con 422,
+     * porque una liquidacion sin tipo de cambio oficial no se puede calcular
+     * y es preferible bloquear el alta a inventar un valor.
+     */
+    private function tipoCambioDelDia(string $fechaTransaccion): string
+    {
+        $tipoCambio = TipoCambio::delDia($fechaTransaccion);
+
+        if ($tipoCambio === null) {
+            throw ValidationException::withMessages([
+                'fecha_transaccion' => 'No hay tipo de cambio registrado para el '.$fechaTransaccion.'. Cargue el tipo de cambio del dia antes de registrar la liquidacion.',
+            ]);
+        }
+
+        return $tipoCambio->valor;
     }
 
     /**

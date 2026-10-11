@@ -52,13 +52,10 @@ export const useCatalogosStore = defineStore('catalogos', {
     },
 
     /**
-     * Defaults del formulario (8.2 y 8.3):
-     * tipo de cambio sugerido (celda F6) y los tres datos fijos del
-     * comprador (celdas C11-C13 de hoja.xlsx).
+     * Defaults del formulario (8.3): los tres datos fijos del comprador
+     * (celdas C11-C13 de hoja.xlsx). El tipo de cambio ya no es un default:
+     * se resuelve por fecha contra /catalogos/tipo-cambio.
      */
-    tipoCambioDefecto: (estado): string =>
-      estado.parametros.find((p) => p.clave === 'TIPO_CAMBIO_DEFECTO')?.valor ?? '',
-
     gramosPorOnzaTroy: (estado): string =>
       estado.parametros.find((p) => p.clave === 'GRAMOS_POR_ONZA_TROY')?.valor ?? '31.1035',
 

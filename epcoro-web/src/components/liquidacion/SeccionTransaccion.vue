@@ -6,8 +6,11 @@
  * La cotizacion se SUGIERE desde /cotizaciones (la mas reciente primero) y
  * el usuario puede cambiarla en el select o escribirla a mano: en los dos
  * casos el que viaja al backend es `cotizacion_usd_oz_t`, con su
- * `cotizacion_id` cuando vino del catalogo. El tipo de cambio arranca con
- * TIPO_CAMBIO_DEFECTO (parametros, celda F6 de hoja.xlsx).
+ * `cotizacion_id` cuando vino del catalogo.
+ *
+ * El tipo de cambio es de SOLO LECTURA: lo resuelve el backend por la fecha
+ * de la transaccion y aqui solo se muestra el valor oficial del dia. Si esa
+ * fecha no tiene valor cargado, se avisa y el alta queda bloqueada.
  */
 import { computed, ref, watch } from 'vue'
 
@@ -46,6 +49,24 @@ watch(seleccion, (id) => {
     props.formulario.asignar('cotizacion_id', cotizacion.id)
   }
 })
+
+const tipoCambioAyuda = computed<string | undefined>(() => {
+  if (props.formulario.tipoCambioCargando.value) {
+    return 'Consultando el tipo de cambio del día…'
+  }
+
+  return props.formulario.tipoCambioDisponible.value
+    ? 'Valor oficial del día (lo resuelve el sistema).'
+    : undefined
+})
+
+// El error solo se muestra cuando ya se intento avanzar o guardar
+// (tocado/intentado): al abrir no se pinta nada en rojo.
+const tipoCambioError = computed<string | undefined>(() =>
+  props.formulario.tipoCambioCargando.value
+    ? undefined
+    : props.formulario.error('tipo_cambio'),
+)
 </script>
 
 <template>
@@ -78,13 +99,13 @@ watch(seleccion, (id) => {
 
       <CampoEntrada
         v-bind="formulario.enlazar('tipo_cambio')"
-        etiqueta="Tipo de cambio (Bs/$) *"
+        etiqueta="Tipo de cambio (Bs/$)"
         tipo="number"
         step="0.0001"
-        placeholder="6.96"
-        ayuda="Sugerido por parámetros; editable."
-        :error="formulario.error('tipo_cambio')"
-        @blur="formulario.tocar('tipo_cambio')"
+        placeholder="—"
+        disabled
+        :ayuda="tipoCambioAyuda"
+        :error="tipoCambioError"
       />
 
       <CampoSelect

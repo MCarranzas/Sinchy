@@ -108,6 +108,17 @@ export interface CotizacionQuincenal {
   fuente: string | null
 }
 
+/**
+ * El tipo de cambio oficial Bs/$ de un dia (tabla `tipos_cambio`). Ya no se
+ * captura por liquidacion: el backend lo resuelve al guardar y el formulario
+ * solo lo muestra de lectura. `valor` va como string por los 4 decimales.
+ */
+export interface TipoCambioDia {
+  fecha: string
+  valor: string
+  fuente: string | null
+}
+
 export interface ParametroGeneral {
   clave: string
   valor: string

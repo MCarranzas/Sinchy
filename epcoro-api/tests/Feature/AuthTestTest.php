@@ -47,6 +47,41 @@ class AuthTestTest extends AuthTestCase
         $this->assertNotNull($usuario->ultimo_acceso);
     }
 
+    public function test_login_guarda_en_sesiones_registro_la_ip_real_del_forward(): void
+    {
+        // Detras de Vite (dev) o Nginx (prod) la IP del cliente viene en
+        // X-Forwarded-For; sin confiar en el proxy quedaria la del proxy
+        // (127.0.0.1). Aqui se simula el proxy con un cliente IPv4 puro.
+        $usuario = User::factory()->conRol('tecnico')->create();
+
+        $this->withHeaders(
+            $this->cabecerasStateful() + ['X-Forwarded-For' => '203.0.113.7'],
+        )->postJson('/api/auth/login', $this->credenciales($usuario))
+            ->assertOk();
+
+        $this->assertDatabaseHas('sesiones_registro', [
+            'user_id' => $usuario->id,
+            'ip' => '203.0.113.7',
+        ]);
+    }
+
+    public function test_login_normaliza_la_ip_ipv6_mapeada_del_forward(): void
+    {
+        // Vite (Node bajo Windows) agrega X-Forwarded-For en notacion IPv6
+        // mapeada (::ffff:a.b.c.d); se normaliza para que quede IPv4 limpia.
+        $usuario = User::factory()->conRol('tecnico')->create();
+
+        $this->withHeaders(
+            $this->cabecerasStateful() + ['X-Forwarded-For' => '::ffff:203.0.113.7'],
+        )->postJson('/api/auth/login', $this->credenciales($usuario))
+            ->assertOk();
+
+        $this->assertDatabaseHas('sesiones_registro', [
+            'user_id' => $usuario->id,
+            'ip' => '203.0.113.7',
+        ]);
+    }
+
     public function test_login_con_contrasena_incorrecta_devuelve_422(): void
     {
         $usuario = User::factory()->conRol('tecnico')->create();

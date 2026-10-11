@@ -18,10 +18,12 @@ use Illuminate\Validation\Rule;
  * Un tecnico que solo quiere arreglar una observacion no deberia tener que
  * reenviar los 25 campos del formulario para no romper los montos.
  *
- * Los cinco insumos del calculo viajan juntos en la practica (el formulario
- * los muestra en la misma pantalla), pero aqui no se exige el paquete
- * completo: si llega uno, se recalcula con ese uno mas los que ya estaban.
- * El corte de seguridad es el del servicio, que revalida todo igual.
+ * Los insumos del calculo que vienen del formulario (peso, ley, cotizacion y
+ * el interruptor de caja de salud) viajan juntos en la practica, pero aqui no
+ * se exige el paquete completo: si llega uno, se recalcula con ese uno mas los
+ * que ya estaban. El tipo de cambio no viaja en el payload: se resuelve por la
+ * fecha de la transaccion (tabla diaria `tipos_cambio`). El corte de seguridad
+ * es el del servicio, que revalida todo igual.
  *
  * `numero_documento` puede corregirse solo si NO lo asigno el sistema: un
  * numero con correlativo es el que se imprime y el que cuelga del contador
@@ -94,7 +96,8 @@ class UpdateLiquidacionRequest extends FormRequest
             'observaciones' => ['nullable', 'string', 'max:5000'],
 
             // --------------------------------------------------- insumos
-            'tipo_cambio' => ['sometimes', 'numeric', 'gt:0', 'decimal:0,4'],
+            // tipo_cambio NO viene del formulario: se resuelve en el
+            // controlador a partir de la fecha de la transaccion.
             'cotizacion_usd_oz_t' => ['sometimes', 'numeric', 'gt:0', 'decimal:0,4'],
             'cotizacion_id' => ['nullable', 'integer', 'exists:cotizaciones_quincenales,id'],
             'aplica_caja_salud' => ['sometimes', 'boolean'],

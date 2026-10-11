@@ -18,6 +18,7 @@ import type {
   Persona,
   PresentacionMineral,
   Provincia,
+  TipoCambioDia,
 } from '@/types/catalogos'
 
 async function lista<T>(url: string, params?: Record<string, unknown>): Promise<T[]> {
@@ -79,6 +80,19 @@ export function listarPresentaciones(): Promise<PresentacionMineral[]> {
 
 export function listarCotizaciones(ejercicio?: number): Promise<CotizacionQuincenal[]> {
   return lista<CotizacionQuincenal>('/cotizaciones', ejercicio ? { ejercicio } : undefined)
+}
+
+/**
+ * Tipo de cambio oficial cargado para una fecha (8.2). Devuelve `null` cuando
+ * ese dia no tiene valor: el formulario lo muestra como aviso, no lo inventa,
+ * porque el backend despues corta el alta con 422.
+ */
+export async function obtenerTipoCambio(fecha: string): Promise<TipoCambioDia | null> {
+  const { data } = await api.get<{ data: TipoCambioDia | null }>('/catalogos/tipo-cambio', {
+    params: { fecha },
+  })
+
+  return data.data
 }
 
 export async function listarParametros(): Promise<ParametroGeneral[]> {

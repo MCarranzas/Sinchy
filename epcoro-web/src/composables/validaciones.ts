@@ -69,7 +69,16 @@ export const reglas = {
     return Number.isNaN(Date.parse(texto)) ? 'La fecha no es válida.' : true
   },
 
+  /**
+   * Espejo de la resolucion del backend: el tipo de cambio NO lo escribe el
+   * usuario, lo carga el sistema para la fecha de la transaccion. Vacio
+   * significa que ese dia no tiene valor cargado, y el alta se bloquea.
+   */
   tipoCambio: (valor: unknown): true | string => {
+    if (String(valor ?? '').trim() === '') {
+      return 'No hay tipo de cambio cargado para la fecha de la transacción.'
+    }
+
     const corte = decimal(valor, 4)
     if (corte !== true) {
       return corte

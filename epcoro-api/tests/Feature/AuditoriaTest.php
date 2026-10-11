@@ -140,14 +140,14 @@ final class AuditoriaTest extends AuthTestCase
 
         $this->actingAs($admin, 'web')
             ->putJson('/api/v1/parametros', [
-                'parametros' => ['TIPO_CAMBIO_DEFECTO' => '6.99'],
+                'parametros' => ['ALICUOTA_APORTE' => '0.019'],
             ])
             ->assertOk();
 
         $registro = $this->registro();
 
         $this->assertStringContainsString('INFO: parametros_actualizados {', $registro);
-        $this->assertStringContainsString('TIPO_CAMBIO_DEFECTO', $registro);
+        $this->assertStringContainsString('ALICUOTA_APORTE', $registro);
     }
 
     // -------------------------------------------------------- exportacion

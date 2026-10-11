@@ -29,6 +29,8 @@ const formulario = useLiquidacionForm({
 onMounted(async () => {
   await catalogos.cargar()
   formulario.aplicarDefaults()
+  // El tipo de cambio no se captura: se trae el oficial de la fecha por defecto.
+  await formulario.cargarTipoCambioDelDia()
 })
 </script>
 

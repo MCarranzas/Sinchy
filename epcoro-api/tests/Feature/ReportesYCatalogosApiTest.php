@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Liquidacion;
 use App\Models\Municipio;
 use App\Models\ParametroGeneral;
+use App\Models\TipoCambio;
 use App\Models\User;
 use App\Services\TransicionEstadoService;
 use Database\Seeders\ParametrosSeeder;
@@ -175,7 +176,7 @@ class ReportesYCatalogosApiTest extends AuthTestCase
 
         $this->actingAs($tecnico, 'web')
             ->putJson('/api/v1/parametros', [
-                'parametros' => ['TIPO_CAMBIO_DEFECTO' => '6.99'],
+                'parametros' => ['ALICUOTA_APORTE' => '0.019'],
             ])
             ->assertForbidden();
     }
@@ -187,16 +188,16 @@ class ReportesYCatalogosApiTest extends AuthTestCase
         $respuesta = $this->actingAs($admin, 'web')
             ->putJson('/api/v1/parametros', [
                 'parametros' => [
-                    'TIPO_CAMBIO_DEFECTO' => '6.99',
                     'ALICUOTA_APORTE' => '0.0180',
+                    'GRAMOS_POR_ONZA_TROY' => '31.1036',
                 ],
             ]);
 
         $respuesta->assertOk()
             ->assertJsonPath('message', 'Parametros actualizados correctamente.');
 
-        $this->assertSame('6.99', ParametroGeneral::query()->find('TIPO_CAMBIO_DEFECTO')?->valor);
         $this->assertSame('0.0180', ParametroGeneral::query()->find('ALICUOTA_APORTE')?->valor);
+        $this->assertSame('31.1036', ParametroGeneral::query()->find('GRAMOS_POR_ONZA_TROY')?->valor);
     }
 
     public function test_una_clave_inventada_o_con_notacion_cientifica_no_pasa(): void
@@ -310,6 +311,31 @@ class ReportesYCatalogosApiTest extends AuthTestCase
             ->assertOk();
 
         $this->assertTrue($cascada->json('data.0.id') === $elegido->id);
+    }
+
+    public function test_el_tipo_de_cambio_del_dia_se_consulta_por_fecha(): void
+    {
+        $tecnico = $this->tecnico();
+        TipoCambio::factory()->create(['fecha' => '2026-10-01', 'valor' => '6.9100', 'fuente' => 'BCB']);
+
+        $this->actingAs($tecnico, 'web')
+            ->getJson('/api/v1/catalogos/tipo-cambio?fecha=2026-10-01')
+            ->assertOk()
+            ->assertJsonPath('data.fecha', '2026-10-01')
+            ->assertJsonPath('data.valor', '6.9100')
+            ->assertJsonPath('data.fuente', 'BCB');
+
+        // Un dia sin valor cargado responde null: el formulario lo muestra
+        // como aviso en vez de inventar un tipo de cambio.
+        $this->actingAs($tecnico, 'web')
+            ->getJson('/api/v1/catalogos/tipo-cambio?fecha=2026-10-02')
+            ->assertOk()
+            ->assertJsonPath('data', null);
+
+        $this->actingAs($tecnico, 'web')
+            ->getJson('/api/v1/catalogos/tipo-cambio?fecha=01-10-2026')
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('fecha');
     }
 
     // --------------------------------------------------------- utilidades

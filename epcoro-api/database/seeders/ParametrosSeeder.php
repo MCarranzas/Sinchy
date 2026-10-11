@@ -30,11 +30,6 @@ class ParametrosSeeder extends Seeder
      * @var array<string, array{0: string, 1: string, 2: string}>
      */
     private const PARAMETROS = [
-        'TIPO_CAMBIO_DEFECTO' => [
-            '6.96',
-            'decimal',
-            'Tipo de cambio Bs/$ sugerido al abrir el formulario (celda F6 de hoja.xlsx).',
-        ],
         'GRAMOS_POR_ONZA_TROY' => [
             '31.1035',
             'decimal',

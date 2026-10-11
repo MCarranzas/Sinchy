@@ -7,6 +7,7 @@ use App\Models\Liquidacion;
 use App\Models\LiquidacionEstadoHistorial;
 use App\Models\Persona;
 use App\Models\PresentacionMineral;
+use App\Models\TipoCambio;
 use App\Models\User;
 use Database\Seeders\ParametrosSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -43,6 +44,11 @@ class LiquidacionApiTest extends AuthTestCase
         // parametros_generales; sin ellos la captura de una con caja de
         // salud no tiene con que calcular el aporte.
         $this->seed(ParametrosSeeder::class);
+
+        // El tipo de cambio ya no se captura por liquidacion: se toma de la
+        // tabla diaria. El payload usa fecha_transaccion 2026-10-01, asi que
+        // ese dia tiene que existir.
+        TipoCambio::factory()->create(['fecha' => '2026-10-01', 'valor' => '6.9100']);
     }
 
     // ---------------------------------------------------------- seguridad
@@ -210,6 +216,34 @@ class LiquidacionApiTest extends AuthTestCase
         $this->registrar($tecnico, ['municipio_id' => $otroMunicipio])
             ->assertStatus(422)
             ->assertJsonValidationErrors('municipio_id');
+    }
+
+    public function test_el_alta_sin_tipo_de_cambio_del_dia_responde_422(): void
+    {
+        $tecnico = $this->tecnico();
+
+        // 2026-10-02 no tiene tipo de cambio cargado: el alta se bloquea y el
+        // error apunta a la fecha, que es el dato que lo explica.
+        $this->registrar($tecnico, ['fecha_transaccion' => '2026-10-02'])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('fecha_transaccion');
+    }
+
+    public function test_el_alta_toma_el_tipo_de_cambio_del_dia_e_ignora_el_del_payload(): void
+    {
+        $tecnico = $this->tecnico();
+
+        // El payload manda un valor distinto a proposito: el del dia manda.
+        $respuesta = $this->registrar($tecnico, ['tipo_cambio' => '9.9999']);
+
+        $respuesta->assertCreated();
+
+        $fila = Liquidacion::query()->findOrFail($respuesta->json('data.id'));
+        $this->assertSame('6.9100', $fila->tipo_cambio);
+
+        // Y el calculo usa el 6.9100 del dia, no el 9.9999 del payload.
+        $esperado = $this->calculoEsperado(tipoCambio: '6.9100');
+        $this->assertSame($esperado['valor_bruto_bs'], $respuesta->json('data.calculo.valor_bruto_bs'));
     }
 
     // ------------------------------------------------------------- lectura
@@ -433,6 +467,51 @@ class LiquidacionApiTest extends AuthTestCase
         $this->identificarseComo($tecnico, 'web')
             ->deleteJson('/api/v1/liquidaciones/'.$enRevision->id)
             ->assertStatus(422);
+    }
+
+    public function test_cambiar_la_fecha_recalcula_con_el_tipo_de_cambio_del_nuevo_dia(): void
+    {
+        $tecnico = $this->tecnico();
+
+        TipoCambio::factory()->create(['fecha' => '2026-10-02', 'valor' => '6.5000']);
+
+        $liquidacion = $this->liquidacionDe($tecnico, [
+            'fecha_transaccion' => '2026-10-01',
+            'tipo_cambio' => '6.9100',
+        ]);
+
+        $this->identificarseComo($tecnico, 'web')
+            ->putJson('/api/v1/liquidaciones/'.$liquidacion->id, [
+                'fecha_transaccion' => '2026-10-02',
+            ])
+            ->assertOk();
+
+        $this->assertSame('6.5000', $liquidacion->fresh()->tipo_cambio);
+    }
+
+    public function test_cambiar_a_una_fecha_sin_tipo_de_cambio_responde_422(): void
+    {
+        $tecnico = $this->tecnico();
+        $liquidacion = $this->liquidacionDe($tecnico, ['fecha_transaccion' => '2026-10-01']);
+
+        $this->identificarseComo($tecnico, 'web')
+            ->putJson('/api/v1/liquidaciones/'.$liquidacion->id, [
+                'fecha_transaccion' => '2026-10-03',
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('fecha_transaccion');
+    }
+
+    public function test_editar_sin_cambiar_la_fecha_conserva_el_tipo_de_cambio(): void
+    {
+        $tecnico = $this->tecnico();
+        $liquidacion = $this->liquidacionDe($tecnico, ['tipo_cambio' => '7.1234']);
+
+        $this->identificarseComo($tecnico, 'web')
+            ->putJson('/api/v1/liquidaciones/'.$liquidacion->id, ['peso_gramos' => '500.25'])
+            ->assertOk();
+
+        $this->assertSame('7.1234', $liquidacion->fresh()->tipo_cambio);
     }
 
     // -------------------------------------------------------- transiciones

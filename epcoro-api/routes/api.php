@@ -86,6 +86,8 @@ Route::prefix('v1')->middleware('auth:sanctum')->name('v1.')->group(function () 
         ->name('catalogos.presentaciones-mineral');
     Route::get('/cotizaciones', [CatalogoController::class, 'cotizaciones'])
         ->name('catalogos.cotizaciones');
+    Route::get('/catalogos/tipo-cambio', [CatalogoController::class, 'tipoCambio'])
+        ->name('catalogos.tipo-cambio');
 
     // ------------------------------------------------------ parametros
     Route::get('/parametros', [ParametrosController::class, 'index'])->name('parametros.index');

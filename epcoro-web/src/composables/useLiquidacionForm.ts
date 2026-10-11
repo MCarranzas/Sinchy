@@ -17,9 +17,10 @@
  */
 
 import { useForm } from 'vee-validate'
-import { computed, reactive, ref, type Ref } from 'vue'
+import { computed, reactive, ref, watch, type Ref } from 'vue'
 
 import { erroresDeValidacion } from '@/api/axios'
+import { obtenerTipoCambio } from '@/api/catalogos.api'
 import { useCatalogosStore } from '@/stores/catalogos'
 import { calcular, type ResultadoCalculo } from '@/utils/calculo'
 import { porcentajeAFraccion, fraccionAPorcentaje, reglas, type Regla } from '@/composables/validaciones'
@@ -196,6 +197,10 @@ export interface FormularioCaptura {
   pasoActual: Ref<number>
   deducciones: FilaDeduccion[]
   resultado: Ref<ResultadoCalculo>
+  tipoCambioCargando: Ref<boolean>
+  tipoCambioDisponible: Ref<boolean>
+  cargarTipoCambioDelDia: () => Promise<void>
+  marcarTipoCambioDelDia: (fecha: string) => void
   enlazar: (campo: keyof ValoresCaptura) => {
     // any a proposito: cada seccion enlaza campos de tipo distinto contra
     // componentes que aceptan uniones mas anchas que el tipo del campo.
@@ -260,6 +265,71 @@ export function useLiquidacionForm(opciones: OpcionesFormulario): FormularioCapt
     // vee-validate borraria los valores de los pasos ya visitados.
     keepValuesOnUnmount: true,
   })
+
+  /**
+   * Tipo de cambio del dia (8.2): YA NO SE CAPTURA. El backend lo resuelve por
+   * `fecha_transaccion` al guardar, y aqui solo se trae para MOSTRARLO de solo
+   * lectura y previsualizar el calculo. `fechaTipoCambio` guarda para que
+   * fecha se resolvio el valor actual: al editar, mientras la fecha no cambie
+   * se conserva la copia del expediente (que es lo que hara el backend).
+   */
+  const tipoCambioCargando = ref(false)
+  const tipoCambioDisponible = ref(false)
+  const fechaTipoCambio = ref<string | null>(null)
+
+  async function cargarTipoCambio(fecha: string): Promise<void> {
+    tipoCambioCargando.value = true
+
+    try {
+      const tipoCambio = fecha === '' ? null : await obtenerTipoCambio(fecha)
+
+      // La fecha cambio mientras llegaba la respuesta: se descarta la vieja.
+      if (values.fecha_transaccion !== fecha) {
+        return
+      }
+
+      fechaTipoCambio.value = fecha
+      tipoCambioDisponible.value = tipoCambio !== null
+      setFieldValue('tipo_cambio', tipoCambio?.valor ?? '')
+    } catch {
+      if (values.fecha_transaccion === fecha) {
+        fechaTipoCambio.value = fecha
+        tipoCambioDisponible.value = false
+        setFieldValue('tipo_cambio', '')
+      }
+    } finally {
+      tipoCambioCargando.value = false
+    }
+  }
+
+  // Al cambiar la fecha de la transaccion se vuelve a resolver el tipo de
+  // cambio del dia, salvo que sea la fecha ya resuelta (edicion sin tocar la
+  // fecha: se conserva la copia que trajo el expediente).
+  watch(
+    () => values.fecha_transaccion,
+    (fecha) => {
+      if (fecha === fechaTipoCambio.value) {
+        return
+      }
+
+      void cargarTipoCambio(String(fecha ?? ''))
+    },
+  )
+
+  /** Carga inicial del alta: resuelve el tipo de cambio de la fecha por defecto. */
+  async function cargarTipoCambioDelDia(): Promise<void> {
+    await cargarTipoCambio(String(values.fecha_transaccion ?? ''))
+  }
+
+  /**
+   * Edicion: fija como resuelta la fecha que trae el expediente para que el
+   * watch no pise la copia guardada. Si el usuario cambia la fecha, el watch
+   * si resuelve el valor de la fecha nueva.
+   */
+  function marcarTipoCambioDelDia(fecha: string): void {
+    fechaTipoCambio.value = fecha
+    tipoCambioDisponible.value = true
+  }
 
   /**
    * Valida el formulario COMPLETO contra el espejo del backend. Es la misma
@@ -465,15 +535,12 @@ export function useLiquidacionForm(opciones: OpcionesFormulario): FormularioCapt
   }
 
   /**
-   * Defaults al abrir (8.2 y 8.3): tipo de cambio sugerido, cotizacion
-   * quincenal mas reciente y los tres datos fijos del comprador, que vienen
-   * de parametros_generales (celdas C11-C13 de hoja.xlsx).
+   * Defaults al abrir (8.3): cotizacion quincenal mas reciente y los tres
+   * datos fijos del comprador, que vienen de parametros_generales (celdas
+   * C11-C13 de hoja.xlsx). El tipo de cambio no es un default: se resuelve
+   * con `cargarTipoCambioDelDia()` contra la fecha de la transaccion.
    */
   function aplicarDefaults(): void {
-    if (!values.tipo_cambio && catalogos.tipoCambioDefecto) {
-      setFieldValue('tipo_cambio', catalogos.tipoCambioDefecto)
-    }
-
     if (!values.cotizacion_usd_oz_t && catalogos.cotizacionSugerida) {
       setFieldValue('cotizacion_usd_oz_t', catalogos.cotizacionSugerida.valor_usd_oz_t)
       setFieldValue('cotizacion_id', catalogos.cotizacionSugerida.id)
@@ -498,6 +565,10 @@ export function useLiquidacionForm(opciones: OpcionesFormulario): FormularioCapt
     pasoActual,
     deducciones,
     resultado,
+    tipoCambioCargando,
+    tipoCambioDisponible,
+    cargarTipoCambioDelDia,
+    marcarTipoCambioDelDia,
     enlazar,
     error,
     visible,

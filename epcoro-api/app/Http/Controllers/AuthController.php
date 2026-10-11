@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\ChangePasswordRequest;
 use App\Http\Requests\LoginRequest;
+use App\Models\SesionRegistro;
 use App\Models\User;
 use App\Support\Auditoria;
 use Illuminate\Http\JsonResponse;
@@ -95,6 +96,8 @@ class AuthController extends Controller
         // que evita el fixation y ademas no acumula filas.
         $request->session()->regenerate(true);
 
+        $this->registrarIngresoSesion($request, $usuario);
+
         Auditoria::registrar(Auditoria::LOGIN, [
             'usuario_id' => $usuario->id,
             'usuario' => $usuario->username,
@@ -117,10 +120,16 @@ class AuthController extends Controller
     {
         $usuario = $request->user();
 
+        // Se captura ANTES de invalidar: invalidate() regenera el id y ya no
+        // se podria correlacionar con la fila abierta en la bitacora.
+        $sessionId = $request->session()->getId();
+
         Auth::guard('web')->logout();
 
         $request->session()->invalidate();
         $request->session()->regenerateToken();
+
+        $this->cerrarSesionRegistrada($sessionId);
 
         if ($usuario instanceof User) {
             Auditoria::registrar(Auditoria::LOGOUT, [
@@ -170,8 +179,14 @@ class AuthController extends Controller
 
         $request->cambiar();
 
+        $sessionIdAnterior = $request->session()->getId();
+
         $this->cerrarLasOTRASSesiones($request, $usuario);
         $request->session()->regenerate(true);
+
+        // regenerate(true) cambia el id de la sesion actual: hay que reapuntar
+        // su fila abierta o el logout posterior ya no la encontraria.
+        $this->reapuntarSesionRegistrada($sessionIdAnterior, $request->session()->getId());
 
         Auditoria::registrar(Auditoria::PASSWORD_CAMBIADA, [
             'usuario_id' => $usuario->id,
@@ -201,10 +216,72 @@ class AuthController extends Controller
             return;
         }
 
+        $idActual = $request->session()->getId();
+
+        $otrasSesiones = DB::table(config('session.table', 'sessions'))
+            ->where('user_id', $usuario->id)
+            ->where('id', '!=', $idActual)
+            ->pluck('id');
+
+        if ($otrasSesiones->isNotEmpty()) {
+            SesionRegistro::query()
+                ->whereIn('session_id', $otrasSesiones)
+                ->whereNull('fecha_salida')
+                ->update(['fecha_salida' => now()]);
+        }
+
         DB::table(config('session.table', 'sessions'))
             ->where('user_id', $usuario->id)
-            ->where('id', '!=', $request->session()->getId())
+            ->where('id', '!=', $idActual)
             ->delete();
+    }
+
+    /**
+     * Deja constancia permanente del ingreso: fecha, hora e IP del equipo.
+     *
+     * Se llama DESPUES de regenerate() para guardar el id definitivo de la
+     * sesion, que es el que permite cerrarla luego en el logout.
+     */
+    private function registrarIngresoSesion(Request $request, User $usuario): void
+    {
+        SesionRegistro::query()->create([
+            'user_id' => $usuario->id,
+            'usuario_nombre' => $usuario->username,
+            'session_id' => $request->session()->getId(),
+            'ip' => $request->ip(),
+            'user_agent' => (string) $request->userAgent(),
+            'fecha_ingreso' => now(),
+        ]);
+    }
+
+    /**
+     * Marca como cerrada la fila de la bitacora que corresponde a esa sesion.
+     */
+    private function cerrarSesionRegistrada(?string $sessionId): void
+    {
+        if ($sessionId === null) {
+            return;
+        }
+
+        SesionRegistro::query()
+            ->where('session_id', $sessionId)
+            ->whereNull('fecha_salida')
+            ->update(['fecha_salida' => now()]);
+    }
+
+    /**
+     * Actualiza el id de sesion de la fila abierta tras regenerar el id.
+     */
+    private function reapuntarSesionRegistrada(?string $idAnterior, string $idNuevo): void
+    {
+        if ($idAnterior === null || $idAnterior === $idNuevo) {
+            return;
+        }
+
+        SesionRegistro::query()
+            ->where('session_id', $idAnterior)
+            ->whereNull('fecha_salida')
+            ->update(['session_id' => $idNuevo]);
     }
 
     /**

@@ -34,6 +34,10 @@ export default defineConfig(({ mode }) => {
         '/api': {
           target: apiTarget,
           changeOrigin: true,
+          // El backend confia en el proxy (TRUST_PROXIES) y lee la IP real del
+          // cliente de X-Forwarded-For: sin xfwd sesiones_registro.ip guardaria
+          // la del proxy (127.0.0.1).
+          xfwd: true,
         },
         // Sanctum SPA no vive bajo /api: sin esto el pedido de la cookie CSRF
         // cae en el fallback del dev server y devuelve el index.html, el login
@@ -41,6 +45,7 @@ export default defineConfig(({ mode }) => {
         '/sanctum': {
           target: apiTarget,
           changeOrigin: true,
+          xfwd: true,
         },
       },
     },

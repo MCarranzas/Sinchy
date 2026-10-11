@@ -15,6 +15,7 @@ use App\Models\ParametroGeneral;
 use App\Models\Persona;
 use App\Models\PresentacionMineral;
 use App\Models\Provincia;
+use App\Models\TipoCambio;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
@@ -44,6 +45,7 @@ class TablasDeModelosTest extends TestCase
         PresentacionMineral::class => 'presentaciones_mineral',
         ParametroGeneral::class => 'parametros_generales',
         CotizacionQuincenal::class => 'cotizaciones_quincenales',
+        TipoCambio::class => 'tipos_cambio',
         Liquidacion::class => 'liquidaciones',
         LiquidacionDeduccion::class => 'liquidacion_deducciones',
         LiquidacionObservacion::class => 'liquidacion_observaciones',

@@ -56,7 +56,8 @@ class StoreLiquidacionRequest extends FormRequest
             'observaciones' => ['nullable', 'string', 'max:5000'],
 
             // --------------------------------------------------- insumos
-            'tipo_cambio' => ['required', 'numeric', 'gt:0', 'decimal:0,4'],
+            // tipo_cambio NO viene del formulario: se resuelve en el
+            // controlador segun la fecha (tabla diaria `tipos_cambio`).
             'cotizacion_usd_oz_t' => ['required', 'numeric', 'gt:0', 'decimal:0,4'],
             'cotizacion_id' => ['nullable', 'integer', 'exists:cotizaciones_quincenales,id'],
             'aplica_caja_salud' => ['required', 'boolean'],
