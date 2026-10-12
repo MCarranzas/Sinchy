@@ -2680,3 +2680,142 @@ PENDIENTE : lo mismo que [122]: comprobacion visual en navegador del
             usuario lo confirme. El `lang/es/` y el test nuevo estan SIN
             versionar todavia; el README quedo editado.
 ESTADO    : OK.
+
+### [124] 2026-10-12 11:26 - FASE 8 / AUTOCOMPLETADO DEL COMPRADOR
+             (correccion) - bug de carrera en el store de catalogos
+OBJETIVO  : Corregir el pendiente visual de plan_pruebas §6.2: al abrir el alta
+            de una liquidacion en ESCRITORIO, la seccion Comprador no se
+            prellenaba con la fila del catalogo `compradores` (EPCORO); los
+            campos Razon social/NIM/NIT salian vacios.
+COMANDO   : read de epcoro-web (stores/catalogos.ts, composables/
+            useLiquidacionForm.ts, views/Liquidaciones/CreateView.vue,
+            components/liquidacion/PlantillaCaptura.vue y SelectorUbicacion.vue);
+            psql -c "SELECT ... FROM compradores"; npm run build.
+RESULTADO : LA BASE Y LA API ESTABAN BIEN: tabla compradores con la fila EPCORO
+            (nim 02-2388-05, nit 1006965023, activo t); GET
+            /api/v1/catalogos/compradores devuelve { data: [...] } y el
+            frontend lo lee con data.data. El bug era de TIMING en el store.
+            Diagnostico: en escritorio PlantillaCaptura monta las cinco
+            secciones a la vez (`v-if="!esMovil"`), asi que SelectorUbicacion
+            (dentro de Procedencia) ejecuta su onMounted ANTES que el de
+            CreateView, porque Vue monta a los hijos primero. Ese onMounted
+            hacia `void catalogos.cargar()` y dejaba `cargando = true`.
+            Despues, el onMounted de CreateView hacia `await
+            catalogos.cargar()`, pero el store, al ver `cargando`, RETORNABA
+            ENSEGUIDA (sin esperar la carga): la vista seguia de largo y
+            `aplicarDefaults()` leia `catalogos.compradores = []`, asi que el
+            comprador (y tambien la cotizacion quincenal sugerida) quedaban en
+            blanco. En celular no se veia porque solo monta el paso actual
+            (Transaccion), sin SelectorUbicacion, y el cargar() de la vista si
+            corria completo. De ahi que "funcionara" en movil y no en
+            escritorio.
+            Correccion (epcoro-web/src/stores/catalogos.ts): `cargar()` ahora
+            guarda la promesa de la carga en curso en un modulo-level
+            `promesaEnCurso`; el segundo llamador recibe ESA promesa y espera
+            a que los datos esten cargados (antes retornaba `undefined`
+            enseguida). Se conserva la regla de reintento: si la carga falla,
+            `promesaEnCurso` se limpia en el `finally` y no se marca `cargado`,
+            de modo que el siguiente intento vuelve a probar.
+VERIFICACION: npm run build -> vue-tsc -b sin errores + vite build OK
+            (165 modulos). La suite backend no se toca (el cambio es solo
+            frontend).
+PENDIENTE : (a) comprobacion visual en navegador ahora toca rehacerla: abrir
+            el alta en escritorio (>= 1024px) y confirmar que Comprador llega
+            prellenado; (b) NO hay tests de frontend en el proyecto (no hay
+            vitest configurado): este bug paso justamente por eso. Queda como
+            propuesta abierta evaluar agregar vitest para cubrir al menos el
+            store de catalogos y los defaults del formulario.
+ESTADO    : OK (corregido, pendiente la verificacion visual del usuario).
+
+### [125] 2026-10-12 11:35 - FASE 8 / GUARDADO DE LIQUIDACION
+             (correccion) - TypeError al armar el payload con campos numericos
+OBJETIVO  : El usuario reporta "me da error al guardar la liquidacion". La
+            consola del navegador mostraba un 401 en /api/v1/auth/me y dos
+            [Vue warn] del prop `ley` (Expected String, got Number).
+COMANDO   : read de epcoro-web (useLiquidacionForm.ts, CampoEntrada.vue,
+            ResumenCalculo.vue, SeccionTransaccion.vue, SeccionTecnico.vue,
+            stores/auth.ts, validaciones.ts); read de routes/api.php,
+            StoreLiquidacionRequest.php y config; git blame del helper;
+            npm run build.
+RESULTADO : DOS CONCLUSIONES.
+            (1) El 401 de /auth/me NO es la causa: es el chequeo normal de
+            "no hay sesion" al abrir la app (cargarSesion trata el 401 como
+            caso esperado) y el guard del router manda a login si de verdad
+            faltara sesion; el usuario estaba en CreateView, o sea con sesion
+            en memoria. El log de auditoria solo registra el login como tecnico
+            (11:28:50) y ningun intento de guardado, y laravel.log no tiene
+            excepcion: no hubo error de servidor.
+            (2) LA CAUSA REAL: los campos numericos del formulario
+            (peso_gramos, ley_pagable, cotizacion_usd_oz_t, tipo_cambio) usan
+            CampoEntrada con tipo="number"; el v-model de Vue castea a NUMBER
+            (por eso el [Vue warn]: `ley` llegaba Number). El helper `texto()`
+            de armarPayload hacia `(valor ?? '').trim()` y `porcentajeAFraccion
+            (texto(...))`; un Number NO tiene `.trim()`, asi que armarPayload
+            lanzaba "valor.trim is not a function" ANTES de mandar el POST.
+            enviar() captura ese error en su try/catch, no es un error de axios
+            y erroresDeValidacion() devuelve {}, por lo que cae en el mensaje
+            generico "No se pudo guardar la liquidacion." SIN peticion de red
+            y SIN rastro en consola. Eso explica exactamente el sintoma.
+            Correccion (useLiquidacionForm.ts): `texto()` ahora coacciona con
+            `String(valor ?? '').trim()`, igual que TODAS las reglas de
+            validaciones.ts (que ya usaban String). Ademas se ensancha el prop
+            `ley` de ResumenCalculo a `string | number` para quitar el warning.
+VERIFICACION: npm run build -> vue-tsc -b sin errores + vite build OK.
+            Regresion: el helper era de la FASE 8 (git blame 672da30) y nunca
+            se habia detectado porque el proyecto NO tiene tests de frontend ni
+            se habia probado un guardado completo desde el navegador (el plan
+            de pruebas solo hablaba de la comprobacion visual del comprador).
+PENDIENTE : Reintentar el guardado en el navegador (HMR toma el cambio).
+            Confirmar que ahora SI aparece `POST /api/v1/liquidaciones` en
+            Network y responde 201. Propuesta abierta: agregar vitest para
+            cubrir armarPayload, el store de catalogos y los defaults.
+ESTADO    : OK (corregido, pendiente la prueba del usuario).
+
+### [126] 2026-10-12 11:52 - FASE 8 / AUTOCOMPLETADO DE PROCEDENCIA
+             (correccion) - la cascada borraba los niveles copiados del area
+OBJETIVO  : Tras el arreglo [125] el POST ya llega al backend, pero responde
+            422: "La ubicacion no coincide con el area minera elegida: los
+            cuatro niveles se completan desde el area." Es decir, el
+            autocompletado de procedencia (seccion 3.2) estaba a medias.
+COMANDO   : grep/read de epcoro-api (ValidaUbicacionDelArea.php,
+            CatalogoController::areasMineras, AreaMinera.php, migracion de
+            areas_mineras) y de epcoro-web (SeccionProcedencia.vue,
+            SelectorUbicacion.vue, CampoSelect.vue, validaciones.ts);
+            psql -c "SELECT ... FROM areas_mineras JOIN municipios/provincias/
+            localidades" para comprobar la consistencia del area; simulacion
+            con Vue real (node + vue) del orden de watchers; npm run build.
+RESULTADO : EL AREA Y LA API ESTABAN BIEN: la fila AREA DEMO tiene
+            departamento_id = provincia_id = municipio_id = localidad_id = 1 y
+            esos niveles son consistentes entre si (municipio 1 pertenece a
+            provincia 1, etc.); el endpoint devuelve `ubicacion` con los cuatro
+            ids tal cual las columnas del modelo, y el trait compara los cuatro
+            contra esas mismas columnas. El bug era del frontend, en la
+            CASCADA: SeccionProcedencia::alElegir copia los cuatro niveles con
+            asignar(...) en el mismo tick, pero el watch de departamento_id de
+            SelectorUbicacion hacia `if (viejo !== undefined && nuevo !==
+            viejo) { provincia_id = municipio_id = localidad_id = null }`. Al
+            pasar departamento_id de null al id del area, ese watch interpretaba
+            la copia como un "cambio manual" y BORRABA los tres hijos que
+            acababa de escribir alElegir. Verificado con una simulacion real de
+            Vue: tras elegir el area solo sobrevivia departamento_id; los otros
+            tres quedaban en null. Como CampoSelect no auto-selecciona (su
+            placeholder es :value="null"), el tecnico veia tres selects vacios y
+            los rellenaba a mano; si el departamento elegido a mano no era el
+            del area, los cuatro niveles llegaban validos pero NO coincidentes
+            -> 422. Correccion (SelectorUbicacion.vue): los tres watchers ahora
+            recargan la lista del nivel y limpian SOLO lo que ya no cuelga del
+            padre nuevo (`if (!lista.some(x => x.id === hijo_actual)) limpiar`),
+            en vez de limpiar a ciegas. Asi el cambio manual sigue limpiando los
+            hijos viejos, pero el autocompletado desde el area conserva los
+            cuatro niveles. Se anaden los helpers limpiarDesdeProvincia() y
+            limpiarDesdeMunicipio().
+VERIFICACION: simulacion con Vue real (node + vue): CASO 1 autocompletado
+            desde el area -> los cuatro niveles se conservan; CASO 2 cambio
+            manual de departamento -> limpia provincia/municipio/localidad.
+            npm run build -> vue-tsc -b sin errores + vite build OK (165
+            modulos). Suite backend intacta (cambio solo frontend).
+PENDIENTE : Rehacer la comprobacion en navegador: elegir el area minera y
+            confirmar que los cuatro selects de procedencia se rellenan solos y
+            que el guardado responde 201. Sin tests de frontend, sigue abierta
+            la propuesta de agregar vitest.
+ESTADO    : OK (corregido, pendiente la verificacion visual del usuario).

@@ -3,11 +3,12 @@
  * Cascada de 4 selects: departamento -> provincia -> municipio ->
  * localidad (8.5).
  *
- * La carga del hijo la dispara el padre de su nivel, y al cambiar un nivel
- * se limpia todo lo que cuelga de él: un municipio elegido en otra provincia
- * no puede sobrevivir. En modo edicion los cuatro ids llegan rellenados de
- * una vez (viene del area minera) y cada watch solo CARGA la lista de su
- * nivel sin tocar la seleccion.
+ * La carga del hijo la dispara el padre de su nivel. Al cambiar un nivel se
+ * limpia lo que cuelga de el que YA NO PERTENEZCA (un municipio de otra
+ * provincia no puede sobrevivir), pero se conserva lo valido: al elegir un
+ * area minera se rellenan los cuatro niveles de una sola vez y el watch del
+ * departamento NO debe borrar la provincia/municipio/localidad que acaban de
+ * llegar con ella. Antes si lo hacia y el autocompletado quedaba a medias.
  */
 import { onMounted, ref, watch } from 'vue'
 
@@ -30,20 +31,28 @@ const cargandoLocalidades = ref(false)
 
 const valores = props.formulario.valores
 
+/** Baja la cascada desde provincia: sin departamento valido no hay nada que cuelgue. */
+function limpiarDesdeProvincia(): void {
+  props.formulario.asignar('provincia_id', null)
+  props.formulario.asignar('municipio_id', null)
+  props.formulario.asignar('localidad_id', null)
+}
+
+/** Baja la cascada desde municipio. */
+function limpiarDesdeMunicipio(): void {
+  props.formulario.asignar('municipio_id', null)
+  props.formulario.asignar('localidad_id', null)
+}
+
 watch(
   () => valores.departamento_id,
-  async (nuevo, viejo) => {
-    if (viejo !== undefined && nuevo !== viejo) {
-      props.formulario.asignar('provincia_id', null)
-      props.formulario.asignar('municipio_id', null)
-      props.formulario.asignar('localidad_id', null)
-    }
-
+  async (nuevo) => {
     provincias.value = []
     municipios.value = []
     localidades.value = []
 
     if (!nuevo) {
+      limpiarDesdeProvincia()
       return
     }
 
@@ -53,22 +62,25 @@ watch(
     } finally {
       cargandoProvincias.value = false
     }
+
+    // Solo se limpia lo que ya no cuelga del departamento nuevo: si la
+    // provincia actual sigue perteneciendole (es lo que pasa al
+    // autocompletar desde el area minera) se conserva, y con ella sus hijos.
+    if (!provincias.value.some((provincia) => provincia.id === valores.provincia_id)) {
+      limpiarDesdeProvincia()
+    }
   },
   { immediate: true },
 )
 
 watch(
   () => valores.provincia_id,
-  async (nuevo, viejo) => {
-    if (viejo !== undefined && viejo !== null && nuevo !== viejo) {
-      props.formulario.asignar('municipio_id', null)
-      props.formulario.asignar('localidad_id', null)
-    }
-
+  async (nuevo) => {
     municipios.value = []
     localidades.value = []
 
     if (!nuevo) {
+      limpiarDesdeMunicipio()
       return
     }
 
@@ -78,20 +90,21 @@ watch(
     } finally {
       cargandoMunicipios.value = false
     }
+
+    if (!municipios.value.some((municipio) => municipio.id === valores.municipio_id)) {
+      limpiarDesdeMunicipio()
+    }
   },
   { immediate: true },
 )
 
 watch(
   () => valores.municipio_id,
-  async (nuevo, viejo) => {
-    if (viejo !== undefined && viejo !== null && nuevo !== viejo) {
-      props.formulario.asignar('localidad_id', null)
-    }
-
+  async (nuevo) => {
     localidades.value = []
 
     if (!nuevo) {
+      props.formulario.asignar('localidad_id', null)
       return
     }
 
@@ -100,6 +113,10 @@ watch(
       localidades.value = await listarLocalidades(nuevo)
     } finally {
       cargandoLocalidades.value = false
+    }
+
+    if (!localidades.value.some((localidad) => localidad.id === valores.localidad_id)) {
+      props.formulario.asignar('localidad_id', null)
     }
   },
   { immediate: true },

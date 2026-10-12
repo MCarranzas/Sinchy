@@ -398,7 +398,11 @@ export function useLiquidacionForm(opciones: OpcionesFormulario): FormularioCapt
   }
 
   function armarPayload(valores: ValoresCaptura): LiquidacionPayload {
-    const texto = (valor: string | null | undefined): string => (valor ?? '').trim()
+    // `String(...)` a proposito: los inputs `type="number"` (peso_gramos,
+    // ley_pagable, cotizacion_usd_oz_t, tipo_cambio) emiten NUMBER, no string.
+    // Sin la coercion, `.trim()` reventaba con "valor.trim is not a function"
+    // y el guardado moria con el mensaje generico, sin llegar a mandar el POST.
+    const texto = (valor: unknown): string => String(valor ?? '').trim()
     const id = (campo: keyof ValoresCaptura): number => Number(valores[campo]) || 0
 
     return {

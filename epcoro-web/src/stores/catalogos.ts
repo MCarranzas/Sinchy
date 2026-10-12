@@ -38,6 +38,20 @@ interface EstadoCatalogos {
   cargando: boolean
 }
 
+/**
+ * Carga en curso, compartida entre llamadores concurrentes.
+ *
+ * En escritorio la plantilla de captura monta las cinco secciones a la vez,
+ * asi que `SelectorUbicacion` (dentro de Procedencia) dispara su `onMounted`
+ * ANTES que el de `CreateView` (Vue monta a los hijos primero). Sin esta
+ * promesa compartida, el segundo `cargar()` veia `cargando = true`, retornaba
+ * enseguida y la vista seguia con los catalogos vacios: los defaults del
+ * comprador (y de la cotizacion quincenal) se aplicaban sobre listas vacias y
+ * no prellenaban nada. Con la promesa, el segundo llamador ESPERA a que la
+ * carga termine.
+ */
+let promesaEnCurso: Promise<void> | null = null
+
 export const useCatalogosStore = defineStore('catalogos', {
   state: (): EstadoCatalogos => ({
     parametros: [],
@@ -84,32 +98,44 @@ export const useCatalogosStore = defineStore('catalogos', {
     /**
      * Carga lo estatico una sola vez. Si algo falla no se marca `cargado`,
      * de modo que el siguiente intento vuelve a probar.
+     *
+     * Si ya hay una carga en curso, NO retorna enseguida: devuelve esa misma
+     * promesa para que el llamador espere a los datos (ver `promesaEnCurso`).
      */
     async cargar(): Promise<void> {
-      if (this.cargado || this.cargando) {
+      if (this.cargado) {
         return
       }
 
-      this.cargando = true
-
-      try {
-        const [parametros, departamentos, presentaciones, compradores, cotizaciones] = await Promise.all([
-          listarParametros(),
-          listarDepartamentos(),
-          listarPresentaciones(),
-          listarCompradores(),
-          listarCotizaciones(),
-        ])
-
-        this.parametros = parametros
-        this.departamentos = departamentos
-        this.presentaciones = presentaciones
-        this.compradores = compradores
-        this.cotizaciones = cotizaciones
-        this.cargado = true
-      } finally {
-        this.cargando = false
+      if (promesaEnCurso !== null) {
+        return promesaEnCurso
       }
+
+      promesaEnCurso = (async () => {
+        this.cargando = true
+
+        try {
+          const [parametros, departamentos, presentaciones, compradores, cotizaciones] = await Promise.all([
+            listarParametros(),
+            listarDepartamentos(),
+            listarPresentaciones(),
+            listarCompradores(),
+            listarCotizaciones(),
+          ])
+
+          this.parametros = parametros
+          this.departamentos = departamentos
+          this.presentaciones = presentaciones
+          this.compradores = compradores
+          this.cotizaciones = cotizaciones
+          this.cargado = true
+        } finally {
+          this.cargando = false
+          promesaEnCurso = null
+        }
+      })()
+
+      return promesaEnCurso
     },
   },
 })

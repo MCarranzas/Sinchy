@@ -12,7 +12,7 @@ import type { ResultadoCalculo } from '@/utils/calculo'
 
 defineProps<{
   resultado: ResultadoCalculo
-  ley?: string
+  ley?: string | number
 }>()
 </script>
 
