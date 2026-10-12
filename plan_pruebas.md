@@ -279,6 +279,8 @@ Esperado: 429 por throttling, independiente del contador por usuario.
 
 ### 6.2 Captura (tecnico)
 
+Sigue pendiente solo la comprobación visual del autocompletado del comprador en http://localhost:5173.
+
 **CAP-01 - Alta de vendedor rapida.** Pre: AreaMinera "AREA DEMO".
 Pasos: Nueva liquidacion -> seccion Vendedor -> buscar un CI inexistente -> alta
 rapida con nombres, apellidos y CI.
