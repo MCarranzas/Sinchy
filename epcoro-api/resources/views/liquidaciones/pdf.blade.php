@@ -62,24 +62,6 @@
 
     <table>
         <thead>
-            <tr><th>Deduccion</th><th>Tipo</th><th>Base (Bs)</th><th>Monto (Bs)</th></tr>
-        </thead>
-        <tbody>
-            @forelse ($liquidacion->deducciones->sortBy('orden') as $deduccion)
-                <tr>
-                    <td>{{ $deduccion->concepto }}</td>
-                    <td>{{ $deduccion->tipo }}</td>
-                    <td class="monto">{{ number_format((float) $deduccion->base_monto, 2, ',', '.') }}</td>
-                    <td class="monto">{{ number_format((float) $deduccion->monto, 2, ',', '.') }}</td>
-                </tr>
-            @empty
-                <tr><td colspan="4">Sin deducciones</td></tr>
-            @endforelse
-        </tbody>
-    </table>
-
-    <table>
-        <thead>
             <tr><th>Fecha</th><th>Movimiento</th></tr>
         </thead>
         <tbody>

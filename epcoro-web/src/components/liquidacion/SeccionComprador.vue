@@ -1,11 +1,11 @@
 <script setup lang="ts">
 /**
- * Seccion Comprador (8.3): autocompletado desde parametros_generales.
+ * Seccion Comprador (8.3): autocompletado desde el catalogo `compradores`.
  *
  * La razon social, el NIM y el NIT del comprador son FIJOS del sistema
- * (NOMBRE_COMPRADOR / NIM_COMPRADOR / NIT_COMPRADOR, celdas C11-C13 de
- * hoja.xlsx) y llegan rellenados al abrir; el formulario los deja editar
- * porque el Excel admite otro comprador en casos puntuales.
+ * (C11-C13 de hoja.xlsx, hoy una sola fila: EPCORO) y llegan rellenados al
+ * abrir; el formulario los deja editar porque el Excel admite otro comprador
+ * en casos puntuales.
  */
 import CampoEntrada from '@/components/CampoEntrada.vue'
 import type { FormularioCaptura } from '@/composables/useLiquidacionForm'
@@ -28,7 +28,7 @@ defineProps<{ formulario: FormularioCaptura }>()
         etiqueta="Razón social *"
         maxlength="200"
         autocomplete="organization"
-        ayuda="Prellenada con el parámetro NOMBRE_COMPRADOR."
+        ayuda="Prellenada con el comprador del catálogo (EPCORO)."
         :error="formulario.error('comprador_razon_social')"
         @blur="formulario.tocar('comprador_razon_social')"
       />

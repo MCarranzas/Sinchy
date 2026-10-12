@@ -52,11 +52,6 @@ export interface ValoresCaptura {
   observaciones: string
 }
 
-export interface FilaDeduccion {
-  concepto: string
-  monto: string
-}
-
 export interface PasoCaptura {
   id: string
   titulo: string
@@ -195,7 +190,6 @@ export interface FormularioCaptura {
   enviando: Ref<boolean>
   mensajeError: Ref<string>
   pasoActual: Ref<number>
-  deducciones: FilaDeduccion[]
   resultado: Ref<ResultadoCalculo>
   tipoCambioCargando: Ref<boolean>
   tipoCambioDisponible: Ref<boolean>
@@ -213,8 +207,6 @@ export interface FormularioCaptura {
   asignar: (campo: keyof ValoresCaptura, valor: unknown) => void
   validarPaso: () => Promise<boolean>
   irAPaso: (indice: number) => Promise<boolean>
-  agregarDeduccion: () => void
-  quitarDeduccion: (indice: number) => void
   enviar: () => Promise<void>
   aplicarDefaults: () => void
 }
@@ -222,42 +214,11 @@ export interface FormularioCaptura {
 export function useLiquidacionForm(opciones: OpcionesFormulario): FormularioCaptura {
   const catalogos = useCatalogosStore()
 
-  const deducciones = reactive<FilaDeduccion[]>([{ concepto: '', monto: '' }])
-
   const tocados = reactive<Record<string, boolean>>({})
   const intentado = ref(false)
   const enviando = ref(false)
   const mensajeError = ref('')
   const pasoActual = ref(0)
-
-  function validarDeducciones(): Record<string, string> {
-    const errores: Record<string, string> = {}
-
-    deducciones.forEach((fila, indice) => {
-      const concepto = fila.concepto.trim()
-      const monto = fila.monto.trim()
-
-      if (concepto === '' && monto === '') {
-        return // fila vacia: se ignora
-      }
-
-      if (concepto === '') {
-        errores[`deducciones.${indice}.concepto`] = 'Indique el concepto.'
-      } else if (concepto.length > 100) {
-        errores[`deducciones.${indice}.concepto`] = 'Máximo 100 caracteres.'
-      }
-
-      if (monto === '') {
-        errores[`deducciones.${indice}.monto`] = 'Indique el monto.'
-      } else if (!/^\d+(\.\d{1,2})?$/.test(monto)) {
-        errores[`deducciones.${indice}.monto`] = 'Debe ser un número con hasta 2 decimales.'
-      } else if (Number(monto) > 99999999.99) {
-        errores[`deducciones.${indice}.monto`] = 'El monto supera el máximo permitido.'
-      }
-    })
-
-    return errores
-  }
 
   const { setErrors, errors, values, setFieldValue } = useForm<ValoresCaptura>({
     initialValues: valoresPorDefecto(),
@@ -348,7 +309,7 @@ export function useLiquidacionForm(opciones: OpcionesFormulario): FormularioCapt
       }
     }
 
-    return { ...fallas, ...validarDeducciones() }
+    return fallas
   }
 
   const resultado = computed<ResultadoCalculo>(() => {
@@ -361,9 +322,6 @@ export function useLiquidacionForm(opciones: OpcionesFormulario): FormularioCapt
         tipo_cambio: String(values.tipo_cambio ?? ''),
         cotizacion_usd_oz_t: String(values.cotizacion_usd_oz_t ?? ''),
         aplica_caja_salud: values.aplica_caja_salud === true,
-        deducciones: deducciones
-          .filter((fila) => fila.monto.trim() !== '')
-          .map((fila) => fila.monto.trim()),
       },
       catalogos.gramosPorOnzaTroy,
       catalogos.alicuotaAporte,
@@ -418,14 +376,6 @@ export function useLiquidacionForm(opciones: OpcionesFormulario): FormularioCapt
       }
     }
 
-    if (paso.id === 'tecnico') {
-      for (const clave of Object.keys(fallas)) {
-        if (clave.startsWith('deducciones.') && fallas[clave]) {
-          fallo = true
-        }
-      }
-    }
-
     return !fallo
   }
 
@@ -447,23 +397,7 @@ export function useLiquidacionForm(opciones: OpcionesFormulario): FormularioCapt
     return true
   }
 
-  function agregarDeduccion(): void {
-    deducciones.push({ concepto: '', monto: '' })
-  }
-
-  function quitarDeduccion(indice: number): void {
-    deducciones.splice(indice, 1)
-
-    if (deducciones.length === 0) {
-      deducciones.push({ concepto: '', monto: '' })
-    }
-  }
-
   function armarPayload(valores: ValoresCaptura): LiquidacionPayload {
-    const renglones = deducciones
-      .filter((fila) => fila.concepto.trim() !== '' && fila.monto.trim() !== '')
-      .map((fila) => ({ concepto: fila.concepto.trim(), monto: fila.monto.trim() }))
-
     const texto = (valor: string | null | undefined): string => (valor ?? '').trim()
     const id = (campo: keyof ValoresCaptura): number => Number(valores[campo]) || 0
 
@@ -477,7 +411,6 @@ export function useLiquidacionForm(opciones: OpcionesFormulario): FormularioCapt
       aplica_caja_salud: valores.aplica_caja_salud,
       peso_gramos: texto(valores.peso_gramos),
       ley_pagable: porcentajeAFraccion(texto(valores.ley_pagable)),
-      deducciones: renglones,
       comprador_razon_social: texto(valores.comprador_razon_social),
       comprador_nim: texto(valores.comprador_nim) || null,
       comprador_nit: texto(valores.comprador_nit) || null,
@@ -536,7 +469,7 @@ export function useLiquidacionForm(opciones: OpcionesFormulario): FormularioCapt
 
   /**
    * Defaults al abrir (8.3): cotizacion quincenal mas reciente y los tres
-   * datos fijos del comprador, que vienen de parametros_generales (celdas
+   * datos del comprador, que salen del catalogo `compradores` (celdas
    * C11-C13 de hoja.xlsx). El tipo de cambio no es un default: se resuelve
    * con `cargarTipoCambioDelDia()` contra la fecha de la transaccion.
    */
@@ -563,7 +496,6 @@ export function useLiquidacionForm(opciones: OpcionesFormulario): FormularioCapt
     enviando,
     mensajeError,
     pasoActual,
-    deducciones,
     resultado,
     tipoCambioCargando,
     tipoCambioDisponible,
@@ -576,8 +508,6 @@ export function useLiquidacionForm(opciones: OpcionesFormulario): FormularioCapt
     asignar,
     validarPaso,
     irAPaso,
-    agregarDeduccion,
-    quitarDeduccion,
     enviar,
     aplicarDefaults,
   }

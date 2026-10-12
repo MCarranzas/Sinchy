@@ -104,13 +104,8 @@ class UpdateLiquidacionRequest extends FormRequest
             'peso_gramos' => ['sometimes', 'numeric', 'gt:0', 'decimal:0,2', 'max:99999999.99'],
             'ley_pagable' => ['sometimes', 'numeric', 'gt:0', 'lte:1'],
 
-            // ------------------------------------------ deducciones fijas
-            'deducciones' => ['sometimes', 'array', 'max:20'],
-            'deducciones.*.concepto' => ['required', 'string', 'max:100'],
-            'deducciones.*.monto' => ['required', 'numeric', 'min:0', 'decimal:0,2', 'max:99999999.99'],
-
             // ------------------------------------------------- comprador
-            'comprador_persona_id' => ['sometimes', 'nullable', 'integer', 'exists:personas,id'],
+            'comprador_id' => ['sometimes', 'nullable', 'integer', 'exists:compradores,id'],
             'comprador_razon_social' => ['sometimes', 'string', 'max:200'],
             'comprador_nim' => ['nullable', 'string', 'regex:/^[0-9\-]{5,30}$/'],
             'comprador_nit' => ['nullable', 'string', 'regex:/^\d{1,20}$/'],

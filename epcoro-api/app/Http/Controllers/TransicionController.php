@@ -72,7 +72,7 @@ class TransicionController extends Controller
         return response()->json([
             'message' => 'Transicion aplicada: '.$origen->value.' -> '.$destino->value.'.',
             'data' => new LiquidacionResource(
-                $liquidacion->load(['registro:id,nombre_completo,username', 'deducciones'])
+                $liquidacion->load(['registro:id,nombre_completo,username'])
             ),
         ]);
     }

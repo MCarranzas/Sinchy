@@ -15,7 +15,7 @@ erDiagram
 
     cotizaciones_quincenales ||--o{ liquidaciones : "cotizacion del dia"
     personas ||--o{ liquidaciones : "vendedor"
-    personas ||--o{ liquidaciones : "comprador"
+    compradores ||--o{ liquidaciones : "comprador"
     areas_mineras ||--o{ liquidaciones : "procedencia"
     presentaciones_mineral ||--o{ liquidaciones : "tipo de mineral"
     departamentos ||--o{ liquidaciones : "procedencia"
@@ -23,7 +23,6 @@ erDiagram
     municipios ||--o{ liquidaciones : "procedencia"
     localidades ||--o{ liquidaciones : "procedencia"
 
-    liquidaciones ||--o{ liquidacion_deducciones : "deducciones"
     liquidaciones ||--o{ liquidacion_observaciones : "conversacion"
     liquidaciones ||--o{ liquidacion_estado_historial : "bitacora"
 
@@ -80,6 +79,14 @@ erDiagram
         varchar ci UK
         varchar nit UK
         varchar tipo_documento
+        bool activo
+    }
+
+    compradores {
+        bigint id PK
+        varchar razon_social
+        varchar nim
+        varchar nit
         bool activo
     }
 
@@ -147,7 +154,7 @@ erDiagram
         numeric tipo_cambio
         bigint cotizacion_id FK
         numeric cotizacion_usd_oz_t
-        bigint comprador_persona_id FK
+        bigint comprador_id FK
         varchar comprador_razon_social
         varchar comprador_nim
         varchar comprador_nit
@@ -181,18 +188,6 @@ erDiagram
         numeric valor_neto_bs
     }
 
-    liquidacion_deducciones {
-        bigint id PK
-        bigint liquidacion_id FK
-        varchar concepto
-        varchar tipo
-        numeric alicuota
-        numeric base_monto
-        numeric monto
-        bool obligatorio
-        smallint orden
-    }
-
     liquidacion_observaciones {
         bigint id PK
         bigint liquidacion_id FK
@@ -218,7 +213,8 @@ erDiagram
 
 1. **Snapshot (columnas `*_nombre`).** `liquidaciones` guarda el nombre junto
    a la FK: `departamento_id` **y** `departamento_nombre`, `area_minera_id`
-   **y** `nombre_area_minera`, `vendedor_persona_id` **y** `vendedor_nombre`.
+   **y** `nombre_area_minera`, `vendedor_persona_id` **y** `vendedor_nombre`,
+   `comprador_id` **y** `comprador_razon_social`.
    La FK da integridad referencial; el snapshot congela lo que se imprimió
    ese día. Si mañana corrigen el nombre de un municipio, los PDF históricos
    no cambian. Lo mismo en `liquidacion_estado_historial.usuario_nombre`.
@@ -237,9 +233,11 @@ erDiagram
 4. **PKs especiales.** `parametros_generales.clave` es la clave primaria (no
    hay `id`) y `correlativos` es compuesta por `(tipo, ejercicio)`.
 
-5. **Una sola deducción (D1).** Existe `liquidaciones.aplica_caja_salud` y la
-   tabla `liquidacion_deducciones`. **No existe** `aplica_aporte_solidario`
-   ni `aporte_solidario_bs`: por D1 el aporte es único (1.8 %).
+5. **Una sola deducción (D1).** Existe `liquidaciones.aplica_caja_salud` y el
+   `total_deducciones_bs` guarda ese único monto. **No existe** la tabla
+   `liquidacion_deducciones` (la feature de deducciones variables se eliminó)
+   ni `aplica_aporte_solidario` / `aporte_solidario_bs`: por D1 el aporte es
+   único (1,8 %).
 
 6. **Vista `v_liquidaciones_detalle`.** No aparece en el diagrama porque es
    una vista, no una tabla: aporta los JOIN de `users` (registrado por) para

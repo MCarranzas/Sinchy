@@ -53,16 +53,6 @@ export interface CalculoLiquidacion {
   valor_neto_bs: string
 }
 
-export interface DeduccionLiquidacion {
-  id?: number
-  concepto: string
-  tipo: string
-  alicuota: string | null
-  base_monto: string
-  monto: string
-  obligatorio: boolean
-}
-
 export interface Liquidacion {
   id: number
   numero_documento: string
@@ -76,7 +66,7 @@ export interface Liquidacion {
   insumos: InsumosLiquidacion
   calculo: CalculoLiquidacion
   comprador: {
-    persona_id: number | null
+    id: number | null
     razon_social: string
     nim: string | null
     nit: string | null
@@ -98,7 +88,6 @@ export interface Liquidacion {
   }
   presentacion: { id: number; nombre: string }
   observaciones: string | null
-  deducciones?: DeduccionLiquidacion[]
   auditoria: {
     registrado_por: { id: number; nombre_completo: string; username: string } | null
     fecha_registro: string | null
@@ -127,8 +116,6 @@ export interface LiquidacionPayload {
   aplica_caja_salud: boolean
   peso_gramos: string
   ley_pagable: string
-  deducciones?: { concepto: string; monto: string }[]
-  comprador_persona_id?: number | null
   comprador_razon_social: string
   comprador_nim?: string | null
   comprador_nit?: string | null

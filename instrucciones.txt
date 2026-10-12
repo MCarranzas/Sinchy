@@ -453,10 +453,10 @@ Contenido inicial:
       TIPO_CAMBIO_DEFECTO                  = 6.96
       GRAMOS_POR_ONZA_TROY                 = 31.1035   <-- regla T2
       ALICUOTA_APORTE                      = 0.018     (1.8 %, unica deduccion)
-      NOMBRE_COMPRADOR                     = EMPRESA ESTATAL DE PRODUCCION
-                                              Y COMERCIALIZACION DEL ORO - EPCORO
-      NIM_COMPRADOR                        = 02-2388-05
-      NIT_COMPRADOR                        = 1006965023
+
+    Los datos del comprador (celdas C11-C13) NO van en parametros desde
+    2026-10-12: viven en la tabla `compradores` (modelo Comprador, seeder
+    CompradoresSeeder) y `liquidaciones.comprador_id` los referencia.
 
     RESOLUCION DE C4 POR LA DECISION D1 (v1.2).
     En v1.0 se sembraba ALICUOTA_APORTE_SOLIDARIO = 0.01 suponiendo un
@@ -527,10 +527,12 @@ Diseno DENSO (una columna por campo del Excel). Lo recomiendo porque:
   | cotizacion_usd_oz_t   numeric(12,4) NOT NULL   (ex F9)   $/OzT
   |
   |--- 1.1 COMPRADOR
-  | comprador_persona_id  bigint FK -> personas NULL
+  | comprador_id          bigint FK -> compradores NULL
   | comprador_razon_social varchar(200) NOT NULL (snapshot)
   | comprador_nim         varchar(30)  NULL
   | comprador_nit         varchar(30)  NULL
+  |   (2026-10-12: antes comprador_persona_id FK -> personas; el comprador
+  |    tiene tabla propia y el id se resuelve contra el catalogo)
   |
   |--- APORTES (ex celdas C19-C20 del Excel)
   | aplica_caja_salud     boolean NOT NULL DEFAULT false   (ex C20 SI/NO)
@@ -1306,7 +1308,9 @@ FASE 4 - DISENO DE LA BASE DE DATOS DE NEGOCIO
       - Departamentos/Provincias/Municipios/Localidades de Bolivia
       - Presentaciones de mineral
       - Parametros iniciales (GRAMOS_POR_ONZA_TROY 31.1035,
-         ALICUOTA_APORTE 0.018 por D1, datos del comprador)
+         ALICUOTA_APORTE 0.018 por D1)
+      - Comprador EPCORO: se siembra en `compradores` (CompradoresSeeder),
+        NO en parametros_generales (2026-10-12)
       NO sembrar ALICUOTA_APORTE_SOLIDARIO: por D1 no existe esa deduccion.
   4.5 Factories para cada modelo (para tests y datos de demostracion)
   4.6 Crear la vista v_liquidaciones_detalle

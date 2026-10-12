@@ -59,17 +59,6 @@ defineProps<{
         </dd>
       </div>
 
-      <div class="flex justify-between gap-3">
-        <dt class="text-slate-500">Otras deducciones</dt>
-        <dd class="tabular-nums text-rose-600">
-          {{
-            resultado.valido
-              ? `- ${bs((Number(resultado.total_deducciones_bs) - Number(resultado.aporte_caja_salud_bs)).toFixed(2))}`
-              : '—'
-          }}
-        </dd>
-      </div>
-
       <div class="mt-2 flex items-center justify-between gap-3 rounded-lg bg-marca-50 px-3 py-2">
         <dt class="text-sm font-medium text-marca-700">Valor neto</dt>
         <dd class="text-base font-bold tabular-nums text-marca-700">

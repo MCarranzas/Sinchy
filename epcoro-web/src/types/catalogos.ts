@@ -95,6 +95,17 @@ export interface PresentacionMineral {
 }
 
 /**
+ * Comprador del mineral (tabla `compradores`, hoy una sola fila: EPCORO,
+ * celdas C11-C13). `nim`/`nit` van como string: son identificadores.
+ */
+export interface Comprador {
+  id: number
+  razon_social: string
+  nim: string | null
+  nit: string | null
+}
+
+/**
  * Se queda con `valor_usd_oz_t` como string a proposito (igual que el
  * modelo): los 4 decimales exactos no sobreviven a un paso por float.
  */

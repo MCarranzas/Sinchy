@@ -91,7 +91,7 @@ class ReporteController extends Controller
         $this->rango($request);
 
         $consulta = Liquidacion::query()
-            ->with(['registro:id,nombre_completo,username', 'deducciones'])
+            ->with(['registro:id,nombre_completo,username'])
             ->where('estado', '!=', EstadoLiquidacion::Eliminado->value);
 
         if ($request->filled('estado')) {

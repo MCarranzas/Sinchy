@@ -99,6 +99,7 @@ sin paginar).
 | `GET /catalogos/areas-mineras`                | Areas mineras (`id`, `nombre`, `titular`, `codigo_ajam_patente`, ubicacion en cascada) |
 | `GET /catalogos/personas?q=`                  | Personas vendedoras (`id`, nombres, `ci`, `telefono`)  |
 | `GET /catalogos/presentaciones-mineral`       | Presentaciones (`id`, `nombre`)                        |
+| `GET /catalogos/compradores`                  | Compradores (`id`, `razon_social`, `nim`, `nit`)       |
 | `GET /cotizaciones`                           | Cotizaciones quincenales en vigencia                   |
 
 ### `POST /catalogos/personas`
@@ -133,7 +134,7 @@ se tocan claves que ya existen y los valores no numericos se rechazan
 
 Todas las rutas de liquidacion devuelven el recurso `LiquidacionResource`
 (grupos `insumos`, `calculo`, `comprador`, `vendedor`, `procedencia`,
-`presentacion`, `deducciones`, `auditoria`). Los montos son **strings**, nunca
+`presentacion`, `auditoria`). Los montos son **strings**, nunca
 `float` (un float devuelve 1072018.83 donde la hoja dice 1072018.84).
 
 ```json
@@ -162,10 +163,10 @@ Todas las rutas de liquidacion devuelven el recurso `LiquidacionResource`
       "valor_usd_gramo": "70.833620",
       "valor_bruto_bs": "1000.25",
       "aporte_caja_salud_bs": "18.00",
-      "total_deducciones_bs": "120.00",
-      "valor_neto_bs": "862.25"
+      "total_deducciones_bs": "18.00",
+      "valor_neto_bs": "982.25"
     },
-    "comprador": { "persona_id": null, "razon_social": "...", "nim": "...", "nit": "..." },
+    "comprador": { "id": null, "razon_social": "...", "nim": "...", "nit": "..." },
     "vendedor": { "persona_id": 2, "nombre": "ANA FLORES", "ci": "77532791" },
     "procedencia": {
       "area_minera_id": 1, "nombre_area_minera": "...", "titular_derecho_minero": "...",
@@ -177,10 +178,6 @@ Todas las rutas de liquidacion devuelven el recurso `LiquidacionResource`
     },
     "presentacion": { "id": 1, "nombre": "ORO FUNDIDO" },
     "observaciones": null,
-    "deducciones": [
-      { "id": 1, "concepto": "APORTE CAJA DE SALUD - LEY 649", "tipo": "alicuota",
-        "alicuota": "0.018000", "base_monto": "1000.25", "monto": "18.00", "obligatorio": true }
-    ],
     "auditoria": {
       "registrado_por": { "id": 1, "nombre_completo": "...", "username": "..." },
       "fecha_registro": "...", "fecha_revision": null, "fecha_aprobacion": null,
@@ -231,9 +228,16 @@ insumos se recalcula el calculo en el backend (nunca se confia en el frontend).
   `^[0-9\-]{5,30}$`; `comprador_nit` `^\d{1,20}$`; `codigo_municipio`
   `^\d{1,10}$`; `codigo_ajam_patente` `^\d{1,20}$`. `ley_pagable` entre 0 y 1
   (`lte:1` excluido en 0), montos `decimal:0,2` y tipo/cotizacion `decimal:0,4`.
-- `deducciones`: lista de `{concepto, monto}`. El aporte de caja de salud
-  (1.8% sobre el bruto) se agrega solo si `aplica_caja_salud: true` y su monto
-  es distinto de `0.00`.
+- `comprador_id`: opcional y nullable. Se resuelve en el backend igualando la
+  `razon_social` enviada contra el catalogo `compradores` (tabla propia, hoy
+  una fila: EPCORO); si no coincide (Excel con otro comprador en casos
+  puntuales) queda `null` y el snapshot
+  `comprador_razon_social`/`comprador_nim`/`comprador_nit` es lo que se
+  imprime en el PDF.
+- `deducciones`: YA NO EXISTE. No hay deducciones variables (decision del
+  negocio): la unica deduccion es el aporte de caja de salud (1.8% sobre el
+  bruto exacto, D1/D4), que se agrega solo si `aplica_caja_salud: true`, y
+  `total_deducciones_bs` guarda ese unico monto.
 - Se escribe la bitacora inicial (`null -> creado`) en la misma transaccion.
 - `201` con el recurso.
 

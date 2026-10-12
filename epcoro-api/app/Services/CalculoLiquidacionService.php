@@ -14,7 +14,7 @@ use App\Support\Decimal;
  *     usd_gramo = cotizacion_usd_oz_t / gramos_por_onza_troy
  *     bruto     = usd_gramo * tipo_cambio * peso_fino
  *     aporte    = aplica_caja_salud ? bruto_EXACTO * ALICUOTA_APORTE : 0
- *     neto      = bruto - (aporte + deducciones variables)
+ *     neto      = bruto - aporte
  *
  * Tres reglas que este archivo tiene que seguir SIEMPRE, porque las tres son
  * bugs que casi entran (C1, C2 y D4):
@@ -51,10 +51,8 @@ final class CalculoLiquidacionService
      * Calcula los seis campos derivados de una liquidacion.
      *
      * @param array<string, mixed> $datos
-     *        peso_gramos, ley_pagable, tipo_cambio, cotizacion_usd_oz_t,
-     *        aplica_caja_salud y, opcionalmente, `deducciones`: una lista de
-     *        montos en Bs (los renglones futuros de la celda H/I del Excel,
-     *        que hoy esta vacia).
+     *        peso_gramos, ley_pagable, tipo_cambio, cotizacion_usd_oz_t y
+     *        aplica_caja_salud.
      * @return array<string, string>
      *        gramos_por_onza_troy (el divisor usado, para persistirlo como
      *        snapshot), peso_fino_gramos, valor_usd_gramo, valor_bruto_bs,
@@ -82,8 +80,6 @@ final class CalculoLiquidacionService
 
         $this->validar($peso, $ley, $cotizacion, $tipoCambio, $gramosPorOnzaTroy, $alicuotaAporte);
 
-        $deducciones = $this->deducciones($datos);
-
         $escala = Decimal::ESCALA;
 
         $pesoFino = bcmul($peso, $ley, $escala);
@@ -97,7 +93,9 @@ final class CalculoLiquidacionService
             ? bcmul($brutoExacto, $alicuotaAporte, $escala)
             : '0';
 
-        $totalDeduccionesExacto = bcadd($aporteExacto, $deducciones, $escala);
+        // El total de deducciones es solo el aporte: no hay descuentos
+        // variables (decision del negocio).
+        $totalDeduccionesExacto = $aporteExacto;
         $netoExacto = bcsub($brutoExacto, $totalDeduccionesExacto, $escala);
 
         return [
@@ -160,34 +158,6 @@ final class CalculoLiquidacionService
         }
 
         return $valor;
-    }
-
-    /**
-     * Suma de los renglones de deducciones variables (paso 6), exacta.
-     *
-     * @param array<string, mixed> $datos
-     */
-    private function deducciones(array $datos): string
-    {
-        $renglones = $datos['deducciones'] ?? [];
-
-        if (! is_array($renglones)) {
-            throw CalculoInvalidoException::deduccionesNoSonLista();
-        }
-
-        $total = '0';
-
-        foreach (array_values($renglones) as $posicion => $renglon) {
-            $monto = $this->texto($renglon);
-
-            if ($monto === null || bccomp($monto, '0', Decimal::ESCALA) < 0) {
-                throw CalculoInvalidoException::deduccionInvalida($posicion);
-            }
-
-            $total = bcadd($total, $monto, Decimal::ESCALA);
-        }
-
-        return $total;
     }
 
     /**

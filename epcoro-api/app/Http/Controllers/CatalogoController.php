@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\PersonaRequest;
 use App\Models\AreaMinera;
+use App\Models\Comprador;
 use App\Models\CotizacionQuincenal;
 use App\Models\Departamento;
 use App\Models\Localidad;
@@ -167,6 +168,21 @@ class CatalogoController extends Controller
     {
         return $this->lista(
             PresentacionMineral::query()->orderBy('nombre')->get(['id', 'nombre'])
+        );
+    }
+
+    /**
+     * Catalogo de compradores (C11-C13): hoy es una sola fila (EPCORO), la
+     * que el formulario prellenada al abrir. Orden alfabetico para que la
+     * lista no cambie de orden entre una carga y otra.
+     */
+    public function compradores(): JsonResponse
+    {
+        return $this->lista(
+            Comprador::query()
+                ->where('activo', true)
+                ->orderBy('razon_social')
+                ->get(['id', 'razon_social', 'nim', 'nit'])
         );
     }
 

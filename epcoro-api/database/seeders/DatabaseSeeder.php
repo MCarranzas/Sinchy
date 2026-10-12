@@ -24,6 +24,7 @@ class DatabaseSeeder extends Seeder
             CatalogoGeograficoSeeder::class,
             PresentacionesSeeder::class,
             ParametrosSeeder::class,
+            CompradoresSeeder::class,
             AdminSeeder::class,
             UsuariosEjemploSeeder::class,
         ]);

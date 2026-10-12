@@ -46,17 +46,4 @@ class CalculoInvalidoException extends ReglaNegocioException
     {
         return new self('aplica_caja_salud debe ser booleano (true/false).');
     }
-
-    /**
-     * @param int $posicion posicion del renglon dentro de `deducciones`, contada desde 0
-     */
-    public static function deduccionInvalida(int $posicion): self
-    {
-        return new self("La deduccion n. {$posicion} debe ser un monto mayor o igual a cero.");
-    }
-
-    public static function deduccionesNoSonLista(): self
-    {
-        return new self('deducciones debe ser una lista de montos.');
-    }
 }

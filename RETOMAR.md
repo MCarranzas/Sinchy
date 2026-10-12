@@ -4,14 +4,49 @@ Documento para retomar el trabajo en otra máquina. El **entorno** (versiones,
 instalación, PATH, bases) está en `pasos_otra_maquina.txt`; este archivo habla
 del **estado del proyecto** y de lo que sigue.
 
-- Fecha de este estado: 2026-10-07
-- Rama: `master`
+- Fecha de este estado: 2026-10-12 (actualizado; el cuerpo original era de 2026-10-07)
+- Rama: `master` (remoto `origin/main`)
 - Bitácora: `pasos.txt` (**protocolo ligero** desde 2026-10-07: solo
   decisiones, bugs raros y verificaciones de cierre de fase; ver README.md
   sección "Proceso"). Las entradas que sí se escriben conservan el formato
   `[N] fecha hora - FASE` con OBJETIVO / COMANDO / RESULTADO / ESTADO.
 
 ---
+
+## 0. Actualización 2026-10-12 (después de la FASE 7)
+
+El cuerpo 1-7 quedó escrito al cierre de FASE 7. Desde entonces se
+completaron FASE 8 (captura), 9 (flujo de estados), 10 (reportes) y
+11 (calidad/seguridad/auditoria) — el estado real está en `README.md` →
+"Estado" — y esta sesión dejó **dos cambios que tocan el modelo de datos**
+descrito en las secciones 2-6:
+
+- **Deducciones variables retiradas por completo**: desapareció el modelo,
+  la factory, el grupo `deducciones` del resource y la tabla
+  `liquidacion_deducciones` (migración drop `2026_10_11_000020`). La única
+  deducción que queda es `ALICUOTA_APORTE` 1,8 % (D1), etiquetada "Ley
+  pagable %". El número de liquidación sigue reservando `[N]` para 2.3 si
+  algún día vuelven.
+- **Comprador con tabla propia**: nueva tabla `compradores` y
+  `liquidaciones.comprador_id` FK (reemplaza `comprador_persona_id` de la
+  sección 6/migraciones FASE 4). `GET /catalogos/compradores` alimenta el
+  autocompletado del formulario; `NOMBRE_COMPRADOR/NIM_COMPRADOR/
+  NIT_COMPRADOR` se retiraron de `parametros_generales` (una sola fuente de
+  verdad). NIM/NIT siguen como texto (C5).
+
+Últimos commits (histórico; la sección 1 relata solo la FASE 7):
+
+```
+61ba67f avance        f1170ca FASE 11: calidad, seguridad y auditoria
+820078b FASE 10: modulo de reportes      f9bbd49 FASE 8: filtros index
+8708b5b FASE 9: flujo de estados y bandeja      672da30 FASE 8: captura
+```
+
+Cierre de esta sesión: `pint` OK, `phpstan` OK, `php artisan test` verde,
+`vue-tsc -b` OK; migraciones y `CompradoresSeeder` aplicados en la BD de
+desarrollo. Cronológico y detallado en `pasos.txt` (entrada [122]).
+Pendiente: comprobación visual en navegador (autocompletado del comprador)
+y FASE 12 (puesta en producción).
 
 ## 1. Estado del repositorio
 

@@ -51,7 +51,7 @@ use Illuminate\Support\Carbon;
  * @property string $tipo_cambio
  * @property int|null $cotizacion_id
  * @property string $cotizacion_usd_oz_t
- * @property int|null $comprador_persona_id
+ * @property int|null $comprador_id
  * @property string $comprador_razon_social
  * @property string|null $comprador_nim
  * @property string|null $comprador_nit
@@ -97,7 +97,7 @@ use Illuminate\Support\Carbon;
     'tipo_cambio',
     'cotizacion_id',
     'cotizacion_usd_oz_t',
-    'comprador_persona_id',
+    'comprador_id',
     'comprador_razon_social',
     'comprador_nim',
     'comprador_nit',
@@ -174,10 +174,10 @@ class Liquidacion extends Model
         return $this->belongsTo(User::class, 'usuario_registro_id');
     }
 
-    /** @return BelongsTo<Persona, $this> */
+    /** @return BelongsTo<Comprador, $this> */
     public function comprador(): BelongsTo
     {
-        return $this->belongsTo(Persona::class, 'comprador_persona_id');
+        return $this->belongsTo(Comprador::class, 'comprador_id');
     }
 
     /** @return BelongsTo<Persona, $this> */
@@ -225,12 +225,6 @@ class Liquidacion extends Model
     }
 
     // -------------------------------------------------------------- flujo
-
-    /** @return HasMany<LiquidacionDeduccion, $this> */
-    public function deducciones(): HasMany
-    {
-        return $this->hasMany(LiquidacionDeduccion::class);
-    }
 
     /** @return HasMany<LiquidacionObservacion, $this> */
     public function observacionesFlujo(): HasMany

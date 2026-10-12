@@ -22,7 +22,7 @@ class LiquidacionExport implements FromView
 
     public function view(): View
     {
-        $this->liquidacion->loadMissing(['deducciones', 'registro', 'historial']);
+        $this->liquidacion->loadMissing(['registro', 'historial']);
 
         return view('liquidaciones.excel', [
             'liquidacion' => $this->liquidacion,

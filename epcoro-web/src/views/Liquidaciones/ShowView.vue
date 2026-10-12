@@ -275,18 +275,6 @@ async function ejecutarTransicion(payload: TransicionPayload): Promise<void> {
             <dd class="text-right tabular-nums text-rose-600">
               - {{ bs(liquidacion.calculo.aporte_caja_salud_bs) }}
             </dd>
-            <dt class="text-slate-500">Otras deducciones</dt>
-            <dd class="text-right tabular-nums text-rose-600">
-              -
-              {{
-                bs(
-                  (
-                    Number(liquidacion.calculo.total_deducciones_bs) -
-                    Number(liquidacion.calculo.aporte_caja_salud_bs)
-                  ).toFixed(2),
-                )
-              }}
-            </dd>
             <div class="col-span-2 mt-1 flex items-center justify-between rounded-lg bg-marca-50 px-3 py-2">
               <dt class="text-sm font-medium text-marca-700">Valor neto</dt>
               <dd class="text-base font-bold tabular-nums text-marca-700">
@@ -296,28 +284,6 @@ async function ejecutarTransicion(payload: TransicionPayload): Promise<void> {
           </dl>
         </section>
       </div>
-
-      <!-- Deducciones -->
-      <section v-if="liquidacion.deducciones?.length" class="mt-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-        <h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">
-          Desglose de deducciones
-        </h2>
-        <ul class="divide-y divide-slate-100 text-sm">
-          <li
-            v-for="deduccion in liquidacion.deducciones"
-            :key="deduccion.concepto"
-            class="flex items-center justify-between gap-3 py-2"
-          >
-            <span class="text-slate-700">
-              {{ deduccion.concepto }}
-              <span class="text-xs text-slate-400">
-                {{ deduccion.tipo === 'alicuota' ? `(${numero(deduccion.alicuota, 4)} sobre el bruto)` : '' }}
-              </span>
-            </span>
-            <span class="font-medium tabular-nums text-slate-800">{{ bs(deduccion.monto) }}</span>
-          </li>
-        </ul>
-      </section>
 
       <!-- Observaciones -->
       <section v-if="liquidacion.observaciones" class="mt-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">

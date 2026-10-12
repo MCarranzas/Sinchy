@@ -14,12 +14,14 @@
 import { defineStore } from 'pinia'
 
 import {
+  listarCompradores,
   listarCotizaciones,
   listarDepartamentos,
   listarParametros,
   listarPresentaciones,
 } from '@/api/catalogos.api'
 import type {
+  Comprador,
   CotizacionQuincenal,
   Departamento,
   ParametroGeneral,
@@ -30,6 +32,7 @@ interface EstadoCatalogos {
   parametros: ParametroGeneral[]
   departamentos: Departamento[]
   presentaciones: PresentacionMineral[]
+  compradores: Comprador[]
   cotizaciones: CotizacionQuincenal[]
   cargado: boolean
   cargando: boolean
@@ -40,6 +43,7 @@ export const useCatalogosStore = defineStore('catalogos', {
     parametros: [],
     departamentos: [],
     presentaciones: [],
+    compradores: [],
     cotizaciones: [],
     cargado: false,
     cargando: false,
@@ -52,9 +56,9 @@ export const useCatalogosStore = defineStore('catalogos', {
     },
 
     /**
-     * Defaults del formulario (8.3): los tres datos fijos del comprador
-     * (celdas C11-C13 de hoja.xlsx). El tipo de cambio ya no es un default:
-     * se resuelve por fecha contra /catalogos/tipo-cambio.
+     * Defaults del formulario (8.3): el comprador (celdas C11-C13) llega del
+     * catalogo `compradores`. El tipo de cambio ya no es un default: se
+     * resuelve por fecha contra /catalogos/tipo-cambio.
      */
     gramosPorOnzaTroy: (estado): string =>
       estado.parametros.find((p) => p.clave === 'GRAMOS_POR_ONZA_TROY')?.valor ?? '31.1035',
@@ -62,11 +66,15 @@ export const useCatalogosStore = defineStore('catalogos', {
     alicuotaAporte: (estado): string =>
       estado.parametros.find((p) => p.clave === 'ALICUOTA_APORTE')?.valor ?? '0.018',
 
-    compradorFijo: (estado) => ({
-      razonSocial: estado.parametros.find((p) => p.clave === 'NOMBRE_COMPRADOR')?.valor ?? '',
-      nim: estado.parametros.find((p) => p.clave === 'NIM_COMPRADOR')?.valor ?? '',
-      nit: estado.parametros.find((p) => p.clave === 'NIT_COMPRADOR')?.valor ?? '',
-    }),
+    compradorFijo: (estado) => {
+      const comprador = estado.compradores[0] ?? null
+
+      return {
+        razonSocial: comprador?.razon_social ?? '',
+        nim: comprador?.nim ?? '',
+        nit: comprador?.nit ?? '',
+      }
+    },
 
     /** La cotizacion mas reciente, la que el formulario sugiere al abrir. */
     cotizacionSugerida: (estado): CotizacionQuincenal | null => estado.cotizaciones[0] ?? null,
@@ -85,16 +93,18 @@ export const useCatalogosStore = defineStore('catalogos', {
       this.cargando = true
 
       try {
-        const [parametros, departamentos, presentaciones, cotizaciones] = await Promise.all([
+        const [parametros, departamentos, presentaciones, compradores, cotizaciones] = await Promise.all([
           listarParametros(),
           listarDepartamentos(),
           listarPresentaciones(),
+          listarCompradores(),
           listarCotizaciones(),
         ])
 
         this.parametros = parametros
         this.departamentos = departamentos
         this.presentaciones = presentaciones
+        this.compradores = compradores
         this.cotizaciones = cotizaciones
         this.cargado = true
       } finally {

@@ -1748,6 +1748,9 @@ RESULTADO : CatalogoGeograficoSeeder lee database/catalogos/bolivia.php (9
             GRAMOS_POR_ONZA_TROY 31.1035, ALICUOTA_APORTE 0.018 (D1),
             nombre/NIM/NIT del comprador. NO se siembra
             ALICUOTA_APORTE_SOLIDARIO: por D1 ese parametro no existe.
+            (SUPERADO 2026-10-12 por la entrada [122]: los datos del
+            comprador pasaron a la tabla compradores y ya no se siembran
+            en parametros_generales.)
             DatabaseSeeder los encadena en el orden correcto.
 ESTADO    : OK
 
@@ -2298,12 +2301,15 @@ RESULTADO : (a) Backend completo para FASE 8: rutas /api/v1 listas
             UN solo redondeo half-up a 2 dec al final (C1/C2/D4).
             Index con filtros (estado, fechas, municipio, area, vendedor,
             q, orden) y paginacion por query param `page` (pagina/
-            por_pagina). Resource agrupado: insumos/calculo/comprador/
+por_pagina). Resource agrupado: insumos/calculo/comprador/
             vendedor/procedencia/presentacion/deducciones/auditoria y
             transiciones_disponibles. Parametros: TIPO_CAMBIO_DEFECTO
             6.96, GRAMOS_POR_ONZA_TROY 31.1035, ALICUOTA_APORTE 0.018,
             NOMBRE_COMPRADOR/NIM_COMPRADOR/NIT_COMPRADOR (los tres datos
             fijos del comprador = el autocompletado del paso 8.3).
+            (SUPERADO 2026-10-12 por la entrada [122]: el autocompletado
+            del comprador sale del catalogo compradores y de
+            liquidaciones.comprador_id; esos tres parametros se retiraron.)
             (b) Frontend: api/axios.ts con erroresDeValidacion() ya
             listo para el 422 campo por campo; stores/auth.ts estilo
             Pinia opciones; router genera /liquidaciones* desde
@@ -2574,3 +2580,52 @@ ESTADO    : OK. FASE 11 cerrada. Sigue pendiente la comprobacion visual en
             el navegador (heredada). Proxima: FASE 12 (puesta en produccion:
             Ubuntu + Nginx + PHP-FPM 8.4 + PostgreSQL 17, HTTPS y respaldos
             con verificacion de restauracion).
+
+################################################################################
+# FASE 12 (parcial) - RETIRO DE DEDUCCIONES VARIABLES Y TABLA COMPRADORES
+################################################################################
+
+### [122] 2026-10-12 --:-- - FASE 12 / LIMPIEZA DE MODELO + COMPRADOR PROPIO
+OBJETIVO  : (a) retirar la feature "deducciones variables" que el negocio
+            rechazo (unica deduccion: ALICUOTA_APORTE 1,8 %, D1) y
+            (b) dar al comprador su propia tabla para usos posteriores,
+            reemplazando comprador_persona_id -> personas y los parametros
+            NOMBRE/NIM/NIT_COMPRADOR.
+COMANDO   : retroceso deliberado de la FASE 12 de produccion a favor de
+            estos dos cambios aprobados por el usuario.
+RESULTADO : (a) Se elimino en TODO el stack el modelo LiquidacionDeduccion,
+            su factory, su tabla (migracion drop 2026_10_11_000020), el
+            grupo deducciones del resource, las reglas/imports de deducciones
+            en Store/UpdateLiquidacionRequest y TransicionController, el
+            calculo D5/D6 de CalculoLiquidacionService (neto = bruto -
+            aporte; el numerador reserva [N] para 2.3), y en el frontend
+            types/ResumenCalculo.vue/SeccionTecnico.vue/calculo.ts y el PDF/
+            Excel. La etiqueta del campo quedo en "Ley pagable %".
+            (b) Migraciones 2026_10_11_000030 (tabla compradores) y
+            2026_10_11_000031 (liquidaciones.comprador_id FK, drop de
+            comprador_persona_id y recreacion de v_liquidaciones_detalle que
+            dependia de la columna: SQLSTATE[2BP01] en el primer intento).
+            Comprador (modelo+factory+seeder EPCORO C11-C13, NIM/NIT como
+            texto C5) con backfill de liquidaciones.comprador_id contra la
+            razon social (case-insensitive, solo activos). GET
+            /catalogos/compradores. Resource comprador.id. El formulario
+            autocompleta desde el catalogo compradores (store catalogos).
+            NOMBRE/NIM/NIT_COMPRADOR retirados de ParametrosSeeder y
+            borrados de la BD dev (una sola fuente de verdad). Parametros
+            C11-C13 quedan solo como historico en instrucciones.txt (se
+            marca SUPERADO en las entradas [96] y [114]).
+            Docs: api.md, diagrama-erd.md (sin liquidacion_deducciones),
+            instrucciones.txt excepto marks, RETOMAR.md seccion 0.
+            Tests nuevos: comprador_id en TablasDeModelosTest,
+            LiquidacionApiTest (resolucion contra catalogo + snapshot +
+            caso fuera de catalogo queda null) y el endpoint en
+            ReportesYCatalogosApiTest; ParametroRepositoryTest no recibe
+            los tres datos del comprador. Test del numero que no colisiona
+            con segundas deducciones.
+VERIFICACION: pint OK, phpstan OK, php artisan test: 186 passed / 928
+            assertions, vue-tsc -b OK. Migraciones y CompradoresSeeder
+            aplicados en la BD dev (tabla compradores con EPCORO activo).
+PENDIENTE : comprobacion visual en navegador del autocompletado del
+            comprador al crear/editar una liquidacion; commit de esta
+            sesion cuando el usuario lo confirme.
+ESTADO    : OK.

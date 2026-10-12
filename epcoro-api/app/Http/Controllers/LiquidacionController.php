@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Contracts\LectorParametros;
 use App\Enums\EstadoLiquidacion;
 use App\Exceptions\RegistroNoEditableException;
 use App\Exceptions\TransicionInvalidaException;
@@ -13,6 +12,7 @@ use App\Http\Requests\UpdateLiquidacionRequest;
 use App\Http\Resources\LiquidacionObservacionResource;
 use App\Http\Resources\LiquidacionResource;
 use App\Models\AreaMinera;
+use App\Models\Comprador;
 use App\Models\Liquidacion;
 use App\Models\LiquidacionEstadoHistorial;
 use App\Models\Persona;
@@ -59,7 +59,6 @@ class LiquidacionController extends Controller
         private readonly CalculoLiquidacionService $calculadora,
         private readonly NumeradorDocumento $numerador,
         private readonly TransicionEstadoService $transiciones,
-        private readonly LectorParametros $parametros,
     ) {}
 
     // ------------------------------------------------------------ lectura
@@ -72,7 +71,7 @@ class LiquidacionController extends Controller
         $usuario = $request->user();
 
         $consulta = Liquidacion::query()
-            ->with(['registro:id,nombre_completo,username', 'deducciones']);
+            ->with(['registro:id,nombre_completo,username']);
 
         // D3: quien no tiene ver_todas solo ve lo suyo. Va aqui y no en la
         // vista porque es un corte de datos, no de presentacion.
@@ -104,7 +103,7 @@ class LiquidacionController extends Controller
     {
         $this->authorize('view', $liquidacion);
 
-        $liquidacion->load(['registro:id,nombre_completo,username', 'deducciones']);
+        $liquidacion->load(['registro:id,nombre_completo,username']);
 
         return response()->json([
             'data' => new LiquidacionResource($liquidacion),
@@ -158,13 +157,12 @@ class LiquidacionController extends Controller
     {
         $datos = $request->validated();
         $usuario = $request->user();
-        $renglones = $this->renglones($datos);
 
         // El tipo de cambio ya no lo manda el formulario: se toma del valor
         // diario cargado para la fecha de la transaccion.
         $datos['tipo_cambio'] = $this->tipoCambioDelDia($datos['fecha_transaccion']);
 
-        $liquidacion = DB::transaction(function () use ($datos, $usuario, $renglones): Liquidacion {
+        $liquidacion = DB::transaction(function () use ($datos, $usuario): Liquidacion {
             $ejercicio = (int) substr($datos['fecha_transaccion'], 0, 4);
 
             // El numero puede traerlo el usuario (viene del Excel externo); si
@@ -178,7 +176,7 @@ class LiquidacionController extends Controller
                 ]
                 : $this->numerador->asignar('liquidacion', $ejercicio);
 
-            $insumos = $this->insumos($datos, $renglones);
+            $insumos = $this->insumos($datos);
             $calculo = $this->calculadora->calcular($insumos);
 
             $liquidacion = Liquidacion::query()->create(array_merge(
@@ -194,8 +192,6 @@ class LiquidacionController extends Controller
                 ],
             ));
 
-            $this->persistirDeducciones($liquidacion, $calculo, $renglones);
-
             // Bitacora inicial (NULL -> creado) dentro de la MISMA transaccion.
             $this->transiciones->registrarInicio($liquidacion, $usuario);
 
@@ -205,7 +201,7 @@ class LiquidacionController extends Controller
         return response()->json([
             'message' => 'Liquidacion creada correctamente.',
             'data' => new LiquidacionResource(
-                $liquidacion->load(['registro:id,nombre_completo,username', 'deducciones'])
+                $liquidacion->load(['registro:id,nombre_completo,username'])
             ),
         ], Response::HTTP_CREATED);
     }
@@ -219,7 +215,6 @@ class LiquidacionController extends Controller
         // Edicion parcial: lo que no viene se queda como estaba, y los
         // insumos del calculo se recomponen con lo viejo mas lo nuevo.
         $validados = $request->validated();
-        $renglones = $this->renglones($validados, $liquidacion);
         $datos = array_merge($this->base($liquidacion), $validados);
 
         // El tipo de cambio se vuelve a resolver SOLO si cambia la fecha de la
@@ -231,8 +226,8 @@ class LiquidacionController extends Controller
 
         $ejercicio = (int) substr($datos['fecha_transaccion'], 0, 4);
 
-        $liquidacion = DB::transaction(function () use ($liquidacion, $datos, $ejercicio, $renglones): Liquidacion {
-            $insumos = $this->insumos($datos, $renglones);
+        $liquidacion = DB::transaction(function () use ($liquidacion, $datos, $ejercicio): Liquidacion {
+            $insumos = $this->insumos($datos);
             $calculo = $this->calculadora->calcular($insumos);
 
             $liquidacion->fill(array_merge(
@@ -249,15 +244,13 @@ class LiquidacionController extends Controller
                 ],
             ))->save();
 
-            $this->persistirDeducciones($liquidacion, $calculo, $renglones);
-
             return $liquidacion;
         });
 
         return response()->json([
             'message' => 'Liquidacion actualizada correctamente.',
             'data' => new LiquidacionResource(
-                $liquidacion->load(['registro:id,nombre_completo,username', 'deducciones'])
+                $liquidacion->load(['registro:id,nombre_completo,username'])
             ),
         ]);
     }
@@ -433,14 +426,12 @@ class LiquidacionController extends Controller
 
     /**
      * La liquidacion con lo que necesitan la vista y el export: el registro
-     * (que la firma), las deducciones (desglose del neto) y el historial en
-     * orden (la hoja del documento).
+     * (que la firma) y el historial en orden (la hoja del documento).
      */
     private function cargada(Liquidacion $liquidacion): Liquidacion
     {
         return $liquidacion->load([
             'registro:id,nombre_completo,username',
-            'deducciones',
             'historial' => fn (HasMany $q) => $q->orderBy('created_at')->orderBy('id'),
         ]);
     }
@@ -468,7 +459,7 @@ class LiquidacionController extends Controller
             'cotizacion_id' => $datos['cotizacion_id'] ?? null,
             'cotizacion_usd_oz_t' => $datos['cotizacion_usd_oz_t'],
             'aplica_caja_salud' => $aplicaCajaSalud,
-            'comprador_persona_id' => $datos['comprador_persona_id'] ?? null,
+            'comprador_id' => Comprador::idDeRazonSocial($datos['comprador_razon_social']),
             'comprador_razon_social' => $datos['comprador_razon_social'],
             'comprador_nim' => $datos['comprador_nim'] ?? null,
             'comprador_nit' => $datos['comprador_nit'] ?? null,
@@ -520,16 +511,10 @@ class LiquidacionController extends Controller
      * Los cinco insumos + el interruptor, ya validados, en el formato que
      * el servicio espera.
      *
-     * Los renglones de deduccion llegan de fuera porque en una edicion
-     * parcial pueden venir de la base y no de la peticion: quien los
-     * resuelve es el controlador, una sola vez, y los mismos se pasan al
-     * servicio que se persisten.
-     *
      * @param  array<string, mixed>  $datos
-     * @param  array<int, array{concepto: string, monto: string|int|float}>  $renglones
      * @return array<string, mixed>
      */
-    private function insumos(array $datos, array $renglones): array
+    private function insumos(array $datos): array
     {
         return [
             'peso_gramos' => $datos['peso_gramos'],
@@ -539,7 +524,6 @@ class LiquidacionController extends Controller
             'aplica_caja_salud' => is_bool($datos['aplica_caja_salud'])
                 ? $datos['aplica_caja_salud']
                 : filter_var($datos['aplica_caja_salud'], FILTER_VALIDATE_BOOLEAN),
-            'deducciones' => array_column($renglones, 'monto'),
         ];
     }
 
@@ -565,74 +549,6 @@ class LiquidacionController extends Controller
     }
 
     /**
-     * Renglones de deduccion variable, como pares concepto/monto.
-     *
-     * Si la peticion no trae la lista (edicion parcial), se reconstruye de
-     * lo que ya estaba en la base, para que un cambio de peso no borre los
-     * descuentos que el usuario ya habia cargado.
-     *
-     * @param  array<string, mixed>  $datos
-     * @return array<int, array{concepto: string, monto: string|int|float}>
-     */
-    private function renglones(array $datos, ?Liquidacion $liquidacion = null): array
-    {
-        if (isset($datos['deducciones'])) {
-            /** @var array<int, array{concepto: string, monto: string|int|float}> $renglones */
-            $renglones = array_values($datos['deducciones']);
-
-            return $renglones;
-        }
-
-        if ($liquidacion === null) {
-            return [];
-        }
-
-        return $liquidacion->deducciones()
-            ->where('tipo', 'descuento')
-            ->orderBy('orden')
-            ->get()
-            ->map(fn ($fila): array => ['concepto' => $fila->concepto, 'monto' => $fila->monto])
-            ->all();
-    }
-
-    /**
-     * Fila a fila en `liquidacion_deducciones`: el aporte (si aplica) y las
-     * variables, para que el total guardado se pueda desarmar sin leer
-     * ninguna otra tabla (seccion 3.7).
-     *
-     * @param  array<string, string>  $calculo
-     * @param  array<int, array{concepto: string, monto: string|int|float}>  $renglones
-     */
-    private function persistirDeducciones(Liquidacion $liquidacion, array $calculo, array $renglones): void
-    {
-        $liquidacion->deducciones()->delete();
-
-        if ($calculo['aporte_caja_salud_bs'] !== '0.00') {
-            $liquidacion->deducciones()->create([
-                'concepto' => 'APORTE CAJA DE SALUD - LEY 649',
-                'tipo' => 'alicuota',
-                'alicuota' => $this->parametros->valor(CalculoLiquidacionService::CLAVE_ALICUOTA_APORTE),
-                'base_monto' => $calculo['valor_bruto_bs'],
-                'monto' => $calculo['aporte_caja_salud_bs'],
-                'obligatorio' => true,
-                'orden' => 1,
-            ]);
-        }
-
-        foreach ($renglones as $posicion => $renglon) {
-            $liquidacion->deducciones()->create([
-                'concepto' => $renglon['concepto'],
-                'tipo' => 'descuento',
-                'alicuota' => null,
-                'base_monto' => $renglon['monto'],
-                'monto' => $renglon['monto'],
-                'obligatorio' => false,
-                'orden' => $posicion + 2,
-            ]);
-        }
-    }
-
-    /**
      * Los valores ya guardados, para recombinarlos con los que llegan en
      * una edicion parcial.
      *
@@ -649,7 +565,7 @@ class LiquidacionController extends Controller
             'aplica_caja_salud' => $liquidacion->aplica_caja_salud,
             'peso_gramos' => $liquidacion->peso_gramos,
             'ley_pagable' => $liquidacion->ley_pagable,
-            'comprador_persona_id' => $liquidacion->comprador_persona_id,
+            'comprador_id' => $liquidacion->comprador_id,
             'comprador_razon_social' => $liquidacion->comprador_razon_social,
             'comprador_nim' => $liquidacion->comprador_nim,
             'comprador_nit' => $liquidacion->comprador_nit,

@@ -2,12 +2,14 @@
 
 namespace Tests\Feature;
 
+use App\Models\Comprador;
 use App\Models\Liquidacion;
 use App\Models\Municipio;
 use App\Models\ParametroGeneral;
 use App\Models\TipoCambio;
 use App\Models\User;
 use App\Services\TransicionEstadoService;
+use Database\Seeders\CompradoresSeeder;
 use Database\Seeders\ParametrosSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -336,6 +338,24 @@ class ReportesYCatalogosApiTest extends AuthTestCase
             ->getJson('/api/v1/catalogos/tipo-cambio?fecha=01-10-2026')
             ->assertStatus(422)
             ->assertJsonValidationErrors('fecha');
+    }
+
+    public function test_el_catalogo_de_compradores_responde_con_la_fila_fija(): void
+    {
+        $this->seed(CompradoresSeeder::class);
+        Comprador::factory()->inactivo()->create(['razon_social' => 'EMPRESA DE PRUEBA DELTA']);
+
+        $tecnico = $this->tecnico();
+
+        $respuesta = $this->actingAs($tecnico, 'web')
+            ->getJson('/api/v1/catalogos/compradores');
+
+        // Solo la activa del seeder (EPCORO): la inactiva no sale del catalogo.
+        $respuesta->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.razon_social', 'EMPRESA ESTATAL DE PRODUCCION Y COMERCIALIZACION DEL ORO - EPCORO')
+            ->assertJsonPath('data.0.nim', '02-2388-05')
+            ->assertJsonPath('data.0.nit', '1006965023');
     }
 
     // --------------------------------------------------------- utilidades

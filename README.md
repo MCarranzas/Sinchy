@@ -220,17 +220,24 @@ El respaldo diario (`epcoro:respaldar`) queda programado en
 | 5 - Servicio de calculo | completa (salvo 5.4.8, que necesita la API): calculo puro, parametros, numerador, maquina de estados y 87 tests en verde |
 | 6 - API CRUD de liquidaciones | completa: `/api/v1` (auth, catalogos, parametros, liquidaciones, PDF/Excel, transiciones, observaciones, historial y reportes), 127 tests en verde, pint y phpstan limpios. Ver `epcoro-api/docs/api.md` |
 | 7 - Frontend base y login | completa: SPA vue-ts con axios `/api/v1`, store auth, guard de sesion/permiso/cambio obligatorio, layouts, LoginView, pantalla de cambio de contrasena y menu por permisos. Login y cambio de contrasena verificados end-to-end por el proxy de Vite (`/api` + `/sanctum`). Queda solo la comprobacion visual en navegador |
-| 8 - Captura de liquidacion | completa (8.1-8.12): planilla de captura reutilizada por crear/editar, wizard responsive de 5 pasos, validacion vee-validate espejo de `StoreLiquidacionRequest`, calculo en vivo espejo de `CalculoLiquidacionService` (BigInt, 1 solo redondeo half-up), lista con filtros y paginacion por URL (incluye municipio y vendedor con autocompletado), detalle con PDF/Excel e historial. Build verde y smoke test E2E via proxy. Queda solo la comprobacion visual en navegador |
+| 8 - Captura de liquidacion | completa (8.1-8.12): planilla de captura reutilizada por crear/editar, wizard responsive de 5 pasos, validacion vee-validate espejo de `StoreLiquidacionRequest`, calculo en vivo espejo de `CalculoLiquidacionService` (BigInt, 1 solo redondeo half-up), lista con filtros y paginacion por URL (incluye municipio y vendedor con autocompletado), detalle con PDF/Excel e historial. El comprador se autocompleta desde su tabla propia (`compradores`, `GET /catalogos/compradores`, FK `liquidaciones.comprador_id`). Build verde y smoke test E2E via proxy. Queda solo la comprobacion visual en navegador |
 | 9 - Flujo de estados y permisos | completa (9.1-9.7): barra de estado con `transiciones_disponibles`, modal de transicion (motivo obligatorio en rechazado/anulado), timeline de historial, edicion condicionada a auth+propiedad+estado, banda `GET /api/v1/bandeja` con pestanas por rol (tambien el item "Mi bandeja" en el menu y la ruta `/bandeja`), seeder de 4 usuarios de ejemplo, fix de paginacion (`page`, no `pagina`) y 153 tests en verde (26 nuevos). El backend ya cortaba por estado (422) antes que por permiso (403) |
 | 10 - Reportes | completa (10.1-10.6): pantalla de reportes con rango quincenal/mensual/anual y por URL (`?fecha_desde=&fecha_hasta=`), tarjetas de resumen (n, pesos, bruto, aportes, deducciones y neto), tablas agrupadas por estado/municipio/area minera/presentacion/mes (grupos `por_area_minera` y `por_mes` agregados al resumen del backend), graficos Chart.js (dona por estado, evolucion mensual del neto, top municipios) y exportacion a Excel/PDF reutilizando los parametros del periodo |
-| 11 - Calidad, seguridad y auditoria | completa (11.1-11.9): canal de log `auditoria` con registro de login/logout/fallos, cambios de estado, parametros, exportaciones y respaldos (`App\Support\Auditoria`); respaldo diario con `pg_dump` y purga por retencion (`epcoro:respaldar`); preflight de produccion (`epcoro:revisar-produccion`); `.env.production.example` y proxy de Vite por entorno; scripts `composer check` (pint + phpstan + tests); esta guia de instalacion; 179 tests en verde |
+| 11 - Calidad, seguridad y auditoria | completa (11.1-11.9): canal de log `auditoria` con registro de login/logout/fallos, cambios de estado, parametros, exportaciones y respaldos (`App\Support\Auditoria`); respaldo diario con `pg_dump` y purga por retencion (`epcoro:respaldar`); preflight de produccion (`epcoro:revisar-produccion`); `.env.production.example` y proxy de Vite por entorno; scripts `composer check` (pint + phpstan + tests); esta guia de instalacion; 186 tests en verde |
+
+Cambios posteriores a la FASE 11 (2026-10-12): se retiro por completo la
+feature "deducciones variables" (la unica deduccion es `ALICUOTA_APORTE`
+1,8 % por D1; ya no existe `liquidacion_deducciones`) y el comprador paso a
+tener tabla propia (`compradores`) con FK `liquidaciones.comprador_id`
+(reemplaza `comprador_persona_id`); su autocompletado sale del catalogo
+`compradores`, no de `parametros_generales`. Detalle en `pasos.txt` [122].
 
 Comprobacion (`epcoro-api/`):
 
 ```bash
 php artisan migrate:fresh --seed   # crea todo sin errores
 php artisan migrate:rollback       # revierte todo
-php artisan test                   # 179 tests / 901 assertions
+php artisan test                   # 186 tests / 928 assertions
 vendor\bin\pint --test
 vendor\bin\phpstan analyse
 ```

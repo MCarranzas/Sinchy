@@ -3,12 +3,14 @@
 namespace Tests\Feature;
 
 use App\Models\AreaMinera;
+use App\Models\Comprador;
 use App\Models\Liquidacion;
 use App\Models\LiquidacionEstadoHistorial;
 use App\Models\Persona;
 use App\Models\PresentacionMineral;
 use App\Models\TipoCambio;
 use App\Models\User;
+use Database\Seeders\CompradoresSeeder;
 use Database\Seeders\ParametrosSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\TestResponse;
@@ -44,6 +46,10 @@ class LiquidacionApiTest extends AuthTestCase
         // parametros_generales; sin ellos la captura de una con caja de
         // salud no tiene con que calcular el aporte.
         $this->seed(ParametrosSeeder::class);
+
+        // El comprador EPCORO (C11-C13): para que el alta resuelva
+        // comprador_id cuando la razon social coincide con el catalogo.
+        $this->seed(CompradoresSeeder::class);
 
         // El tipo de cambio ya no se captura por liquidacion: se toma de la
         // tabla diaria. El payload usa fecha_transaccion 2026-10-01, asi que
@@ -83,11 +89,7 @@ class LiquidacionApiTest extends AuthTestCase
     {
         $tecnico = $this->tecnico();
 
-        $respuesta = $this->registrar($tecnico, [
-            'deducciones' => [
-                ['concepto' => 'DESCUENTO TRANSPORTE', 'monto' => '120.00'],
-            ],
-        ], true);
+        $respuesta = $this->registrar($tecnico, [], true);
 
         $respuesta->assertCreated()
             ->assertJsonPath('message', 'Liquidacion creada correctamente.')
@@ -107,7 +109,7 @@ class LiquidacionApiTest extends AuthTestCase
         // T3: la fila guardada es exactamente la salida del servicio, que
         // es la misma formula que la hoja oficial.
         $fila = Liquidacion::query()->findOrFail($respuesta->json('data.id'));
-        $esperado = $this->calculoEsperado(conCajaDeSalud: true, deducciones: ['120.00']);
+        $esperado = $this->calculoEsperado(conCajaDeSalud: true);
 
         $this->assertSame($esperado['peso_fino_gramos'], $fila->peso_fino_gramos);
         $this->assertSame($esperado['valor_usd_gramo'], $fila->valor_usd_gramo);
@@ -123,29 +125,6 @@ class LiquidacionApiTest extends AuthTestCase
 
         // El tecnico la ve con la transicion que le toca.
         $this->assertContains('en_revision', $respuesta->json('data.transiciones_disponibles'));
-    }
-
-    public function test_el_detalle_de_deducciones_queda_persistido_con_el_aporte_y_las_variables(): void
-    {
-        $tecnico = $this->tecnico();
-
-        $respuesta = $this->registrar($tecnico, [
-            'deducciones' => [
-                ['concepto' => 'DESCUENTO TRANSPORTE', 'monto' => '120.00'],
-            ],
-        ], true);
-
-        $filas = $respuesta->json('data.deducciones');
-
-        // Primero el aporte obligatorio (ley 649), despues la variable.
-        $this->assertSame(2, count($filas));
-        $this->assertSame('APORTE CAJA DE SALUD - LEY 649', $filas[0]['concepto']);
-        $this->assertSame('alicuota', $filas[0]['tipo']);
-        $this->assertSame($respuesta->json('data.calculo.valor_bruto_bs'), $filas[0]['base_monto']);
-        $this->assertSame($respuesta->json('data.calculo.aporte_caja_salud_bs'), $filas[0]['monto']);
-        $this->assertSame('DESCUENTO TRANSPORTE', $filas[1]['concepto']);
-        $this->assertSame('descuento', $filas[1]['tipo']);
-        $this->assertSame('120.00', $filas[1]['monto']);
     }
 
     public function test_el_numero_externo_pasa_con_correlativo_nulo_y_codigo_derivado(): void
@@ -244,6 +223,37 @@ class LiquidacionApiTest extends AuthTestCase
         // Y el calculo usa el 6.9100 del dia, no el 9.9999 del payload.
         $esperado = $this->calculoEsperado(tipoCambio: '6.9100');
         $this->assertSame($esperado['valor_bruto_bs'], $respuesta->json('data.calculo.valor_bruto_bs'));
+    }
+
+    public function test_el_comprador_se_resuelve_contra_el_catalogo_y_se_guarda_snapshot(): void
+    {
+        $tecnico = $this->tecnico();
+
+        // La razon social del payload coincide con la fila del catalogo: la
+        // liquidacion la referenciela (comprador_id) y conserva el snapshot.
+        $respuesta = $this->registrar($tecnico);
+
+        $respuesta->assertCreated();
+
+        $fila = Liquidacion::query()->findOrFail($respuesta->json('data.id'));
+        $this->assertSame(Comprador::query()->firstOrFail()->id, $fila->comprador_id);
+        $this->assertSame(
+            'EMPRESA ESTATAL DE PRODUCCION Y COMERCIALIZACION DEL ORO - EPCORO',
+            $fila->comprador_razon_social,
+        );
+        $this->assertSame($fila->comprador_id, $respuesta->json('data.comprador.id'));
+
+        // Y si la liquidacion lleva un comprador que no esta en el catalogo
+        // (el Excel admite otro en casos puntuales), la FK queda null y el
+        // snapshot sigue guardando lo que se capturo.
+        $otra = $this->registrar($tecnico, ['comprador_razon_social' => 'EMPRESA DE PRUEBA DELTA']);
+
+        $otra->assertCreated();
+
+        $fila = Liquidacion::query()->findOrFail($otra->json('data.id'));
+        $this->assertNull($fila->comprador_id);
+        $this->assertNull($otra->json('data.comprador.id'));
+        $this->assertSame('EMPRESA DE PRUEBA DELTA', $fila->comprador_razon_social);
     }
 
     // ------------------------------------------------------------- lectura
@@ -766,13 +776,11 @@ class LiquidacionApiTest extends AuthTestCase
      * de operaciones y el mismo redondeo (half-up) que la hoja. El test
      * verifica que el controlador persista EXACTAMENTE esto (T3).
      *
-     * @param  array<int, string>  $deducciones
      * @return array<string, string>
      */
     private function calculoEsperado(
         string $peso = '1000.00',
         bool $conCajaDeSalud = false,
-        array $deducciones = [],
         string $tipoCambio = '6.9100',
         string $cotizacion = '2900.0000',
         string $ley = '0.9302',
@@ -787,10 +795,6 @@ class LiquidacionApiTest extends AuthTestCase
         $aporteExacto = $conCajaDeSalud ? bcmul($brutoExacto, '0.018', $escala) : '0';
 
         $totalExacto = $aporteExacto;
-
-        foreach ($deducciones as $monto) {
-            $totalExacto = bcadd($totalExacto, $monto, $escala);
-        }
 
         $netoExacto = bcsub($brutoExacto, $totalExacto, $escala);
 

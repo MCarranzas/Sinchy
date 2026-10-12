@@ -71,7 +71,7 @@ class LiquidacionResource extends JsonResource
 
             // ---------------------------------------------------- personas
             'comprador' => [
-                'persona_id' => $this->resource->comprador_persona_id,
+                'id' => $this->resource->comprador_id,
                 'razon_social' => $this->resource->comprador_razon_social,
                 'nim' => $this->resource->comprador_nim,
                 'nit' => $this->resource->comprador_nit,
@@ -99,25 +99,6 @@ class LiquidacionResource extends JsonResource
             ],
 
             'observaciones' => $this->resource->observaciones,
-
-            // Solo cuando se pidio con la relacion: en el listado no cuesta
-            // una consulta por fila.
-            'deducciones' => $this->whenLoaded(
-                'deducciones',
-                fn (): array => $this->resource->deducciones
-                    ->sortBy('orden')
-                    ->values()
-                    ->map(fn ($deduccion): array => [
-                        'id' => $deduccion->id,
-                        'concepto' => $deduccion->concepto,
-                        'tipo' => $deduccion->tipo,
-                        'alicuota' => $deduccion->alicuota,
-                        'base_monto' => $deduccion->base_monto,
-                        'monto' => $deduccion->monto,
-                        'obligatorio' => $deduccion->obligatorio,
-                    ])
-                    ->all(),
-            ),
 
             // ---------------------------------------------------- auditoria
             'auditoria' => [

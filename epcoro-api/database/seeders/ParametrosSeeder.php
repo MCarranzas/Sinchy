@@ -15,10 +15,12 @@ use Illuminate\Database\Seeder;
  *     con el nombre del negocio era solo de nomenclatura. Sembrar ese parametro
  *     reintroduciria el bug que la correccion C4 elimino.
  *
- *  2. Los identificadores del comprador (NIM, NIT) van como TEXTO, nunca como
- *     numero: 1006965023 es un NIT, no una cantidad, y guardarlo como entero
- *     invites a notacion cientifica y a perder ceros a la izquierda
- *     (correccion C5).
+ *  2. Los datos fijos del comprador (celdas C11-C13 de hoja.xlsx) NO se
+ *     siembran aqui: viven en la tabla `compradores` (modelo Comprador,
+ *     seeder CompradoresSeeder) desde 2026-10-12. Sus NIM/NIT van como TEXTO,
+ *     nunca como numero: 1006965023 es un NIT, no una cantidad, y guardarlo
+ *     como entero invita a notacion cientifica y a perder ceros a la
+ *     izquierda (correccion C5).
  *
  * Idempotente: updateOrCreate sobre la clave.
  */
@@ -39,21 +41,6 @@ class ParametrosSeeder extends Seeder
             '0.018',
             'decimal',
             'Aporte de caja de salud 1,8 %, unica deduccion (decision D1). Se aplica solo si aplica_caja_salud es true.',
-        ],
-        'NOMBRE_COMPRADOR' => [
-            'EMPRESA ESTATAL DE PRODUCCION Y COMERCIALIZACION DEL ORO - EPCORO',
-            'texto',
-            'Razon social fija del comprador (celda C11 de hoja.xlsx).',
-        ],
-        'NIM_COMPRADOR' => [
-            '02-2388-05',
-            'texto',
-            'NIM del comprador (celda C12). Identificador: se guarda como texto.',
-        ],
-        'NIT_COMPRADOR' => [
-            '1006965023',
-            'texto',
-            'NIT del comprador (celda C13). Llega como numero en Excel: se guarda como texto.',
         ],
     ];
 

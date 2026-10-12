@@ -134,29 +134,6 @@ final class CalculoLiquidacionTest extends TestCase
     }
 
     /**
-     * Paso 6 de la formula: las deducciones variables se suman exactas y se
-     * redondean una sola vez, al final.
-     *
-     * Aqui la resta encaja al centavo porque 15.50 esta exactamente
-     * representado: restar un monto ya cuadrado desplaza el halfUp y no lo
-     * cruza.
-     */
-    public function test_las_deducciones_variables_se_suman_al_total(): void
-    {
-        $r = $this->calcular($this->oro([
-            'aplica_caja_salud' => false,
-            'deducciones' => ['10.00', '5.50'],
-        ]));
-
-        $this->assertSame('0.00', $r['aporte_caja_salud_bs']);
-        $this->assertSame('15.50', $r['total_deducciones_bs']);
-        $this->assertSame(
-            bcsub($r['valor_bruto_bs'], '15.50', 2),
-            $r['valor_neto_bs'],
-        );
-    }
-
-    /**
      * Correccion C1 (seccion 5.4.4): el resultado no depende de redondear en
      * pasos intermedios. Con ley 0.930255 y peso 1944.535 el bruto sale
      * IDENTICO por las dos vias:
@@ -336,18 +313,6 @@ final class CalculoLiquidacionTest extends TestCase
         $this->assertStringContainsString('aplica_caja_salud', $e->getMessage());
     }
 
-    public function test_una_deduccion_negativa_o_no_numerica_se_rechaza(): void
-    {
-        foreach ([['-1.00'], ['1e3'], ['abc']] as $deducciones) {
-            $e = $this->rechazado($this->oro([
-                'aplica_caja_salud' => false,
-                'deducciones' => $deducciones,
-            ]));
-
-            $this->assertStringContainsString('deduccion', $e->getMessage());
-        }
-    }
-
     /**
      * Un parametro faltante o basura no es un error del cliente: es la tabla
      * de parametros mal cargada, y por eso la excepcion no es de negocio.
@@ -385,7 +350,6 @@ final class CalculoLiquidacionTest extends TestCase
      * forzado. El cast de PHP imprime la repr mas corta que coincide con el
      * literal, asi que calcular con numeros tiene que dar EXACTAMENTE lo mismo
      * que calcular con sus strings: la formula no distingue como llego el dato.
-     * Tambien cubre las deducciones como float (10.5) e int (5).
      */
     public function test_los_insumos_int_y_float_producen_lo_mismo_que_sus_strings(): void
     {
@@ -395,13 +359,12 @@ final class CalculoLiquidacionTest extends TestCase
             'cotizacion_usd_oz_t' => 2648.57,
             'tipo_cambio' => 6.96,
             'aplica_caja_salud' => true,
-            'deducciones' => [10.5, 5],
         ];
 
         $desdeNumeros = $this->calcular($numeros);
 
         $strings = array_map(
-            fn (mixed $v): mixed => is_array($v) ? array_map('strval', $v) : (is_bool($v) ? $v : (string) $v),
+            fn (mixed $v): mixed => is_bool($v) ? $v : (string) $v,
             $numeros,
         );
 
@@ -438,24 +401,6 @@ final class CalculoLiquidacionTest extends TestCase
         ]));
 
         $this->assertSame('1072018.84', $r['valor_bruto_bs']);
-    }
-
-    /**
-     * deducciones es opcional, pero si viene tiene que ser una LISTA: un
-     * string, un numero o un booleano son errores de serializacion, no una
-     * deduccion de cero. (null no llega aqui: el ?? [] lo convierte en lista
-     * vacia, que es justamente "sin deducciones".)
-     */
-    public function test_deducciones_sin_ser_lista_se_rechazan(): void
-    {
-        foreach (['10.00', 10.0, true] as $deducciones) {
-            $e = $this->rechazado($this->oro([
-                'aplica_caja_salud' => false,
-                'deducciones' => $deducciones,
-            ]));
-
-            $this->assertSame('deducciones debe ser una lista de montos.', $e->getMessage());
-        }
     }
 
     /**

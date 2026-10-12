@@ -9,7 +9,7 @@
  *     usd_gramo  = cotizacion / gramos_por_onza_troy
  *     bruto      = usd_gramo * tipo_cambio * peso_fino      (sin redondeo)
  *     aporte     = aplica_caja_salud ? bruto_EXACTO * ALICUOTA_APORTE : 0
- *     neto       = bruto - (aporte + deducciones)
+ *     neto       = bruto - aporte
  *     UN solo redondeo half-up a 2 decimales y al FINAL, sobre montos en Bs.
  *
  * Tres reglas que aqui se repiten porque son bugs que casi entran (C1, C2, D4):
@@ -37,8 +37,6 @@ export interface InsumosCalculo {
   tipo_cambio: string
   cotizacion_usd_oz_t: string
   aplica_caja_salud: boolean
-  /** Montos en Bs, uno por renglon de deduccion variable. */
-  deducciones: string[]
 }
 
 export interface ResultadoCalculo {
@@ -162,8 +160,6 @@ export function calcular(
   const porOnza = escalar(gramosPorOnzaTroy)
   const alicuota = escalar(alicuotaAporte)
 
-  const montos = insumos.deducciones.map((monto) => escalar(monto))
-
   const completo =
     peso !== null &&
     ley !== null &&
@@ -171,8 +167,7 @@ export function calcular(
     cotizacion !== null &&
     porOnza !== null &&
     porOnza > 0n &&
-    alicuota !== null &&
-    montos.every((monto) => monto !== null && monto >= 0n)
+    alicuota !== null
 
   // Mismos cortes fisicos que CalculoLiquidacionService::validar().
   const dentroDeRango =
@@ -193,10 +188,8 @@ export function calcular(
 
   const aporteExacto = insumos.aplica_caja_salud ? mul(brutoExacto, alicuota!) : 0n
 
-  let totalDeducciones = aporteExacto
-  for (const monto of montos as bigint[]) {
-    totalDeducciones += monto
-  }
+  // El total de deducciones es solo el aporte: no hay descuentos variables.
+  const totalDeducciones = aporteExacto
 
   const netoExacto = brutoExacto - totalDeducciones
 

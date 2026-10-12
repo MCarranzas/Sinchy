@@ -9,6 +9,7 @@
 import { api } from '@/api/axios'
 import type {
   AreaMinera,
+  Comprador,
   CotizacionQuincenal,
   Departamento,
   Localidad,
@@ -76,6 +77,11 @@ export async function guardarPersona(persona: NuevaPersona): Promise<Persona> {
 
 export function listarPresentaciones(): Promise<PresentacionMineral[]> {
   return lista<PresentacionMineral>('/catalogos/presentaciones-mineral')
+}
+
+/** Catalogo de compradores (C11-C13). Hoy trae una sola fila: EPCORO. */
+export function listarCompradores(): Promise<Comprador[]> {
+  return lista<Comprador>('/catalogos/compradores')
 }
 
 export function listarCotizaciones(ejercicio?: number): Promise<CotizacionQuincenal[]> {

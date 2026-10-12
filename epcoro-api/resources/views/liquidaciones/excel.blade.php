@@ -82,29 +82,6 @@
 <table>
     <thead>
         <tr>
-            <th>Deduccion</th>
-            <th>Tipo</th>
-            <th>Base Bs</th>
-            <th>Monto Bs</th>
-        </tr>
-    </thead>
-    <tbody>
-        @forelse ($liquidacion->deducciones->sortBy('orden') as $deduccion)
-            <tr>
-                <td>{{ $deduccion->concepto }}</td>
-                <td>{{ $deduccion->tipo }}</td>
-                <td>{{ number_format((float) $deduccion->base_monto, 2, ',', '.') }}</td>
-                <td>{{ number_format((float) $deduccion->monto, 2, ',', '.') }}</td>
-            </tr>
-        @empty
-            <tr><td colspan="4">Sin deducciones</td></tr>
-        @endforelse
-    </tbody>
-</table>
-
-<table>
-    <thead>
-        <tr>
             <th colspan="2">HISTORIAL DE ESTADOS</th>
         </tr>
     </thead>

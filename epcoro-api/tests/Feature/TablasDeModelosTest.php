@@ -3,10 +3,10 @@
 namespace Tests\Feature;
 
 use App\Models\AreaMinera;
+use App\Models\Comprador;
 use App\Models\CotizacionQuincenal;
 use App\Models\Departamento;
 use App\Models\Liquidacion;
-use App\Models\LiquidacionDeduccion;
 use App\Models\LiquidacionEstadoHistorial;
 use App\Models\LiquidacionObservacion;
 use App\Models\Localidad;
@@ -41,13 +41,13 @@ class TablasDeModelosTest extends TestCase
         Municipio::class => 'municipios',
         Localidad::class => 'localidades',
         Persona::class => 'personas',
+        Comprador::class => 'compradores',
         AreaMinera::class => 'areas_mineras',
         PresentacionMineral::class => 'presentaciones_mineral',
         ParametroGeneral::class => 'parametros_generales',
         CotizacionQuincenal::class => 'cotizaciones_quincenales',
         TipoCambio::class => 'tipos_cambio',
         Liquidacion::class => 'liquidaciones',
-        LiquidacionDeduccion::class => 'liquidacion_deducciones',
         LiquidacionObservacion::class => 'liquidacion_observaciones',
         LiquidacionEstadoHistorial::class => 'liquidacion_estado_historial',
     ];

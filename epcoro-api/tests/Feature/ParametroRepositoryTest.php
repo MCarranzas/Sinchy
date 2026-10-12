@@ -124,6 +124,24 @@ final class ParametroRepositoryTest extends TestCase
         $this->assertNull($repositorio->valor('ALICUOTA_SINDICAL'));
     }
 
+    /**
+     * Los datos del comprador (C11-C13) ya NO se siembran en parametros:
+     * viven en la tabla `compradores` (seeder CompradoresSeeder). Si el
+     * seeder de parametros volviera a sembrar esas claves, habria dos fuentes
+     * de verdad para el autocompletado y la decision de 2026-10-12 se
+     * perderia sin que ningun test lo dijera.
+     */
+    public function test_el_seeder_no_reintroduce_los_datos_del_comprador(): void
+    {
+        $this->seed(ParametrosSeeder::class);
+
+        $repositorio = new ParametroRepository;
+
+        $this->assertNull($repositorio->valor('NOMBRE_COMPRADOR'));
+        $this->assertNull($repositorio->valor('NIM_COMPRADOR'));
+        $this->assertNull($repositorio->valor('NIT_COMPRADOR'));
+    }
+
     public function test_el_repositorio_satisface_el_contrato_que_el_servicio_exige(): void
     {
         $this->assertInstanceOf(
