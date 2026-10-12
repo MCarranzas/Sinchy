@@ -2629,3 +2629,54 @@ PENDIENTE : comprobacion visual en navegador del autocompletado del
             comprador al crear/editar una liquidacion; commit de esta
             sesion cuando el usuario lo confirme.
 ESTADO    : OK.
+
+### [123] 2026-10-12 11:12 - FASE 12 / MENSAJES DE VALIDACION EN ESPANOL
+OBJETIVO  : Cerrar el trabajo que quedo a medias de la sesion anterior: los
+            4 archivos nuevos de `epcoro-api/lang/es/` (validation, auth,
+            passwords, pagination) SIN VERSIONAR y sin registrar aqui. La
+            idea: con APP_LOCALE=es, TODOS los mensajes de validacion de la
+            API salen en espanol, incluidas las reglas que no escriben su
+            mensaje a mano (required, regex, exists, decimal...). Antes, esas
+            reglas caian al locale de respaldo (en) y devolvian texto en
+            ingles; el sintoma era silencioso porque la API igual respondia
+            422 y los tests que solo miran la estructura del error seguian
+            verdes.
+COMANDO   : git status/log y read del repo (la ultima escritura de codigo
+            eran esos 4 archivos, 10:54-10:55); `php artisan test`; creacion
+            de la base epcoro_test; write
+            tests/Feature/MensajesDeValidacionTest.php; pint + phpstan; read/
+            edit de README.md.
+RESULTADO : (a) TRAMPA DE ENTORNO: esta maquina es un clon nuevo del repo
+            (reflog: "clone: from .../epcoro.git") y NO tenia la base
+            epcoro_test. `php artisan test` moria con 145 fallos por
+            "no existe la base de datos epcoro_test" (SQLSTATE 08006) en vez
+            de correr. Se creo con los parametros de pasos_otra_maquina.txt
+            seccion 4.3: OWNER epcoro, UTF8, Spanish_Bolivia.1252,
+            TEMPLATE template0. El rol epcoro y la base de desarrollo epcoro
+            (32 tablas) ya existian. Moraleja: al retomar en otra maquina,
+            crear epcoro_test ANTES de correr la suite, o los fallos no
+            significan nada.
+            (b) TEST DE CANDADO tests/Feature/MensajesDeValidacionTest.php
+            (4 casos): la API queda en locale es; una regla generica usa el
+            nombre legible del campo ("El campo fecha de transaccion es
+            obligatorio."); un formato invalido tambien sale en espanol
+            ("El formato del campo CI del vendedor no es valido."); y un campo
+            sin entrada en `attributes` NO queda crudo, Laravel lo humaniza
+            (campo_desconocido -> "campo desconocido"). El primer intento del
+            test asumia snake_case crudo y por eso fallo; se corrigio al
+            comportamiento real, que ademas documenta para que sirve el
+            bloque `attributes` (siglas CI/NIM/NIT, textos largos).
+            (c) README.md: dos arreglos. (1) La formula de "la regla mas
+            importante" seguia diciendo `deducciones = aporte +
+            deducciones_variables`, que quedo desactualizada tras el retiro
+            de la entrada [122]; ahora dice `deducciones = aporte (no hay
+            descuentos variables)`, coherente con CalculoLiquidacionService
+            ("el total de deducciones es solo el aporte"). (2) Recuento de
+            tests 186 -> 190 y nota del lang/es.
+VERIFICACION: php artisan test -> 190 passed / 932 assertions; pint passed;
+            phpstan [OK] No errors.
+PENDIENTE : lo mismo que [122]: comprobacion visual en navegador del
+            autocompletado del comprador, y commit de esta sesion cuando el
+            usuario lo confirme. El `lang/es/` y el test nuevo estan SIN
+            versionar todavia; el README quedo editado.
+ESTADO    : OK.

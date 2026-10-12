@@ -66,3 +66,6 @@ ehthumbs.db
 # Artefactos temporales de Draw.io
 *.bkp
 .$*
+
+# Archivos de bloqueo de LibreOffice (llevan usuario y ruta de la maquina)
+.~lock.*#
