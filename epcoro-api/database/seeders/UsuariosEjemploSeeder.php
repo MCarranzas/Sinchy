@@ -18,12 +18,14 @@ use Illuminate\Support\Str;
  *   revisor  -> revisa o rechaza
  *   gerente  -> aprueba o anula, nunca lo suyo (4.2)
  *
- * Contrasena ALEATORIA mostrada una sola vez, igual que en AdminSeeder: una
- * clave de seeder conocida es la forma mas habitual de que un sistema llegue
- * a produccion con una clave publicada. `debe_cambiar_password` queda en
- * false a proposito: son cuentas de DEMOSTRACION, y forzar el cambio en el
- * primer ingreso obligaria a cambiarla tres veces antes de poder enseñar el
- * flujo completo. En produccion ninguna de estas cuentas debe existir.
+ * En desarrollo las contrasenas son las de usuarios_prueba.txt, fijas y
+ * conocidas, para no depender de un volcado por consola. Fuera de desarrollo se
+ * genera una aleatoria igual que en AdminSeeder: una clave de seeder conocida
+ * es la forma mas habitual de que un sistema llegue a produccion con una clave
+ * publicada. `debe_cambiar_password` queda en false a proposito: son cuentas de
+ * DEMOSTRACION, y forzar el cambio en el primer ingreso obligaria a cambiarla
+ * tres veces antes de poder enseñar el flujo completo. En produccion ninguna de
+ * estas cuentas debe existir.
  */
 class UsuariosEjemploSeeder extends Seeder
 {
@@ -37,8 +39,21 @@ class UsuariosEjemploSeeder extends Seeder
         ['gerente', 'gerente@epcoro.local', 'Gerente de Comercializacion'],
     ];
 
+    /**
+     * Contrasenas de desarrollo por usuario. Son las de usuarios_prueba.txt.
+     *
+     * @var array<string, string>
+     */
+    private const PASSWORDS_DESARROLLO = [
+        'admin' => 'Admin123',
+        'tecnico' => 'Tecnico123',
+        'revisor' => 'Revisor123',
+        'gerente' => 'Gerente123',
+    ];
+
     public function run(): void
     {
+        $produccion = app()->environment('production');
         $filas = [];
 
         foreach (self::CUENTAS as [$username, $correo, $nombre]) {
@@ -48,7 +63,9 @@ class UsuariosEjemploSeeder extends Seeder
                 continue;
             }
 
-            $password = Str::password(24);
+            $password = $produccion
+                ? Str::password(24)
+                : self::PASSWORDS_DESARROLLO[$username];
 
             $usuario = User::query()->create([
                 'username' => $username,
@@ -67,7 +84,13 @@ class UsuariosEjemploSeeder extends Seeder
         $this->command->newLine();
         $this->command->info('Usuarios de ejemplo del flujo de estados:');
         $this->command->table(['usuario', 'contrasena', 'rol'], $filas);
-        $this->command->warn('Son contrasenas de DESARROLLO, generadas al azar y mostradas una sola vez.');
+
+        if ($produccion) {
+            $this->command->warn('Son contrasenas de PRODUCCION, generadas al azar y mostradas una sola vez.');
+        } else {
+            $this->command->warn('Son las contrasenas de DESARROLLO de usuarios_prueba.txt.');
+        }
+
         $this->command->warn('No usar ninguna de estas cuentas fuera de esta maquina.');
         $this->command->newLine();
     }

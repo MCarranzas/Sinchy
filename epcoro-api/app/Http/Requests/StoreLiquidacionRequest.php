@@ -58,12 +58,13 @@ class StoreLiquidacionRequest extends FormRequest
             // --------------------------------------------------- insumos
             // tipo_cambio NO viene del formulario: se resuelve en el
             // controlador segun la fecha (tabla diaria `tipos_cambio`).
-            'cotizacion_usd_oz_t' => ['required', 'numeric', 'gt:0', 'decimal:0,4'],
+            'cotizacion_usd_oz_t' => ['required', 'numeric', 'gt:0', 'decimal:0,2'],
             'cotizacion_id' => ['nullable', 'integer', 'exists:cotizaciones_quincenales,id'],
             'aplica_caja_salud' => ['required', 'boolean'],
             'peso_gramos' => ['required', 'numeric', 'gt:0', 'decimal:0,2', 'max:99999999.99'],
-            // fraccion, no porcentaje (trampa T1)
-            'ley_pagable' => ['required', 'numeric', 'gt:0', 'lte:1'],
+            // fraccion, no porcentaje (trampa T1). El formulario captura el
+            // porcentaje con 2 decimales: la fraccion llega con 4 como maximo.
+            'ley_pagable' => ['required', 'numeric', 'gt:0', 'lte:1', 'decimal:0,4'],
 
             // ------------------------------------------------- comprador
             'comprador_id' => ['nullable', 'integer', 'exists:compradores,id'],

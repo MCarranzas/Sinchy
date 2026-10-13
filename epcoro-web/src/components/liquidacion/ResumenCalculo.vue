@@ -39,7 +39,7 @@ defineProps<{
       <div class="flex justify-between gap-3">
         <dt class="text-slate-500">Valor USD/gramo</dt>
         <dd class="font-medium tabular-nums text-slate-800">
-          {{ resultado.valido ? `$ ${numero(resultado.valor_usd_gramo, 6)}` : '—' }}
+          {{ resultado.valido ? `$ ${numero(resultado.valor_usd_gramo)}` : '—' }}
         </dd>
       </div>
 
@@ -67,6 +67,6 @@ defineProps<{
       </div>
     </dl>
 
-    <p v-if="ley" class="mt-3 text-xs text-slate-500">Ley pagable: {{ ley }} %</p>
+    <p v-if="ley" class="mt-3 text-xs text-slate-500">Ley pagable: {{ numero(ley) }} %</p>
   </div>
 </template>

@@ -98,11 +98,11 @@ class UpdateLiquidacionRequest extends FormRequest
             // --------------------------------------------------- insumos
             // tipo_cambio NO viene del formulario: se resuelve en el
             // controlador a partir de la fecha de la transaccion.
-            'cotizacion_usd_oz_t' => ['sometimes', 'numeric', 'gt:0', 'decimal:0,4'],
+            'cotizacion_usd_oz_t' => ['sometimes', 'numeric', 'gt:0', 'decimal:0,2'],
             'cotizacion_id' => ['nullable', 'integer', 'exists:cotizaciones_quincenales,id'],
             'aplica_caja_salud' => ['sometimes', 'boolean'],
             'peso_gramos' => ['sometimes', 'numeric', 'gt:0', 'decimal:0,2', 'max:99999999.99'],
-            'ley_pagable' => ['sometimes', 'numeric', 'gt:0', 'lte:1'],
+            'ley_pagable' => ['sometimes', 'numeric', 'gt:0', 'lte:1', 'decimal:0,4'],
 
             // ------------------------------------------------- comprador
             'comprador_id' => ['sometimes', 'nullable', 'integer', 'exists:compradores,id'],

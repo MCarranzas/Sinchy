@@ -127,6 +127,64 @@ class LiquidacionApiTest extends AuthTestCase
         $this->assertContains('en_revision', $respuesta->json('data.transiciones_disponibles'));
     }
 
+    public function test_sin_caja_de_salud_el_aporte_y_las_deducciones_quedan_en_cero(): void
+    {
+        $tecnico = $this->tecnico();
+
+        // El checkbox desmarcado viaja como `false` explicito, no ausente.
+        $respuesta = $this->registrar($tecnico, ['aplica_caja_salud' => false]);
+
+        $respuesta->assertCreated();
+
+        $fila = Liquidacion::query()->findOrFail($respuesta->json('data.id'));
+
+        $this->assertFalse($fila->aplica_caja_salud);
+        $this->assertSame('0.00', $fila->aporte_caja_salud_bs);
+        $this->assertSame('0.00', $fila->total_deducciones_bs);
+
+        // Sin aporte el neto ES el bruto: si el 1,8 % se colara no coincidirian.
+        $this->assertSame($fila->valor_bruto_bs, $fila->valor_neto_bs);
+
+        // Y ese bruto es el mismo que produce el calculo sin caja de salud.
+        $sinCaja = $this->calculoEsperado(conCajaDeSalud: false);
+        $this->assertSame($sinCaja['valor_bruto_bs'], $fila->valor_neto_bs);
+
+        // Control explicito: con caja de salud el neto baja.
+        $conCaja = $this->calculoEsperado(conCajaDeSalud: true);
+        $this->assertNotSame($conCaja['valor_neto_bs'], $fila->valor_neto_bs);
+    }
+
+    public function test_la_edicion_activa_y_desactiva_el_aporte_recorriendo_los_dos_estados(): void
+    {
+        $tecnico = $this->tecnico();
+
+        $id = $this->registrar($tecnico, ['aplica_caja_salud' => false])
+            ->assertCreated()
+            ->json('data.id');
+
+        // Marcar la casilla: vuelve a aplicar el 1,8 %.
+        $this->identificarseComo($tecnico, 'web')
+            ->putJson('/api/v1/liquidaciones/'.$id, ['aplica_caja_salud' => true])
+            ->assertOk();
+
+        $conAporte = Liquidacion::query()->findOrFail($id);
+        $this->assertTrue($conAporte->aplica_caja_salud);
+        $this->assertSame(
+            $this->calculoEsperado(conCajaDeSalud: true)['aporte_caja_salud_bs'],
+            $conAporte->aporte_caja_salud_bs,
+        );
+
+        // Desmarcarla otra vez: el aporte vuelve a cero.
+        $this->identificarseComo($tecnico, 'web')
+            ->putJson('/api/v1/liquidaciones/'.$id, ['aplica_caja_salud' => false])
+            ->assertOk();
+
+        $sinAporte = Liquidacion::query()->findOrFail($id);
+        $this->assertFalse($sinAporte->aplica_caja_salud);
+        $this->assertSame('0.00', $sinAporte->aporte_caja_salud_bs);
+        $this->assertSame($sinAporte->valor_bruto_bs, $sinAporte->valor_neto_bs);
+    }
+
     public function test_el_numero_externo_pasa_con_correlativo_nulo_y_codigo_derivado(): void
     {
         $tecnico = $this->tecnico();
@@ -837,7 +895,7 @@ class LiquidacionApiTest extends AuthTestCase
         return [
             'fecha_transaccion' => '2026-10-01',
             'tipo_cambio' => '6.9100',
-            'cotizacion_usd_oz_t' => '2900.0000',
+            'cotizacion_usd_oz_t' => '2900.00',
             'aplica_caja_salud' => $cajaDeSalud,
             'comprador_razon_social' => 'EMPRESA ESTATAL DE PRODUCCION Y COMERCIALIZACION DEL ORO - EPCORO',
             'comprador_nim' => '02-2388-05',

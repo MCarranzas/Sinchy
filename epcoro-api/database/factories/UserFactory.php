@@ -17,7 +17,8 @@ class UserFactory extends Factory
      *
      * Es fija a proposito: los tests necesitan poder hacer login con una
      * contraseña conocida. En producción eso no debe pasar nunca, y por eso el
-     * AdminSeeder genera una aleatoria en vez de usar esta factory.
+     * AdminSeeder genera una aleatoria (fuera de desarrollo) en vez de usar
+     * esta factory.
      */
     public const PASSWORD = 'Prueba1234';
 

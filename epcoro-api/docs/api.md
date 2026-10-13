@@ -233,7 +233,9 @@ insumos se recalcula el calculo en el backend (nunca se confia en el frontend).
 - Reglas de formato (C5): `vendedor_ci` `^\d{1,10}$`; `comprador_nim`
   `^[0-9\-]{5,30}$`; `comprador_nit` `^\d{1,20}$`; `codigo_municipio`
   `^\d{1,10}$`; `codigo_ajam_patente` `^\d{1,20}$`. `ley_pagable` entre 0 y 1
-  (`lte:1` excluido en 0), montos `decimal:0,2` y tipo/cotizacion `decimal:0,4`.
+  (`lte:1` excluido en 0; hasta 4 decimales, que son 2 en el porcentaje que
+  captura la pantalla), montos `decimal:0,2` y cotizacion `decimal:0,2`
+  (el tipo de cambio no viaja: lo resuelve el sistema por la fecha).
 - `comprador_id`: opcional y nullable. Se resuelve en el backend igualando la
   `razon_social` enviada contra el catalogo `compradores` (tabla propia, hoy
   una fila: EPCORO); si no coincide (Excel con otro comprador en casos

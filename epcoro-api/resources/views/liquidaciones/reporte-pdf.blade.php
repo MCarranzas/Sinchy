@@ -48,7 +48,7 @@
                     <td>{{ $liquidacion->municipio_nombre }}</td>
                     <td>{{ $liquidacion->presentacion_nombre }}</td>
                     <td class="monto">{{ number_format((float) $liquidacion->peso_gramos, 2, ',', '.') }}</td>
-                    <td class="monto">{{ number_format((float) $liquidacion->peso_fino_gramos, 4, ',', '.') }}</td>
+                    <td class="monto">{{ number_format((float) $liquidacion->peso_fino_gramos, 2, ',', '.') }}</td>
                     <td class="monto">{{ number_format((float) $liquidacion->valor_bruto_bs, 2, ',', '.') }}</td>
                     <td class="monto">{{ number_format((float) $liquidacion->aporte_caja_salud_bs, 2, ',', '.') }}</td>
                     <td class="monto">{{ number_format((float) $liquidacion->total_deducciones_bs, 2, ',', '.') }}</td>
@@ -60,7 +60,7 @@
         <tfoot>
             <tr>
                 <td colspan="7">TOTALES</td>
-                <td class="monto">{{ number_format((float) $liquidaciones->sum('peso_fino_gramos'), 4, ',', '.') }}</td>
+                <td class="monto">{{ number_format((float) $liquidaciones->sum('peso_fino_gramos'), 2, ',', '.') }}</td>
                 <td class="monto">{{ number_format((float) $liquidaciones->sum('valor_bruto_bs'), 2, ',', '.') }}</td>
                 <td class="monto">{{ number_format((float) $liquidaciones->sum('aporte_caja_salud_bs'), 2, ',', '.') }}</td>
                 <td class="monto">{{ number_format((float) $liquidaciones->sum('total_deducciones_bs'), 2, ',', '.') }}</td>

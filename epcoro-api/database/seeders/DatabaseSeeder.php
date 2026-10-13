@@ -16,6 +16,9 @@ class DatabaseSeeder extends Seeder
      *  - ParametrosSeeder al final: es el que deja listo el formulario.
      *  - UsuariosEjemploSeeder despues de AdminSeeder: son las cuentas del
      *    flujo de estados (FASE 9) y no deben pisar al administrador.
+     *  - Los *EjemploSeeder (vendedores, compradores y areas mineras) van
+     *    despues de la geografia y del comprador fijo: son datos de DEMO, se
+     *    saltan solos en produccion y no pisan filas ya existentes.
      */
     public function run(): void
     {
@@ -25,6 +28,9 @@ class DatabaseSeeder extends Seeder
             PresentacionesSeeder::class,
             ParametrosSeeder::class,
             CompradoresSeeder::class,
+            VendedoresEjemploSeeder::class,
+            CompradoresEjemploSeeder::class,
+            AreasMinerasEjemploSeeder::class,
             AdminSeeder::class,
             UsuariosEjemploSeeder::class,
         ]);

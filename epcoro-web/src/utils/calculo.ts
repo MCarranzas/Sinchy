@@ -131,6 +131,24 @@ function normalizar(valor: bigint): string {
   return negativo ? `-${limpio}` : limpio
 }
 
+/**
+ * Deja una cadena decimal con EXACTAMENTE 2 posiciones (half-up), sin pasar
+ * por float: mismo escalado y mismo redondeo que el backend.
+ *
+ * Se usa para que lo que el formulario PIDE y ENVIA tambien lleve 2 decimales
+ * (la cotizacion, por ejemplo, llega del catalogo con 4). Una cadena vacia o
+ * no numerica se devuelve tal cual: el validador es quien corta.
+ */
+export function aDosDecimales(valor: string | number | null | undefined): string {
+  if (valor === null || valor === undefined || String(valor).trim() === '') {
+    return ''
+  }
+
+  const escalado = escalar(String(valor))
+
+  return escalado === null ? String(valor) : halfUp(escalado)
+}
+
 export const resultadoVacio: ResultadoCalculo = {
   gramos_por_onza_troy: '',
   peso_fino_gramos: '',

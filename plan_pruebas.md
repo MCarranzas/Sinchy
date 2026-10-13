@@ -49,13 +49,15 @@ Set-Location epcoro-web
 npm run dev                            # http://localhost:5173
 ```
 
-`migrate:fresh --seed` imprime por consola las contrasenas aleatorias de
-`admin`, `tecnico`, `revisor` y `gerente`. Se muestran **una sola vez**.
+`migrate:fresh --seed` deja las cuatro cuentas con las contrasenas conocidas de
+`usuarios_prueba.txt`: `admin`/`Admin123`, `tecnico`/`Tecnico123`,
+`revisor`/`Revisor123` y `gerente`/`Gerente123`. Fuera de `local`/`testing` el
+seeder genera una aleatoria que se muestra **una sola vez**.
 
-### 2.2 Anclar credenciales de prueba (recomendado)
+### 2.2 Restablecer credenciales de prueba (si hiciera falta)
 
-Para que la corrida sea repetible, fije una clave conocida en las cuatro
-cuentas demo (solo entorno local):
+El seeder ya deja las claves conocidas, asi que normalmente no hay que hacer
+nada. Si se cambiaron desde la interfaz y hay que volver a dejarlas:
 
 ```powershell
 Set-Location epcoro-api
@@ -63,10 +65,13 @@ php artisan tinker
 ```
 
 ```php
-App\Models\User::whereIn('username', ['admin','tecnico','revisor','gerente'])
+$claves = ['admin' => 'Admin123', 'tecnico' => 'Tecnico123',
+           'revisor' => 'Revisor123', 'gerente' => 'Gerente123'];
+
+App\Models\User::whereIn('username', array_keys($claves))
     ->get()
     ->each(fn ($u) => $u->forceFill([
-        'password' => 'Prueba1234',
+        'password' => $claves[$u->username],
         'activo' => true,
         'debe_cambiar_password' => false,
         'intentos_fallidos' => 0,
@@ -74,7 +79,7 @@ App\Models\User::whereIn('username', ['admin','tecnico','revisor','gerente'])
     ])->save());
 ```
 
-A partir de aqui: usuario `tecnico` / clave `Prueba1234`, etc.
+A partir de aqui: usuario `tecnico` / clave `Tecnico123`, etc.
 
 ### 2.3 Datos base que el seeder NO trae
 

@@ -1,16 +1,80 @@
 <script setup lang="ts">
 /**
- * Seccion Comprador (8.3): autocompletado desde el catalogo `compradores`.
+ * Seccion Comprador (8.3): elegir del catalogo `compradores` y, si el Excel
+ * trae otro comprador en un caso puntual, corregir los tres campos a mano.
  *
- * La razon social, el NIM y el NIT del comprador son FIJOS del sistema
- * (C11-C13 de hoja.xlsx, hoy una sola fila: EPCORO) y llegan rellenados al
- * abrir; el formulario los deja editar porque el Excel admite otro comprador
- * en casos puntuales.
+ * Igual que el vendedor (8.4): la razon social, el NIM y el NIT llegan del
+ * catalogo. Al abrir se prellenan con el comprador por defecto (EPCORO, celdas
+ * C11-C13) y aqui se puede cambiar por cualquiera de la lista. Los tres campos
+ * quedan editables porque el Excel admite otro comprador.
+ *
+ * La lista sale del store (que ya tiene el catalogo cargado) y se filtra en el
+ * cliente: son pocas filas, no hace falta un buscador del backend.
  */
-import CampoEntrada from '@/components/CampoEntrada.vue'
-import type { FormularioCaptura } from '@/composables/useLiquidacionForm'
+import { computed, onMounted, ref } from 'vue'
 
-defineProps<{ formulario: FormularioCaptura }>()
+import Autocompletar from '@/components/Autocompletar.vue'
+import CampoEntrada from '@/components/CampoEntrada.vue'
+import { useCatalogosStore } from '@/stores/catalogos'
+import type { FormularioCaptura } from '@/composables/useLiquidacionForm'
+import type { OpcionBusqueda } from '@/components/Autocompletar.vue'
+
+const props = defineProps<{ formulario: FormularioCaptura }>()
+
+const catalogos = useCatalogosStore()
+
+const consulta = ref('')
+
+/** Detalle de cada opcion: NIM y NIT, solo los que existan. */
+function detalleDe(nim: string | null, nit: string | null): string | undefined {
+  const partes: string[] = []
+
+  if (nim) {
+    partes.push(`NIM ${nim}`)
+  }
+
+  if (nit) {
+    partes.push(`NIT ${nit}`)
+  }
+
+  return partes.length > 0 ? partes.join(' · ') : undefined
+}
+
+const opciones = computed<OpcionBusqueda[]>(() => {
+  const texto = consulta.value.trim().toLowerCase()
+
+  return catalogos.compradores
+    .filter(
+      (comprador) =>
+        texto === '' ||
+        comprador.razon_social.toLowerCase().includes(texto) ||
+        (comprador.nim ?? '').toLowerCase().includes(texto) ||
+        (comprador.nit ?? '').toLowerCase().includes(texto),
+    )
+    .map((comprador) => ({
+      id: comprador.id,
+      titulo: comprador.razon_social,
+      detalle: detalleDe(comprador.nim, comprador.nit),
+    }))
+})
+
+function buscar(texto: string): void {
+  consulta.value = texto
+}
+
+function alElegir(opcion: OpcionBusqueda): void {
+  const comprador = catalogos.compradores.find((c) => c.id === opcion.id)
+
+  if (comprador) {
+    props.formulario.asignar('comprador_razon_social', comprador.razon_social)
+    props.formulario.asignar('comprador_nim', comprador.nim ?? '')
+    props.formulario.asignar('comprador_nit', comprador.nit ?? '')
+  }
+}
+
+onMounted(() => {
+  void catalogos.cargar()
+})
 </script>
 
 <template>
@@ -23,12 +87,23 @@ defineProps<{ formulario: FormularioCaptura }>()
     </h2>
 
     <div class="grid gap-4">
+      <Autocompletar
+        etiqueta="Comprador del catálogo *"
+        :opciones="opciones"
+        :texto="formulario.valores.comprador_razon_social"
+        placeholder="Razón social, NIM o NIT del comprador…"
+        ayuda="Elija del catálogo para completar razón social, NIM y NIT."
+        etiqueta-vacio="Sin compradores en el catálogo"
+        @buscar="buscar"
+        @seleccion="alElegir"
+      />
+
       <CampoEntrada
         v-bind="formulario.enlazar('comprador_razon_social')"
         etiqueta="Razón social *"
         maxlength="200"
         autocomplete="organization"
-        ayuda="Prellenada con el comprador del catálogo (EPCORO)."
+        ayuda="Se completa al elegir del catálogo; editable."
         :error="formulario.error('comprador_razon_social')"
         @blur="formulario.tocar('comprador_razon_social')"
       />

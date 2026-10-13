@@ -156,9 +156,11 @@ php artisan migrate --seed
 php artisan serve                 # http://localhost:8000
 ```
 
-El seeding imprime por consola las contrasenas de `admin`, `tecnico`,
-`revisor` y `gerente`. Son **aleatorias y se muestran una sola vez**: copiarlas
-o regenerarlas con `php artisan db:seed`. No existen en produccion.
+El seeding deja las cuatro cuentas de ejemplo con las contrasenas conocidas de
+`usuarios_prueba.txt`: `admin`/`Admin123`, `tecnico`/`Tecnico123`,
+`revisor`/`Revisor123` y `gerente`/`Gerente123`. Son **solo para desarrollo**:
+fuera de `local`/`testing` los seeders generan una aleatoria que se muestra una
+sola vez. Ninguna de estas cuentas debe existir en produccion.
 
 ### Frontend (`epcoro-web/`)
 

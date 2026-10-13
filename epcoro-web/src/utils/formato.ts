@@ -44,6 +44,8 @@ export function numero(valor: string | number | null | undefined, decimales = 2)
  * Ley pagable: en la base es FRACCION (0.9302) y en pantalla se muestra como
  * porcentaje (93,02 %). Es solo presentacion: el valor que viaja al backend
  * sigue siendo la fraccion (trampa T1).
+ *
+ * Se pinta con 2 decimales, igual que el resto de los valores numericos.
  */
 export function porcentaje(fraccion: string | number | null | undefined): string {
   const n = Number(fraccion)
@@ -52,7 +54,10 @@ export function porcentaje(fraccion: string | number | null | undefined): string
     return '—'
   }
 
-  return `${new Intl.NumberFormat('es-BO', { maximumFractionDigits: 4 }).format(n * 100)} %`
+  return `${new Intl.NumberFormat('es-BO', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(n * 100)} %`
 }
 
 /** Fecha ISO (YYYY-MM-DD) a `dd/mm/aaaa`, el formato que se lee en Bolivia. */

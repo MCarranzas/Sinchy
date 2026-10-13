@@ -17,6 +17,7 @@ import { computed, ref, watch } from 'vue'
 import CampoEntrada from '@/components/CampoEntrada.vue'
 import CampoSelect from '@/components/CampoSelect.vue'
 import { useCatalogosStore } from '@/stores/catalogos'
+import { aDosDecimales } from '@/utils/calculo'
 import { numero } from '@/utils/formato'
 import type { FormularioCaptura } from '@/composables/useLiquidacionForm'
 import type { CotizacionQuincenal } from '@/types/catalogos'
@@ -28,7 +29,7 @@ const catalogos = useCatalogosStore()
 const opcionesCotizacion = computed(() =>
   catalogos.cotizaciones.map((cotizacion: CotizacionQuincenal) => ({
     id: cotizacion.id,
-    nombre: `${cotizacion.quincena}ª quincena ${cotizacion.ejercicio} — ${numero(cotizacion.valor_usd_oz_t, 4)} USD/oz`,
+    nombre: `${cotizacion.quincena}ª quincena ${cotizacion.ejercicio} — ${numero(cotizacion.valor_usd_oz_t)} USD/oz`,
   })),
 )
 
@@ -45,9 +46,20 @@ watch(seleccion, (id) => {
   const cotizacion = catalogos.cotizaciones.find((c) => c.id === id)
 
   if (cotizacion) {
-    props.formulario.asignar('cotizacion_usd_oz_t', cotizacion.valor_usd_oz_t)
+    props.formulario.asignar('cotizacion_usd_oz_t', aDosDecimales(cotizacion.valor_usd_oz_t))
     props.formulario.asignar('cotizacion_id', cotizacion.id)
   }
+})
+
+/**
+ * El checkbox es un control NATIVO, y `formulario.valores` es de solo lectura
+ * (vee-validate expone `readonly(formValues)`): un `v-model` directo ahi se
+ * descarta en silencio y el aporte quedaba siempre aplicado. El computado
+ * escribible encamina el cambio por `asignar()` -> `setFieldValue`.
+ */
+const aplicaCajaSalud = computed({
+  get: () => props.formulario.valores.aplica_caja_salud,
+  set: (valor: boolean) => props.formulario.asignar('aplica_caja_salud', valor),
 })
 
 const tipoCambioAyuda = computed<string | undefined>(() => {
@@ -101,7 +113,7 @@ const tipoCambioError = computed<string | undefined>(() =>
         v-bind="formulario.enlazar('tipo_cambio')"
         etiqueta="Tipo de cambio (Bs/$)"
         tipo="number"
-        step="0.0001"
+        step="0.01"
         placeholder="—"
         disabled
         :ayuda="tipoCambioAyuda"
@@ -121,8 +133,8 @@ const tipoCambioError = computed<string | undefined>(() =>
         v-bind="formulario.enlazar('cotizacion_usd_oz_t')"
         etiqueta="Cotización (USD/oz t) *"
         tipo="number"
-        step="0.0001"
-        placeholder="2648.5700"
+        step="0.01"
+        placeholder="2648.57"
         ayuda="Rellena sola al elegir la quincena; también se puede escribir."
         :error="formulario.error('cotizacion_usd_oz_t')"
         @blur="formulario.tocar('cotizacion_usd_oz_t')"
@@ -130,10 +142,9 @@ const tipoCambioError = computed<string | undefined>(() =>
 
       <label class="flex items-center gap-3 self-end rounded-lg border border-slate-200 px-3 py-2.5">
         <input
-          v-model="formulario.valores.aplica_caja_salud"
+          v-model="aplicaCajaSalud"
           type="checkbox"
           class="h-4 w-4 rounded border-slate-300 text-marca-600 focus:ring-marca-500"
-          @change="formulario.tocar('aplica_caja_salud')"
         />
         <span class="text-sm text-slate-700">
           Aplica aporte de caja de salud

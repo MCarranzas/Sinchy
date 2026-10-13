@@ -26,7 +26,7 @@
                 <td>{{ $liquidacion->municipio_nombre }}</td>
                 <td>{{ $liquidacion->presentacion_nombre }}</td>
                 <td>{{ number_format((float) $liquidacion->peso_gramos, 2, ',', '.') }}</td>
-                <td>{{ number_format((float) $liquidacion->peso_fino_gramos, 4, ',', '.') }}</td>
+                <td>{{ number_format((float) $liquidacion->peso_fino_gramos, 2, ',', '.') }}</td>
                 <td>{{ number_format((float) $liquidacion->valor_bruto_bs, 2, ',', '.') }}</td>
                 <td>{{ number_format((float) $liquidacion->aporte_caja_salud_bs, 2, ',', '.') }}</td>
                 <td>{{ number_format((float) $liquidacion->total_deducciones_bs, 2, ',', '.') }}</td>
@@ -38,7 +38,7 @@
     <tfoot>
         <tr>
             <th colspan="7">TOTALES ({{ $liquidaciones->count() }} liquidaciones)</th>
-            <th>{{ number_format((float) $liquidaciones->sum('peso_fino_gramos'), 4, ',', '.') }}</th>
+            <th>{{ number_format((float) $liquidaciones->sum('peso_fino_gramos'), 2, ',', '.') }}</th>
             <th>{{ number_format((float) $liquidaciones->sum('valor_bruto_bs'), 2, ',', '.') }}</th>
             <th>{{ number_format((float) $liquidaciones->sum('aporte_caja_salud_bs'), 2, ',', '.') }}</th>
             <th>{{ number_format((float) $liquidaciones->sum('total_deducciones_bs'), 2, ',', '.') }}</th>

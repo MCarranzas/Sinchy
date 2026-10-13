@@ -22,7 +22,7 @@ import { computed, reactive, ref, watch, type Ref } from 'vue'
 import { erroresDeValidacion } from '@/api/axios'
 import { obtenerTipoCambio } from '@/api/catalogos.api'
 import { useCatalogosStore } from '@/stores/catalogos'
-import { calcular, type ResultadoCalculo } from '@/utils/calculo'
+import { aDosDecimales, calcular, type ResultadoCalculo } from '@/utils/calculo'
 import { porcentajeAFraccion, fraccionAPorcentaje, reglas, type Regla } from '@/composables/validaciones'
 import type { Liquidacion, LiquidacionPayload } from '@/types/liquidacion'
 
@@ -154,8 +154,8 @@ export function valoresDesdeLiquidacion(liquidacion: Liquidacion): ValoresCaptur
   return {
     numero_documento: liquidacion.numero_documento ?? '',
     fecha_transaccion: liquidacion.fecha_transaccion,
-    tipo_cambio: liquidacion.insumos.tipo_cambio,
-    cotizacion_usd_oz_t: liquidacion.insumos.cotizacion_usd_oz_t,
+    tipo_cambio: aDosDecimales(liquidacion.insumos.tipo_cambio),
+    cotizacion_usd_oz_t: aDosDecimales(liquidacion.insumos.cotizacion_usd_oz_t),
     cotizacion_id: liquidacion.insumos.cotizacion_id,
     aplica_caja_salud: liquidacion.insumos.aplica_caja_salud,
     comprador_razon_social: liquidacion.comprador.razon_social,
@@ -171,8 +171,8 @@ export function valoresDesdeLiquidacion(liquidacion: Liquidacion): ValoresCaptur
     codigo_municipio: liquidacion.procedencia.municipio.codigo ?? '',
     codigo_ajam_patente: liquidacion.procedencia.codigo_ajam_patente ?? '',
     presentacion_mineral_id: liquidacion.presentacion.id,
-    peso_gramos: liquidacion.insumos.peso_gramos,
-    ley_pagable: fraccionAPorcentaje(liquidacion.insumos.ley_pagable),
+    peso_gramos: aDosDecimales(liquidacion.insumos.peso_gramos),
+    ley_pagable: aDosDecimales(fraccionAPorcentaje(liquidacion.insumos.ley_pagable)),
     observaciones: liquidacion.observaciones ?? '',
   }
 }
@@ -251,7 +251,7 @@ export function useLiquidacionForm(opciones: OpcionesFormulario): FormularioCapt
 
       fechaTipoCambio.value = fecha
       tipoCambioDisponible.value = tipoCambio !== null
-      setFieldValue('tipo_cambio', tipoCambio?.valor ?? '')
+      setFieldValue('tipo_cambio', tipoCambio === null ? '' : aDosDecimales(tipoCambio.valor))
     } catch {
       if (values.fecha_transaccion === fecha) {
         fechaTipoCambio.value = fecha
@@ -409,11 +409,11 @@ export function useLiquidacionForm(opciones: OpcionesFormulario): FormularioCapt
       numero_documento: texto(valores.numero_documento) || null,
       fecha_transaccion: valores.fecha_transaccion,
       observaciones: texto(valores.observaciones) || null,
-      tipo_cambio: texto(valores.tipo_cambio),
-      cotizacion_usd_oz_t: texto(valores.cotizacion_usd_oz_t),
+      tipo_cambio: aDosDecimales(texto(valores.tipo_cambio)),
+      cotizacion_usd_oz_t: aDosDecimales(texto(valores.cotizacion_usd_oz_t)),
       cotizacion_id: valores.cotizacion_id ?? null,
       aplica_caja_salud: valores.aplica_caja_salud,
-      peso_gramos: texto(valores.peso_gramos),
+      peso_gramos: aDosDecimales(texto(valores.peso_gramos)),
       ley_pagable: porcentajeAFraccion(texto(valores.ley_pagable)),
       comprador_razon_social: texto(valores.comprador_razon_social),
       comprador_nim: texto(valores.comprador_nim) || null,
@@ -479,7 +479,7 @@ export function useLiquidacionForm(opciones: OpcionesFormulario): FormularioCapt
    */
   function aplicarDefaults(): void {
     if (!values.cotizacion_usd_oz_t && catalogos.cotizacionSugerida) {
-      setFieldValue('cotizacion_usd_oz_t', catalogos.cotizacionSugerida.valor_usd_oz_t)
+      setFieldValue('cotizacion_usd_oz_t', aDosDecimales(catalogos.cotizacionSugerida.valor_usd_oz_t))
       setFieldValue('cotizacion_id', catalogos.cotizacionSugerida.id)
     }
 

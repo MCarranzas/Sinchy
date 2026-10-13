@@ -79,7 +79,7 @@ export const reglas = {
       return 'No hay tipo de cambio cargado para la fecha de la transacción.'
     }
 
-    const corte = decimal(valor, 4)
+    const corte = decimal(valor, 2)
     if (corte !== true) {
       return corte
     }
@@ -88,7 +88,7 @@ export const reglas = {
   },
 
   cotizacion: (valor: unknown): true | string => {
-    const corte = decimal(valor, 4)
+    const corte = decimal(valor, 2)
     if (corte !== true) {
       return corte
     }
@@ -114,7 +114,7 @@ export const reglas = {
    * fraccion (0.9302) y ahi aplica su `lte:1` (T1): 93,02 % pasa, 9302 no.
    */
   leyPagable: (valor: unknown): true | string => {
-    const corte = decimal(valor, 4)
+    const corte = decimal(valor, 2)
     if (corte !== true) {
       return corte
     }

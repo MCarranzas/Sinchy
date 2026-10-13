@@ -20,7 +20,7 @@ import HistorialEstados from '@/components/liquidacion/HistorialEstados.vue'
 import ModalTransicion from '@/components/liquidacion/ModalTransicion.vue'
 import { mensajeDeError } from '@/api/axios'
 import { historialLiquidacion, obtenerLiquidacion, transicionarLiquidacion, urlExcel, urlPdf } from '@/api/liquidaciones.api'
-import { bs, fecha, fechaHora, gramos, numero } from '@/utils/formato'
+import { bs, fecha, fechaHora, gramos, numero, porcentaje } from '@/utils/formato'
 import { ESTADOS_EDITABLES } from '@/types/liquidacion'
 import type { EstadoLiquidacion, HistorialEstado, Liquidacion, TransicionPayload } from '@/types/liquidacion'
 import { accionTransicion } from '@/utils/transiciones'
@@ -238,15 +238,15 @@ async function ejecutarTransicion(payload: TransicionPayload): Promise<void> {
             </dd>
             <dt class="text-slate-500">Ley pagable</dt>
             <dd class="text-right font-medium tabular-nums text-slate-800">
-              {{ numero(Number(liquidacion.insumos.ley_pagable) * 100, 4) }} %
+              {{ porcentaje(liquidacion.insumos.ley_pagable) }}
             </dd>
             <dt class="text-slate-500">Tipo de cambio</dt>
             <dd class="text-right font-medium tabular-nums text-slate-800">
-              {{ numero(liquidacion.insumos.tipo_cambio, 4) }} Bs/$
+              {{ numero(liquidacion.insumos.tipo_cambio) }} Bs/$
             </dd>
             <dt class="text-slate-500">Cotización</dt>
             <dd class="text-right font-medium tabular-nums text-slate-800">
-              {{ numero(liquidacion.insumos.cotizacion_usd_oz_t, 6) }} USD/oz t
+              {{ numero(liquidacion.insumos.cotizacion_usd_oz_t) }} USD/oz t
             </dd>
             <dt class="text-slate-500">Caja de salud</dt>
             <dd class="text-right font-medium text-slate-800">
@@ -265,7 +265,7 @@ async function ejecutarTransicion(payload: TransicionPayload): Promise<void> {
             </dd>
             <dt class="text-slate-500">Valor USD/gramo</dt>
             <dd class="text-right font-medium tabular-nums text-slate-800">
-              $ {{ numero(liquidacion.calculo.valor_usd_gramo, 6) }}
+              $ {{ numero(liquidacion.calculo.valor_usd_gramo) }}
             </dd>
             <dt class="text-slate-500">Valor bruto</dt>
             <dd class="text-right font-medium tabular-nums text-slate-800">

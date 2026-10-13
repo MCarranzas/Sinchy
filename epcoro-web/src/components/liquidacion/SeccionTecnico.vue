@@ -6,14 +6,27 @@
  * exige el backend (lte:1, trampa T1) la arma el composable al enviar. Van
  * aqui tambien las observaciones, porque son el ultimo dato antes del resumen.
  */
+import { computed } from 'vue'
+
 import CampoEntrada from '@/components/CampoEntrada.vue'
 import CampoSelect from '@/components/CampoSelect.vue'
 import { useCatalogosStore } from '@/stores/catalogos'
 import type { FormularioCaptura } from '@/composables/useLiquidacionForm'
 
-defineProps<{ formulario: FormularioCaptura }>()
+const props = defineProps<{ formulario: FormularioCaptura }>()
 
 const catalogos = useCatalogosStore()
+
+/**
+ * El textarea es un control NATIVO y `formulario.valores` es de solo lectura
+ * (vee-validate expone `readonly(formValues)`), asi que un `v-model` directo
+ * ahi se descarta en silencio y las observaciones nunca llegaban al payload.
+ * El computado escribible encamina el cambio por `asignar()`.
+ */
+const observaciones = computed({
+  get: () => props.formulario.valores.observaciones,
+  set: (valor: string) => props.formulario.asignar('observaciones', valor),
+})
 </script>
 
 <template>
@@ -48,7 +61,7 @@ const catalogos = useCatalogosStore()
         v-bind="formulario.enlazar('ley_pagable')"
         etiqueta="Ley pagable %"
         tipo="number"
-        step="0.0001"
+        step="0.01"
         sufijo="%"
         placeholder="93.02"
         ayuda="En porcentaje; el backend recibe la fracción."
@@ -64,7 +77,7 @@ const catalogos = useCatalogosStore()
       </label>
       <textarea
         id="observaciones"
-        v-model="formulario.valores.observaciones"
+        v-model="observaciones"
         rows="3"
         maxlength="5000"
         placeholder="Notas de la captura (máx. 5000 caracteres)"

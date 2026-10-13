@@ -66,12 +66,12 @@
     </thead>
     <tbody>
         <tr><td>Peso en gramos</td><td>{{ number_format((float) $liquidacion->peso_gramos, 2, ',', '.') }}</td></tr>
-        <tr><td>Ley pagable</td><td>{{ $liquidacion->ley_pagable }}</td></tr>
-        <tr><td>Tipo de cambio Bs/$</td><td>{{ $liquidacion->tipo_cambio }}</td></tr>
-        <tr><td>Cotizacion USD/oz t</td><td>{{ $liquidacion->cotizacion_usd_oz_t }}</td></tr>
+        <tr><td>Ley pagable</td><td>{{ number_format((float) $liquidacion->ley_pagable * 100, 2, ',', '.') }} %</td></tr>
+        <tr><td>Tipo de cambio Bs/$</td><td>{{ number_format((float) $liquidacion->tipo_cambio, 2, ',', '.') }}</td></tr>
+        <tr><td>Cotizacion USD/oz t</td><td>{{ number_format((float) $liquidacion->cotizacion_usd_oz_t, 2, ',', '.') }}</td></tr>
         <tr><td>Aporte caja de salud</td><td>{{ $liquidacion->aplica_caja_salud ? 'SI' : 'NO' }}</td></tr>
-        <tr><td>Peso fino (g)</td><td>{{ number_format((float) $liquidacion->peso_fino_gramos, 4, ',', '.') }}</td></tr>
-        <tr><td>Valor USD/g</td><td>{{ number_format((float) $liquidacion->valor_usd_gramo, 6, ',', '.') }}</td></tr>
+        <tr><td>Peso fino (g)</td><td>{{ number_format((float) $liquidacion->peso_fino_gramos, 2, ',', '.') }}</td></tr>
+        <tr><td>Valor USD/g</td><td>{{ number_format((float) $liquidacion->valor_usd_gramo, 2, ',', '.') }}</td></tr>
         <tr><td>Valor bruto Bs</td><td>{{ number_format((float) $liquidacion->valor_bruto_bs, 2, ',', '.') }}</td></tr>
         <tr><td>Aporte caja salud Bs</td><td>{{ number_format((float) $liquidacion->aporte_caja_salud_bs, 2, ',', '.') }}</td></tr>
         <tr><td>Total deducciones Bs</td><td>{{ number_format((float) $liquidacion->total_deducciones_bs, 2, ',', '.') }}</td></tr>
