@@ -114,13 +114,11 @@ class LiquidacionPolicy
             && $liquidacion->estado->puedeTransicionA(EstadoLiquidacion::Revisado);
     }
 
-    /** Devuelve para correccion: -> rechazado, con observaciones. */
-    public function solicitarCorreccion(User $usuario, Liquidacion $liquidacion): bool
-    {
-        return $usuario->can('liquidaciones.solicitar_correccion')
-            && $liquidacion->estado->puedeTransicionA(EstadoLiquidacion::Rechazado);
-    }
-
+    /**
+     * -> rechazado, desde `en_revision` o `revisado`. Unico camino hacia un
+     * estado terminal: una rechazada no se corrige ni se reactiva (decision
+     * del negocio 2026-10-12).
+     */
     public function rechazar(User $usuario, Liquidacion $liquidacion): bool
     {
         return $usuario->can('liquidaciones.rechazar')
@@ -128,21 +126,28 @@ class LiquidacionPolicy
     }
 
     /**
-     * rechazado -> en_correccion: el autor retoma lo suyo para corregirlo.
-     *
-     * Es la unica puerta de vuelta hacia un estado editable (4.1: solo
-     * `creado` y `en_correccion` aceptan edicion), y sin esta habilidad la
-     * rama `rechazado -> en_correccion` del enum quedaria sin nadie que
-     * pudiera recorrerla: una liquidacion rechazada seria un callejon sin
-     * salida. Usa el permiso de edicion porque corregir ES editar, y exige
-     * ser el autor por lo mismo que cualquier otra vuelta al trabajo del
-     * tecnico.
+     * en_revision -> en_correccion: el revisor devuelve al tecnico con una
+     * observacion para que corrija (decision del negocio 2026-10-12). Es una
+     * devolucion, NO un rechazo: la liquidacion sigue viva y el autor la
+     * edita y reenvia.
      */
-    public function corregir(User $usuario, Liquidacion $liquidacion): bool
+    public function devolverTecnico(User $usuario, Liquidacion $liquidacion): bool
     {
-        return $usuario->can('liquidaciones.editar')
-            && $liquidacion->estado->puedeTransicionA(EstadoLiquidacion::EnCorreccion)
-            && $this->esPropia($usuario, $liquidacion);
+        return $usuario->can('liquidaciones.devolver_tecnico')
+            && $liquidacion->estado->puedeTransicionA(EstadoLiquidacion::EnCorreccion);
+    }
+
+    /**
+     * revisado -> en_revision: el gerente devuelve al revisor con una
+     * observacion para que corrija su revision. Corte explicito de origen
+     * porque `puedeTransicionA(EnRevision)` tambien es cierto desde `creado`
+     * y `en_correccion` (eso es `enviarRevision`, del autor, no esto).
+     */
+    public function devolverRevisor(User $usuario, Liquidacion $liquidacion): bool
+    {
+        return $usuario->can('liquidaciones.devolver_revisor')
+            && $liquidacion->estado === EstadoLiquidacion::Revisado
+            && $liquidacion->estado->puedeTransicionA(EstadoLiquidacion::EnRevision);
     }
 
     /**

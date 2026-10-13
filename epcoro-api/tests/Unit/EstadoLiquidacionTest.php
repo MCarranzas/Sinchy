@@ -23,9 +23,9 @@ class EstadoLiquidacionTest extends TestCase
      */
     private const TABLA = [
         'creado' => ['en_revision', 'anulado', 'eliminado'],
-        'en_revision' => ['revisado', 'rechazado', 'anulado'],
-        'revisado' => ['aprobado', 'rechazado', 'anulado'],
-        'rechazado' => ['en_correccion', 'anulado'],
+        'en_revision' => ['revisado', 'rechazado', 'anulado', 'en_correccion'],
+        'revisado' => ['aprobado', 'rechazado', 'anulado', 'en_revision'],
+        'rechazado' => [],
         'en_correccion' => ['en_revision', 'anulado'],
         'aprobado' => [],
         'anulado' => [],
@@ -66,27 +66,27 @@ class EstadoLiquidacionTest extends TestCase
         }
     }
 
-    public function test_anulado_y_eliminado_tambien_son_terminales(): void
+    public function test_anulado_eliminado_y_rechazado_tambien_son_terminales(): void
     {
-        foreach ([EstadoLiquidacion::Anulado, EstadoLiquidacion::Eliminado] as $terminal) {
+        foreach ([EstadoLiquidacion::Anulado, EstadoLiquidacion::Eliminado, EstadoLiquidacion::Rechazado] as $terminal) {
             $this->assertTrue($terminal->esTerminal());
             $this->assertSame([], $terminal->transiciones());
         }
     }
 
-    public function test_es_terminal_solo_los_tres_estados_sin_salida(): void
+    public function test_es_terminal_solo_los_cuatro_estados_sin_salida(): void
     {
         $terminales = [
             EstadoLiquidacion::Aprobado,
             EstadoLiquidacion::Anulado,
             EstadoLiquidacion::Eliminado,
+            EstadoLiquidacion::Rechazado,
         ];
 
         $noTerminales = [
             EstadoLiquidacion::Creado,
             EstadoLiquidacion::EnRevision,
             EstadoLiquidacion::Revisado,
-            EstadoLiquidacion::Rechazado,
             EstadoLiquidacion::EnCorreccion,
         ];
 

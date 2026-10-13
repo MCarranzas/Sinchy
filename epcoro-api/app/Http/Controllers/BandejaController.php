@@ -18,7 +18,7 @@ use Illuminate\Http\Request;
  *    cual sea su estado. El corte D3 (ver_todas / ver_propias) no aplica
  *    porque aqui la pregunta ya es "mias".
  *  - `por_revisar` lo decide el ESTADO (en_revision, la cola de revision)
- *    y solo se cuenta para quien puede revisar o pedir correccion: a un
+ *    y solo se cuenta para quien puede revisar esa cola (el revisor): a un
  *    tecnico esa cola no le dice nada y no debe aparecerle.
  *  - `por_aprobar` es la cola siguiente (revisado) y solo se cuenta para
  *    quien tiene `aprobar`, que es el unico rol que puede cerrarla.
@@ -45,7 +45,7 @@ class BandejaController extends Controller
                 'por_revisar' => $this->cola(
                     $usuario,
                     EstadoLiquidacion::EnRevision,
-                    ['liquidaciones.revisar', 'liquidaciones.solicitar_correccion'],
+                    ['liquidaciones.revisar'],
                 ),
                 'por_aprobar' => $this->cola(
                     $usuario,

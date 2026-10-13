@@ -28,8 +28,8 @@ use Illuminate\Testing\TestResponse;
  *    ser unico (5.3);
  *  - las transiciones responden 422 por ESTADO antes de mirar permisos, y
  *    403 solo cuando el estado y el permiso chocan (D2);
- *  - la rama rechazado -> en_correccion es la unica puerta de vuelta a la
- *    edicion, y la recorre el autor (4.1).
+ *  - `rechazado` es terminal: sin reenvio a correccion, sin anulacion, sin
+ *    edicion para nadie (decision del negocio 2026-10-12).
  *
  * El alta rapida de la persona (N5) y los reportes van en
  * ReportesYPermisosApiTest.
@@ -602,15 +602,14 @@ class LiquidacionApiTest extends AuthTestCase
         $this->assertSame('Balanza del patio en reparacion.', $enRevision->fresh()->motivo_anulacion);
     }
 
-    public function test_la_rama_rechazado_reenvia_a_correccion_y_el_autor_recalcula(): void
+    public function test_la_rechazada_es_terminal_y_nadie_puede_corregirla(): void
     {
         $tecnico = $this->tecnico();
         $revisor = $this->revisor();
 
         $liquidacion = $this->liquidacionDe($tecnico);
 
-        // publico el flujo completo: captura -> revision -> solicitud de
-        // correccion -> correccion -> reenvio.
+        // flujo: captura -> revision -> rechazo con motivo.
         $this->identificarseComo($tecnico, 'web')
             ->postJson('/api/v1/liquidaciones/'.$liquidacion->id.'/transiciones', ['estado_destino' => 'en_revision'])
             ->assertOk();
@@ -623,18 +622,20 @@ class LiquidacionApiTest extends AuthTestCase
             ->assertOk()
             ->assertJsonPath('data.estado', 'rechazado');
 
+        $this->assertSame('La cota del peso no coincide con la pesada.', $liquidacion->fresh()->motivo_rechazo);
+
+        // una rechazada no se reactiva: al reenvio a correccion le responde
+        // 422 por ESTADO, sin importar quien lo pida.
         $this->identificarseComo($tecnico, 'web')
             ->postJson('/api/v1/liquidaciones/'.$liquidacion->id.'/transiciones', ['estado_destino' => 'en_correccion'])
-            ->assertOk()
-            ->assertJsonPath('data.estado', 'en_correccion');
+            ->assertStatus(422);
 
-        // y en en_correccion la edicion vuelve a estar abierta (4.1).
-        $corregida = $this->identificarseComo($tecnico, 'web')
+        $this->assertSame('rechazado', $liquidacion->fresh()->estado->value);
+
+        // y la edicion esta cerrada para siempre (4.1 solo permite creado).
+        $this->identificarseComo($tecnico, 'web')
             ->putJson('/api/v1/liquidaciones/'.$liquidacion->id, ['peso_gramos' => '900.00'])
-            ->assertOk()
-            ->json('data');
-
-        $this->assertSame('900.00', $corregida['insumos']['peso_gramos']);
+            ->assertStatus(422);
     }
 
     // ------------------------------------------------------------- flujo
@@ -660,6 +661,89 @@ class LiquidacionApiTest extends AuthTestCase
                 'comentario' => 'Yo no deberia poder observarlo.',
             ])
             ->assertForbidden();
+    }
+
+    /**
+     * La devolucion (negocio 2026-10-12) es una accion aparte del rechazo y
+     * con observacion obligatoria: el revisor devuelve al tecnico para que
+     * corrija y reenvie, y el gerente devuelve al revisor para que re-revise.
+     */
+    public function test_el_revisor_devuelve_al_tecnico_y_el_gerente_al_revisor_para_corregir(): void
+    {
+        $tecnico = $this->tecnico();
+        $revisor = $this->revisor();
+        $gerente = $this->gerente();
+        $liquidacion = $this->liquidacionDe($tecnico);
+
+        // 1. tecnico envia a revision.
+        $this->identificarseComo($tecnico, 'web')
+            ->postJson('/api/v1/liquidaciones/'.$liquidacion->id.'/transiciones', ['estado_destino' => 'en_revision'])
+            ->assertOk();
+
+        // 2. devolver al tecnico sin observacion: 422 (el motivo no aplica,
+        //    la observacion es lo que el tecnico necesita para corregir).
+        $this->identificarseComo($revisor, 'web')
+            ->postJson('/api/v1/liquidaciones/'.$liquidacion->id.'/transiciones', [
+                'estado_destino' => 'en_correccion',
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('comentario');
+
+        // 3. el revisor devuelve al tecnico con una observacion.
+        $this->identificarseComo($revisor, 'web')
+            ->postJson('/api/v1/liquidaciones/'.$liquidacion->id.'/transiciones', [
+                'estado_destino' => 'en_correccion',
+                'comentario' => 'El mineral traia tierra; muestrear de nuevo.',
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.estado', 'en_correccion');
+
+        $enCorreccion = $liquidacion->fresh();
+        $this->assertSame('en_correccion', $enCorreccion->estado->value);
+        $this->assertSame(
+            'El mineral traia tierra; muestrear de nuevo.',
+            $enCorreccion->historial()->latest('id')->value('comentario'),
+        );
+
+        // 4. en_correccion es editable: el tecnico corrige el peso y reenvia.
+        $this->identificarseComo($tecnico, 'web')
+            ->putJson('/api/v1/liquidaciones/'.$liquidacion->id, ['peso_gramos' => '900.00'])
+            ->assertOk();
+
+        $this->identificarseComo($tecnico, 'web')
+            ->postJson('/api/v1/liquidaciones/'.$liquidacion->id.'/transiciones', ['estado_destino' => 'en_revision'])
+            ->assertOk();
+
+        // 5. el revisor la revisa de nuevo y el gerente la devuelve: ahora
+        //    sin observacion no se puede (422) y con observacion vuelve al
+        //    revisor para que re-revise.
+        $this->identificarseComo($revisor, 'web')
+            ->postJson('/api/v1/liquidaciones/'.$liquidacion->id.'/transiciones', ['estado_destino' => 'revisado'])
+            ->assertOk();
+
+        $this->identificarseComo($gerente, 'web')
+            ->postJson('/api/v1/liquidaciones/'.$liquidacion->id.'/transiciones', [
+                'estado_destino' => 'en_revision',
+            ])
+            ->assertStatus(422);
+
+        $this->identificarseComo($gerente, 'web')
+            ->postJson('/api/v1/liquidaciones/'.$liquidacion->id.'/transiciones', [
+                'estado_destino' => 'en_revision',
+                'comentario' => 'El formulario de registro no trae el sello del laboratorio.',
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.estado', 'en_revision');
+
+        // 6. el revisor re-revisa y el gerente aprueba: el ciclo se cierra.
+        $this->identificarseComo($revisor, 'web')
+            ->postJson('/api/v1/liquidaciones/'.$liquidacion->id.'/transiciones', ['estado_destino' => 'revisado'])
+            ->assertOk();
+
+        $this->identificarseComo($gerente, 'web')
+            ->postJson('/api/v1/liquidaciones/'.$liquidacion->id.'/transiciones', ['estado_destino' => 'aprobado'])
+            ->assertOk()
+            ->assertJsonPath('data.estado', 'aprobado');
     }
 
     // ----------------------------------------------------------- descargas

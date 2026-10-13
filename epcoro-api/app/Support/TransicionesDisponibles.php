@@ -17,31 +17,42 @@ use App\Models\User;
  *  - el controlador de transiciones traduce el (origen -> destino) que
  *    llega en el POST a la habilidad de la Policy antes de escribir.
  *
- * De ahi la distincion que el enum no puede ver por si solo: hacia
- * `rechazado` hay DOS caminos con permisos distintos, `solicitar_correccion`
- * desde la revision y `rechazar` desde la aprobacion (4.2). Depende del
- * origen, y por eso el mapa esta aqui y no en el enum.
+ * De ahi la distincion que el enum no puede ver por si solo: dos destinos
+ * (decision del negocio 2026-10-12) tienen un camino de DEVOLUCION distinto
+ * del camino normal, y el destino a secas no basta para elegir la habilidad:
+ *
+ *  - `en_correccion` solo se alcanza desde `en_revision` con la habilidad
+ *    `devolverTecnico`: el revisor devuelve al tecnico para que corrija.
+ *  - `en_revision` se alcanza desde `creado`/`en_correccion` con
+ *    `enviarRevision` (el autor reenvia) y desde `revisado` con
+ *    `devolverRevisor`: el gerente devuelve al revisor para que re-revise.
+ *
+ * Hacia `rechazado` hay UN solo camino con permiso `rechazar`, valido desde
+ * `en_revision` y desde `revisado`, y es terminal: ni correccion ni
+ * reactivacion (revisor y gerente comparten `rechazar`).
  */
 final class TransicionesDisponibles
 {
     /**
      * Habilidad de la Policy para mover una liquidacion de $origen a $destino.
      *
-     * null cuando no hay habilidad asociada (los tres estados terminales no
-     * se alcanzan por este camino, o el destino no existe).
+     * null cuando no hay habilidad asociada (los estados terminales no se
+     * alcanzan por este camino, o el destino no existe).
      */
     public static function habilidad(EstadoLiquidacion $origen, EstadoLiquidacion $destino): ?string
     {
-        return match ($destino) {
-            EstadoLiquidacion::EnRevision => 'enviarRevision',
-            EstadoLiquidacion::Revisado => 'revisar',
-            EstadoLiquidacion::Rechazado => $origen === EstadoLiquidacion::EnRevision
-                ? 'solicitarCorreccion'
-                : 'rechazar',
-            EstadoLiquidacion::Aprobado => 'aprobar',
-            EstadoLiquidacion::Anulado => 'anular',
-            EstadoLiquidacion::EnCorreccion => 'corregir',
-            EstadoLiquidacion::Eliminado => 'delete',
+        return match (true) {
+            // Devolver del gerente al revisor: `revisado` -> `en_revision`.
+            $destino === EstadoLiquidacion::EnRevision && $origen === EstadoLiquidacion::Revisado => 'devolverRevisor',
+            // Devolver del revisor al tecnico: `en_revision` -> `en_correccion`.
+            $destino === EstadoLiquidacion::EnCorreccion => 'devolverTecnico',
+            // Reenvio del autor: `creado`/`en_correccion` -> `en_revision`.
+            $destino === EstadoLiquidacion::EnRevision => 'enviarRevision',
+            $destino === EstadoLiquidacion::Revisado => 'revisar',
+            $destino === EstadoLiquidacion::Rechazado => 'rechazar',
+            $destino === EstadoLiquidacion::Aprobado => 'aprobar',
+            $destino === EstadoLiquidacion::Anulado => 'anular',
+            $destino === EstadoLiquidacion::Eliminado => 'delete',
             default => null,
         };
     }

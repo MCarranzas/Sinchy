@@ -80,7 +80,7 @@ class LiquidacionPolicyTest extends AuthTestCase
         foreach (['admin', 'gerente', 'revisor', 'tecnico'] as $rol) {
             $usuario = $this->usuarioConRol($rol);
 
-            foreach (['update', 'delete', 'enviarRevision', 'revisar', 'aprobar', 'rechazar', 'anular'] as $habilidad) {
+            foreach (['update', 'delete', 'enviarRevision', 'revisar', 'aprobar', 'rechazar', 'anular', 'devolverTecnico', 'devolverRevisor'] as $habilidad) {
                 $this->assertFalse(
                     Gate::forUser($usuario)->allows($habilidad, $aprobada),
                     'El rol '.$rol.' no debe poder '.$habilidad.' una aprobada',
@@ -166,6 +166,41 @@ class LiquidacionPolicyTest extends AuthTestCase
 
         $this->assertTrue(Gate::forUser($revisor)->allows('revisar', $enRevision));
         $this->assertFalse(Gate::forUser($revisor)->allows('revisar', $creada));
+    }
+
+    public function test_solo_el_revisor_devuelve_al_tecnico_desde_en_revision(): void
+    {
+        $revisor = $this->usuarioConRol('revisor');
+        $gerente = $this->usuarioConRol('gerente');
+
+        $enRevision = Liquidacion::factory()->create(['estado' => 'en_revision']);
+        $revisada = Liquidacion::factory()->create(['estado' => 'revisado']);
+
+        // El revisor devuelve al tecnico (en_revision -> en_correccion).
+        $this->assertTrue(Gate::forUser($revisor)->allows('devolverTecnico', $enRevision));
+        // Pero no devuelve al revisor: eso es del gerente.
+        $this->assertFalse(Gate::forUser($revisor)->allows('devolverRevisor', $revisada));
+        // El gerente no devuelve al tecnico: le falta devolver_tecnico.
+        $this->assertFalse(Gate::forUser($gerente)->allows('devolverTecnico', $enRevision));
+        // Ni debe poder devolver algo que no esta en el estado que toca.
+        $this->assertFalse(Gate::forUser($revisor)->allows('devolverTecnico', $revisada));
+    }
+
+    public function test_solo_el_gerente_devuelve_al_revisor_desde_revisado(): void
+    {
+        $gerente = $this->usuarioConRol('gerente');
+        $revisor = $this->usuarioConRol('revisor');
+
+        $revisada = Liquidacion::factory()->create(['estado' => 'revisado']);
+        $enRevision = Liquidacion::factory()->create(['estado' => 'en_revision']);
+
+        // El gerente devuelve al revisor (revisado -> en_revision).
+        $this->assertTrue(Gate::forUser($gerente)->allows('devolverRevisor', $revisada));
+        // El revisor no tiene devolver_revisor.
+        $this->assertFalse(Gate::forUser($revisor)->allows('devolverRevisor', $revisada));
+        // Ni el gerente devuelve algo que no este `revisado`: la fluidez de
+        // `en_revision` no es camino para esta habilidad.
+        $this->assertFalse(Gate::forUser($gerente)->allows('devolverRevisor', $enRevision));
     }
 
     public function test_el_gerente_anula_lo_que_no_esta_aprobado(): void

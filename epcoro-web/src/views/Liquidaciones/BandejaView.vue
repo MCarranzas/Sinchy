@@ -3,8 +3,7 @@
  * Mi bandeja (9.5).
  *
  * Tres colas que el rol manda a decidir: mis liquidaciones, las que estan en
- * revision (y el rol puede revisar o pedir correccion) y las que esperan
- * aprobacion. Los conteos llegan recortados por rol desde `/bandeja`; las
+ * revision y las que esperan aprobacion. Los conteos llegan recortados por rol desde `/bandeja`; las
  * listas usan el mismo recurso `liquidaciones` con un par de filtros, y todo
  * (pestana + pagina) vive en la URL para que un enlace abra la misma vista.
  */
@@ -37,9 +36,7 @@ const pestana = computed<IdPestana>(() => {
 })
 
 /** La misma regla del backend (BandejaController): quien no toca esa cola no la ve. */
-const puedeRevisar = computed(
-  () => auth.puede('liquidaciones.revisar') || auth.puede('liquidaciones.solicitar_correccion'),
-)
+const puedeRevisar = computed(() => auth.puede('liquidaciones.revisar'))
 const puedeAprobar = computed(() => auth.puede('liquidaciones.aprobar'))
 
 const pestanas = computed(() => {

@@ -34,8 +34,9 @@ class RolPermisosSeeder extends Seeder
         'liquidaciones.eliminar' => 'liquidaciones',
         'liquidaciones.enviar_revision' => 'liquidaciones',
         'liquidaciones.revisar' => 'liquidaciones',
-        'liquidaciones.solicitar_correccion' => 'liquidaciones',
         'liquidaciones.rechazar' => 'liquidaciones',
+        'liquidaciones.devolver_tecnico' => 'liquidaciones',
+        'liquidaciones.devolver_revisor' => 'liquidaciones',
         'liquidaciones.aprobar' => 'liquidaciones',
         'liquidaciones.anular' => 'liquidaciones',
         'liquidaciones.comentar' => 'liquidaciones',
@@ -62,14 +63,15 @@ class RolPermisosSeeder extends Seeder
         'revisor' => [
             'liquidaciones.ver_todas',
             'liquidaciones.revisar',
-            'liquidaciones.solicitar_correccion',
             'liquidaciones.rechazar',
+            'liquidaciones.devolver_tecnico',
             'liquidaciones.comentar',
         ],
         'gerente' => [
             'liquidaciones.ver_todas',
             'liquidaciones.aprobar',
             'liquidaciones.rechazar',
+            'liquidaciones.devolver_revisor',
             'liquidaciones.anular',
             'reportes.ver',
         ],
@@ -123,8 +125,8 @@ class RolPermisosSeeder extends Seeder
     {
         return match ($slug) {
             'tecnico' => 'Captura liquidaciones y las envia a revision.',
-            'revisor' => 'Valida tecnicamente y devuelve para correccion.',
-            'gerente' => 'Aprueba o rechaza liquidaciones. Es el aprobador.',
+            'revisor' => 'Valida tecnicamente, devuelve al tecnico y rechaza.',
+            'gerente' => 'Aprueba, devuelve al revisor o rechaza liquidaciones.',
             'admin' => 'Administra usuarios, roles, catalogos y parametros.',
             default => '',
         };

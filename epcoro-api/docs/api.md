@@ -38,21 +38,27 @@ liquidacion aprobada que nadie puede editar responde `422` y no `403`.
 ### Maquina de estados (transiciones)
 
 ```
-creado        --enviar---->    en_revision
-creado        --eliminar-->   eliminado        (solo el autor, antes de enviar)
-en_revision   --aprobar-----> revisado
-en_revision   --rechazar----> rechazado
-en_revision   --corregir-----> en_correccion
-en_correccion --reenviar-----> en_revision
-en_correccion --eliminar-----> eliminado       (solo el autor)
-revisado      --aprobar-----> aprobado
-revisado      --rechazar----> rechazado
+creado        --enviar-------->  en_revision
+creado        --eliminar------>  eliminado        (solo el autor, antes de enviar)
+en_revision   --revisar------->  revisado         (revisor)
+en_revision   --rechazar------>  rechazado        (revisor/gerente, con motivo)
+en_revision   --devolver_tec->  en_correccion    (revisor, con observacion)
+en_correccion --enviar-------->  en_revision      (el autor corrige y reenvia)
+revisado      --aprobar------->  aprobado         (gerente)
+revisado      --rechazar------>  rechazado        (revisor/gerente, con motivo)
+revisado      --devolver_rev->  en_revision      (gerente, con observacion)
 {cualquier no final} --anular--> anulado
 ```
 
-`aprobar` = aprobacion final (GERENTE). `anular` (GERENTE) y `rechazar`
-(REVISOR) operan sobre estados revisados y posteriores. `eliminar` solo lo usa
-el autor de la liquidacion y solo en `creado`/`en_correccion`.
+`aprobar` = aprobacion final (GERENTE). `rechazar` (REVISOR/GERENTE) lleva a
+un estado **terminal**: una rechazada no se corrige ni se anula (decision del
+negocio 2026-10-12) y el motivo es obligatorio. **Devolver** es una accion
+APARTE del rechazo y con observacion (`comentario`) obligatoria: `devolverTecnico`
+(REVISOR, `en_revision` -> `en_correccion`) para que el tecnico corrija y
+reenvie, y `devolverRevisor` (GERENTE, `revisado` -> `en_revision`) para que el
+revisor re-revise. `anular` (GERENTE/ADMIN) opera sobre liquidaciones no
+aprobadas ni rechazadas. `eliminar` solo lo usa el autor de la liquidacion y
+solo en `creado`.
 
 ## Sesion
 
@@ -281,11 +287,16 @@ recibe 422 por estado.
 - Body: `{ "estado_destino": "aprobado", "comentario"?: string, "motivo"?: string }`.
 - `motivo` es obligatorio para `rechazado` (asentado como `motivo_rechazo`)
   y para `anulado` (asentado como `motivo_anulacion`).
+- `comentario` (la observacion) es obligatorio al DEVOLVER: `en_correccion`
+  (revisor -> tecnico) y `en_revision` desde `revisado` (gerente -> revisor).
+  En las demas transiciones es opcional.
 - `200` con `{ "message": "Transicion aplicada: en_revision -> rechazado.",
   "data": <recurso> }`.
 
 Tambien controla internos: `fecha_revision`, `fecha_aprobacion`, `fecha_rechazo`
-con su motivo y `fecha_anulacion` con el motivo de anulacion.
+con su motivo y `fecha_anulacion` con el motivo de anulacion. La devolucion al
+revisor (`revisado` -> `en_revision`) no reescribe `fecha_revision`: la
+re-entrada a revision deja rastro solo en el historial.
 
 ### `POST /api/v1/liquidaciones/{id}/observaciones`
 
@@ -324,7 +335,7 @@ asi la UI esconde la pestana sin duplicar logica de permisos:
 
 - `mis_liquidaciones`: las que el usuario registro (propiedad; siempre).
 - `por_revisar`: estado `en_revision`, solo si el rol tiene
-  `liquidaciones.revisar` o `liquidaciones.solicitar_correccion`.
+  `liquidaciones.revisar`.
 - `por_aprobar`: estado `revisado`, solo si el rol tiene `liquidaciones.aprobar`.
 
 Las listas de cada cola se piden al mismo `GET /api/v1/liquidaciones`:

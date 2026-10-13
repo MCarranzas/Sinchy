@@ -122,7 +122,7 @@ Invoke-RestMethod http://127.0.0.1:8000/api/health
 | Rol | Para que existe | Puede (en una frase) |
 |---|---|---|
 | **tecnico** | Captura las liquidaciones | Crea, edita **lo suyo** mientras esta `creado` o `en_correccion`, lo envia a revision y lo borra antes de enviarlo |
-| **revisor** | Oficina de Liquidaciones | Ve todas, revisa (`en_revision` -> `revisado`), solicita correccion (`rechazado`), rechaza y comenta |
+| **revisor** | Oficina de Liquidaciones | Ve todas, revisa (`en_revision` -> `revisado`), rechaza con motivo y comenta |
 | **gerente** | Aprobador | Ve todas, **aprueba** (`revisado` -> `aprobado`), rechaza y **anula**; ve reportes |
 | **admin** | Administracion | Usuarios, roles, catalogos y parametros; ve todas; anula y elimina; ve reportes |
 
@@ -140,7 +140,6 @@ Origen: `RolPermisosSeeder` (seccion 4.2 de `instrucciones.txt`).
 | `liquidaciones.eliminar` | | | | X |
 | `liquidaciones.enviar_revision` | X | | | |
 | `liquidaciones.revisar` | | X | | |
-| `liquidaciones.solicitar_correccion` | | X | | |
 | `liquidaciones.rechazar` | | X | X | |
 | `liquidaciones.aprobar` | | | X | |
 | `liquidaciones.anular` | | | X | X |
@@ -190,26 +189,32 @@ Las liquidaciones en estado `eliminado` no aparecen en el listado.
 creado         --enviar_revision--> en_revision
 creado         --eliminar---------> eliminado        (solo el autor)
 en_revision    --revisar----------> revisado         (revisor)
-en_revision    --solicitar_correccion--> rechazado   (revisor, con motivo)
-en_revision    --anular-----------> anulado          (gerente/admin, con motivo)
+en_revision    --rechazar---------> rechazado        (revisor/gerente, con motivo)
+en_revision    --devolver_tecnico-> en_correccion    (revisor, con observacion)
+en_correccion  --enviar_revision--> en_revision      (el autor corrige y reenvia)
 revisado       --aprobar----------> aprobado         (gerente, NUNCA lo propio)
 revisado       --rechazar---------> rechazado        (revisor/gerente, con motivo)
+revisado       --devolver_revisor-> en_revision      (gerente, con observacion)
 revisado       --anular-----------> anulado          (gerente/admin, con motivo)
-rechazado      --corregir---------> en_correccion    (autor)
-rechazado      --anular-----------> anulado          (gerente/admin, con motivo)
-en_correccion  --enviar_revision--> en_revision      (autor)
-en_correccion  --anular-----------> anulado          (gerente/admin, con motivo)
 ```
 
 ### 5.2 Estados terminales (sin salida)
 
-`aprobado`, `anulado` y `eliminado`. En particular, **una liquidacion
-`aprobado` no se edita, no se anula y no se borra para ningun rol**, el admin
-incluido (decision D2).
+`aprobado`, `rechazado`, `anulado` y `eliminado`. En particular, **una
+liquidacion `aprobado` no se edita, no se anula y no se borra para ningun rol**,
+el admin incluido (decision D2), y **una `rechazado` tampoco**: se rechaza con
+motivo y queda cerrada (decision del negocio 2026-10-12). El estado
+`en_correccion` vuelve a estar vivo y solo se alcanza por la **devolucion del
+revisor** (`en_revision -> en_correccion`), nunca desde un rechazo.
 
 ### 5.3 Reglas que hay que recordar
 
-- **Edicion abierta** solo en `creado` y `en_correccion`, y solo el autor.
+- **Edicion abierta** en `creado` y en `en_correccion` (el tecnico corrige lo
+  que el revisor le devuelve), y solo el autor.
+- **Devolver = accion aparte del rechazo**, con `comentario` (observacion)
+  OBLIGATORIO: `liquidaciones.devolver_tecnico` (revisor) y
+  `liquidaciones.devolver_revisor` (gerente). La devolucion no cierra el
+  expediente; el rechazo si.
 - **`eliminado` solo se alcanza desde `creado`** (borrado logico del autor
   antes de enviar). No desde `en_correccion` (aunque `docs/api.md` lo mencione).
 - **Motivo obligatorio** al pasar a `rechazado` (queda como `motivo_rechazo`) y
@@ -220,20 +225,21 @@ incluido (decision D2).
 
 ### 5.4 Matriz rol x transicion (resultado esperado)
 
-| Origen -> Destino | tecnico | revisor | gerente | admin | Aplica si es propia | Sin motivo |
+| Origen -> Destino | tecnico | revisor | gerente | admin | Aplica si es propia | Sin motivo/observacion |
 |---|:--:|:--:|:--:|:--:|---|---|
 | creado -> en_revision | 200 (autor) | 403 | 403 | 403 | solo el autor | - |
 | creado -> eliminado | 200 (autor) / 403 (ajena) | 403 | 403 | 403 | solo el autor | - |
 | en_revision -> revisado | 422 (estado) | 200 | 403 | 403 | revisor si, en la suya o ajena | - |
-| en_revision -> rechazado | 422 | 200 | 403 | 403 | - | **422** |
+| en_revision -> rechazado | 422 | 200 | 200 | 403 | - | **422** |
+| en_revision -> en_correccion (devolver al tecnico) | 403 | 200 | 403 | 403 | - | **422** (sin observacion) |
+| revisado -> en_revision (devolver al revisor) | 403 | 403 | 200 | 403 | - | **422** (sin observacion) |
 | revisado -> aprobado | 403 | 403 | 200 (ajena) | 403 | gerente **no** la propia (403) | - |
 | revisado -> rechazado | 422 | 200 | 200 | 403 | - | **422** |
-| creado/en_revision/revisado/rechazado/en_correccion -> anulado | 422 | 403 | 200 | 200 | - | **422** |
+| creado/en_revision/revisado -> anulado | 422 | 403 | 200 | 200 | - | **422** |
 | aprobado -> (cualquiera) | 422 | 422 | 422 | 422 | - | - |
-| rechazado -> en_correccion | 200 (autor) | 403 | 403 | 403 | solo el autor | - |
-| en_correccion -> en_revision | 200 (autor) | 403 | 403 | 403 | solo el autor | - |
+| rechazado -> (cualquiera) | 422 | 422 | 422 | 422 | - | - |
 
-(La matriz completa de 20 casos esta automatizada en
+(La matriz completa de 27 casos esta automatizada en
 `tests/Feature/FlujoPermisosTest.php`.)
 
 ---
@@ -322,23 +328,39 @@ Esperado: en cada paso el detalle vuelve con el nuevo estado y el historial
 suma la fila correspondiente con usuario y fecha. Al final, `aprobado` no
 ofrece ningun boton de transicion (terminal).
 
-**FLU-02 - Correccion desde revision.**
-Pasos: tecnico envia -> revisor "solicita correccion" con motivo
-(`-> rechazado`) -> autor "corrige" (`-> en_correccion`) -> edita -> reenvia
-(`-> en_revision`) -> revisor revisa (`-> revisado`) -> gerente aprueba.
-Esperado: el `motivo_rechazo` queda registrado y visible; la edicion solo esta
-abierta en `en_correccion`.
+**FLU-02 - Rechazo del revisor.**
+Pasos: tecnico envia (`-> en_revision`) -> revisor rechaza con motivo
+(`-> rechazado`).
+Esperado: el `motivo_rechazo` queda registrado y visible; `rechazado` es
+terminal, no ofrece ningun boton de transicion y la edicion queda cerrada.
+
+**FLU-02b - Devolucion del revisor al tecnico.**
+Pasos: tecnico envia (`-> en_revision`) -> revisor "Devolver al tecnico" sin
+observacion -> error 422 en `comentario` -> con la observacion `-> en_correccion`
+-> el tecnico corrige (edicion abierta) y reenvia `-> en_revision` -> el revisor
+revisa `-> revisado`.
+Esperado: la observacion queda en el historial (campo `comentario`), no hay
+`motivo_rechazo` y la liquidacion sigue viva. El boton de etiqueta "Rechazar"
+no es el mismo que "Devolver al tecnico".
 
 **FLU-03 - Rechazo del gerente.**
-Pasos: `revisado -> rechazado` (gerente, con motivo) -> autor corrige ->
-reenvia -> revisa -> aprueba.
-Esperado: igual que FLU-02 pero el rechazo lo firma el gerente.
+Pasos: `revisado -> rechazado` (gerente, con motivo).
+Esperado: el `motivo_rechazo` lo firma el gerente; `rechazado` es terminal,
+igual que en FLU-02.
+
+**FLU-03b - Devolucion del gerente al revisor.**
+Pasos: `revisado` -> gerente "Devolver al revisor" sin observacion -> error 422
+en `comentario` -> con la observacion `-> en_revision` -> el revisor re-revisa
+`-> revisado` -> el gerente aprueba `-> aprobado`.
+Esperado: la observacion queda en el historial y la fecha de la primera
+revision (`fecha_revision`) NO se reescribe: el rastro de la re-entrada esta
+solo en el historial.
 
 **FLU-04 - Anulacion.**
-Pasos: con una liquidacion `en_revision` (o `creado`/`revisado`/`rechazado`/
-`en_correccion`), el gerente (o admin) anula con motivo.
+Pasos: con una liquidacion `en_revision` (o `creado`/`revisado`), el gerente
+(o admin) anula con motivo.
 Esperado: `anulado` (terminal), `motivo_anulacion` registrado. Intentar anular
-una `aprobado` da 422.
+una `aprobado` o una `rechazado` da 422.
 
 **FLU-05 - Eliminacion.**
 Pasos: tecnico autor borra su liquidacion `creado`.
@@ -476,7 +498,8 @@ php artisan test --filter=FlujoPermisosTest
 - [ ] Los 4 roles entran y ven exactamente su menu (seccion 3.3).
 - [ ] El tecnico solo accede a lo propio; revisor/gerente/admin ven todo.
 - [ ] Flujo feliz completo llega a `aprobado` y esta queda inmutable.
-- [ ] Correccion y rechazo con motivo funcionan de punta a punta.
+- [ ] Rechazo con motivo funciona de punta a punta y deja la liquidacion cerrada.
+- [ ] La devolucion (revisor->tecnico y gerente->revisor) exige observacion y no cierra el expediente.
 - [ ] Anulacion y eliminacion respetan estados y autoridad.
 - [ ] Un gerente no aprueba su propia liquidacion.
 - [ ] Los montos ORO-A y ORO-B coinciden con el Excel.
@@ -495,6 +518,9 @@ php artisan test --filter=FlujoPermisosTest
 | CAP-02 | | | | |
 | FLU-01 | | | | |
 | FLU-02 | | | | |
+| FLU-02b | | | | |
+| FLU-03 | | | | |
+| FLU-03b | | | | |
 | FLU-04 | | | | |
 | VIS-01 | | | | |
 | VIS-03 | | | | |

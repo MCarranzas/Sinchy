@@ -15,8 +15,8 @@ use Tests\TestCase;
 /**
  * La maquina de estados y su bitacora (secciones 5.5 y 3.5).
  *
- * La matriz completa, 8 estados por 8: 13 pares permitidos se aplican y
- * escriben su fila de historial; los 51 restantes se rechazan sin dejar ni
+ * La matriz completa, 8 estados por 8: 11 pares permitidos se aplican y
+ * escriben su fila de historial; los 53 restantes se rechazan sin dejar ni
  * un rastro. Cada caso es la tabla de docs/reglas-negocio.md, no una
  * opinion de este archivo.
  *
@@ -35,9 +35,9 @@ final class TransicionEstadoTest extends TestCase
      */
     private const VALIDAS = [
         'creado' => ['en_revision', 'anulado', 'eliminado'],
-        'en_revision' => ['revisado', 'rechazado', 'anulado'],
-        'revisado' => ['aprobado', 'rechazado', 'anulado'],
-        'rechazado' => ['en_correccion', 'anulado'],
+        'en_revision' => ['revisado', 'rechazado', 'anulado', 'en_correccion'],
+        'revisado' => ['aprobado', 'rechazado', 'anulado', 'en_revision'],
+        'rechazado' => [],
         'en_correccion' => ['en_revision', 'anulado'],
         'aprobado' => [],
         'anulado' => [],
@@ -58,7 +58,7 @@ final class TransicionEstadoTest extends TestCase
         'anulado' => ['origen' => 'en_revision', 'fecha' => 'fecha_anulacion', 'usuario' => 'usuario_anulacion_id'],
     ];
 
-    public function test_los_trece_pares_validos_se_aplican_y_quedan_en_el_historial(): void
+    public function test_los_once_pares_validos_se_aplican_y_quedan_en_el_historial(): void
     {
         $usuario = User::factory()->create();
         $servicio = new TransicionEstadoService;
@@ -96,7 +96,7 @@ final class TransicionEstadoTest extends TestCase
         $this->assertSame(13, $aplicados, 'la matriz de la seccion 5.5 tiene 13 transiciones');
     }
 
-    public function test_los_cincuenta_y_un_pares_no_permitidos_no_escriben_nada(): void
+    public function test_los_cincuenta_y_tres_pares_no_permitidos_no_escriben_nada(): void
     {
         $usuario = User::factory()->create();
         $servicio = new TransicionEstadoService;
@@ -254,6 +254,46 @@ final class TransicionEstadoTest extends TestCase
         }
     }
 
+    /**
+     * El gerente devuelve al revisor (`revisado` -> `en_revision`) con una
+     * observacion, y eso NO reescribe `fecha_revision` ni
+     * `usuario_revision_id`: la re-entrada a revision deja rastro en el
+     * historial, la fecha del primer envio queda intacta.
+     */
+    public function test_devolver_al_revisor_no_reescribe_las_columnas_de_revision(): void
+    {
+        $usuario = User::factory()->create();
+        $servicio = new TransicionEstadoService;
+
+        // Flujo real: creado -> en_revision (escribe fecha_revision) ->
+        // revisado (revisa el revisor) -> en_revision (devolver del gerente).
+        $envio = $servicio->ejecutar(
+            Liquidacion::factory()->create(['estado' => 'creado']),
+            EstadoLiquidacion::EnRevision,
+            $usuario,
+        );
+
+        $fechaOriginal = $envio->fresh()->fecha_revision;
+        $usuarioOriginal = $envio->fresh()->usuario_revision_id;
+
+        $revisado = $servicio->ejecutar($envio->fresh(), EstadoLiquidacion::Revisado, $usuario);
+
+        $devolvida = $servicio->ejecutar(
+            $revisado->fresh(),
+            EstadoLiquidacion::EnRevision,
+            $usuario,
+            'Revisar el sello del laboratorio.',
+        );
+
+        $this->assertSame('en_revision', $devolvida->estado->value);
+        $this->assertEquals($fechaOriginal, $devolvida->fecha_revision);
+        $this->assertSame($usuarioOriginal, $devolvida->usuario_revision_id);
+        $this->assertSame(
+            'Revisar el sello del laboratorio.',
+            $devolvida->historial()->latest('id')->value('comentario'),
+        );
+    }
+
     public function test_el_rechazo_y_la_anulacion_guardan_el_motivo(): void
     {
         $usuario = User::factory()->create();
@@ -282,10 +322,12 @@ final class TransicionEstadoTest extends TestCase
     }
 
     /**
-     * Los estados que no tienen columnas de auditoria solo dejan rastro en
-     * el historial: la fila no gana fechas ni usuarios inventados.
+     * Los estados sin columnas de auditoria solo dejan rastro en el
+     * historial: la fila no gana fechas ni usuarios inventados. `revisado`
+     * es el unico caso vivo (en_correccion quedo como legacy del enum);
+     * `rechazado` en cambio SI escribe su par fecha/usuario y el motivo.
      */
-    public function test_revisado_y_en_correccion_no_escriben_columnas_de_auditoria(): void
+    public function test_revisado_no_escribe_columnas_y_rechazado_si(): void
     {
         $usuario = User::factory()->create();
         $servicio = new TransicionEstadoService;
@@ -302,14 +344,47 @@ final class TransicionEstadoTest extends TestCase
         $this->assertNull($revisado->fecha_anulacion);
         $this->assertNotNull($revisado->historial()->sole());
 
-        $enCorreccion = $servicio->ejecutar(
-            Liquidacion::factory()->create(['estado' => 'rechazado']),
-            EstadoLiquidacion::EnCorreccion,
+        $rechazada = $servicio->ejecutar(
+            Liquidacion::factory()->create(['estado' => 'en_revision']),
+            EstadoLiquidacion::Rechazado,
             $usuario,
+            'rechazo',
+            'La cota del peso no coincide con la pesada.',
         );
 
-        $this->assertNull($enCorreccion->fecha_revision);
-        $this->assertNotNull($enCorreccion->historial()->sole());
+        $this->assertNotNull($rechazada->fecha_rechazo);
+        $this->assertSame($usuario->id, $rechazada->usuario_rechazo_id);
+        $this->assertSame('La cota del peso no coincide con la pesada.', $rechazada->motivo_rechazo);
+        $this->assertNotNull($rechazada->historial()->sole());
+    }
+
+    /**
+     * Una rechazada es terminal: sin correccion ni anulacion. El rechazo
+     * no abre ningun camino posterior, decision del negocio del 2026-10-12.
+     */
+    public function test_desde_rechazado_no_hay_salida_ni_hacia_correccion_ni_anulacion(): void
+    {
+        $rechazada = Liquidacion::factory()->create(['estado' => 'rechazado']);
+
+        foreach (array_keys(self::VALIDAS) as $destino) {
+            try {
+                (new TransicionEstadoService)->ejecutar(
+                    $rechazada,
+                    EstadoLiquidacion::from($destino),
+                    User::factory()->create(),
+                    null,
+                    'motivo de prueba',
+                );
+                $this->fail("rechazado -> {$destino} debio ser rechazada");
+            } catch (TransicionInvalidaException) {
+                // Rechazado sin salida, como aprobado.
+            }
+        }
+
+        $rechazada->refresh();
+
+        $this->assertSame('rechazado', $rechazada->estado->value);
+        $this->assertSame(0, $rechazada->historial()->count());
     }
 
     /**

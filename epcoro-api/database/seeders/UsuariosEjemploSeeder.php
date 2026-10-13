@@ -15,7 +15,7 @@ use Illuminate\Support\Str;
  * (9, criterio de aceptacion):
  *
  *   tecnico  -> crea y envia a revision (y los suyos unicamente, D3)
- *   revisor  -> revisa, solicita correccion o rechaza
+ *   revisor  -> revisa o rechaza
  *   gerente  -> aprueba o anula, nunca lo suyo (4.2)
  *
  * Contrasena ALEATORIA mostrada una sola vez, igual que en AdminSeeder: una

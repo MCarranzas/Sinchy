@@ -7,10 +7,17 @@ namespace App\Enums;
  * `liquidacion_estado` de PostgreSQL: el mismo orden, los mismos valores.
  *
  * La maquina de estados es la de docs/reglas-negocio.md (decision D2), que es
- * la que manda sobre instrucciones.txt. La fila `aprobado` esta CONFIRMADA
- * por el usuario de negocio como terminal e inmutable; las demas transiciones
- * siguen siendo la propuesta de esa tabla y estan pendientes de confirmacion
- * una por una (punto abierto 3).
+ * la que manda sobre instrucciones.txt. Dos decisiones del usuario de negocio
+ * conviven aqui:
+ *
+ *  - `aprobado` y `rechazado` son TERMINALES e inmutables: una aprobada no se
+ *    toca jamas, y una rechazada tampoco. El rechazo es final, no abre
+ *    correccion.
+ *  - "Devolver" (decision 2026-10-12) es una accion APARTE del rechazo: el
+ *    revisor devuelve al tecnico con una observacion (`en_revision` ->
+ *    `en_correccion`, donde el autor corrige y reenvia) y el gerente devuelve
+ *    al revisor (`revisado` -> `en_revision`, donde el revisor re-revisa).
+ *    `en_correccion` vuelve a ser alcanzable, pero solo por esa via.
  *
  * Capas de defensa (seccion 4.1):
  *   1. este enum  -> puedeTransicionA()
@@ -38,10 +45,12 @@ enum EstadoLiquidacion: string
      */
     private const TRANSICIONES = [
         'creado' => ['en_revision', 'anulado', 'eliminado'],
-        'en_revision' => ['revisado', 'rechazado', 'anulado'],
-        'revisado' => ['aprobado', 'rechazado', 'anulado'],
-        'rechazado' => ['en_correccion', 'anulado'],
-        'en_correccion' => ['en_revision', 'anulado'],
+        // `en_correccion`: el revisor devuelve al tecnico para que corrija.
+        'en_revision' => ['revisado', 'rechazado', 'anulado', 'en_correccion'],
+        // `en_revision`: el gerente devuelve al revisor para que corrija su revision.
+        'revisado' => ['aprobado', 'rechazado', 'anulado', 'en_revision'],
+        'rechazado' => [], // TERMINAL, inmutable. Confirmado por el negocio 2026-10-12: sin correccion.
+        'en_correccion' => ['en_revision', 'anulado'], // vive: solo se alcanza desde en_revision (devolver).
         'aprobado' => [],  // TERMINAL, inmutable. Confirmado por el negocio 2026-10-05.
         'anulado' => [],   // terminal: es cancelar un tramite en curso.
         'eliminado' => [], // terminal: borrado logico, jamas se borra de la BD.

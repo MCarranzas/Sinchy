@@ -68,31 +68,44 @@ CERRADO y ya no bloquea la FASE 4.
 cancelar un trámite en curso; no es la salida de una aprobación. Por eso
 `fecha_anulacion` y `usuario_anulacion_id` quedan en el esquema.
 
+**RESUELTO el 2026-10-12 (rechazo terminal + devolución).** El usuario de negocio
+confirmó dos cosas que conviven en la máquina de estados:
+
+1. **Una liquidación rechazada es final**: no se corrige y no se anula. Un
+   rechazo se registra con `motivo_rechazo` (obligatorio) y el expediente queda
+   cerrado, lo mismo que una aprobada.
+2. **La devolución es una acción aparte del rechazo**, con observación
+   obligatoria, y no cierra el expediente:
+   - el **revisor** devuelve al técnico (`en_revision` → `en_correccion`) para
+     que corrija y reenvíe (`en_correccion` → `en_revision`);
+   - el **gerente** devuelve al revisor (`revisado` → `en_revision`) para que
+     corrija su revisión y la marque de nuevo como revisada.
+
+   El estado `en_correccion` vuelve a ser alcanzable, pero **solo por la
+   devolución del revisor**, nunca desde el rechazo.
+
 **Ambigüedad que había que cerrar.** `instrucciones.txt` v1.0 definía un estado
 `en_correccion` y un estado `eliminado`. Con la decisión actual:
 
-- `en_correccion` solo es alcanzable desde `rechazado`. Una liquidación
-  rechazada sí se corrige: para eso existe el rechazo. Lo que no se corrige es
-  una ya aprobada.
+- `en_correccion` solo se alcanza desde `en_revision` por la devolución del
+  revisor. El rechazo sigue siendo terminal y no hay reenvío a corrección.
 - `eliminado` (borrado lógico) solo se permite desde `creado`. Borrar una
   liquidación en revisión o aprobada por la puerta de atrás anularía la decisión
   D2.
 
-**Máquina de estados.** La fila `aprobado` está CONFIRMADA por el usuario de
-negocio (terminal, sin salida, ni anulación). Las demás transiciones son las
-propuestas de esta tabla y **no han sido confirmadas una por una**; si alguna no
-es la correcta, hay que corregirla antes de implementar las transiciones:
+**Máquina de estados.** La fila `rechazado` está CONFIRMADA por el usuario de
+negocio (terminal, sin salida); el resto de la tabla proviene de la tabla
+histórica, con las dos aristas de devolución agregadas el 2026-10-12. Si alguna
+no es la correcta, hay que corregirla antes de implementar las transiciones:
 
 | Desde | Hacia |
 |---|---|
 | `creado` | `en_revision`, `anulado`, `eliminado` |
-| `en_revision` | `revisado`, `rechazado`, `anulado` |
-| `revisado` | `aprobado`, `rechazado`, `anulado` |
-| `rechazado` | `en_correccion`, `anulado` |
-| `en_correccion` | `en_revision`, `anulado` |
+| `en_revision` | `revisado`, `rechazado`, `anulado`, `en_correccion` (devolver al técnico) |
+| `revisado` | `aprobado`, `rechazado`, `anulado`, `en_revision` (devolver al revisor) |
+| `rechazado` | — (terminal, inmutable) CONFIRMADO el 2026-10-12 |
+| `en_correccion` | `en_revision`, `anulado` (vive: solo se alcanza por devolución) |
 | `aprobado` | — (terminal, inmutable) CONFIRMADO |
-| `anulado` | — (terminal) |
-| `eliminado` | — (terminal) |
 
 ---
 
@@ -223,22 +236,27 @@ ORO-A es la réplica exacta de la fila real del Excel (C20 = NO).
    Una liquidación aprobada no se puede anular, solo rechazar. `aprobado` es
    terminal y `anulado` es inalcanzable desde ahí.
 
+**Cerrado el 2026-10-12**:
+
+6. ~~**Máquina de estados: rechazado → en_correccion**~~ → **CERRADO.** El
+   usuario de negocio confirmó que **el rechazo es final**: una rechazada no se
+   corrige ni se anula, `rechazado` es terminal. A la vez confirmó la
+   **devolución** como acción aparte: el revisor devuelve al técnico
+   (`en_revision` → `en_correccion`) y el gerente devuelve al revisor
+   (`revisado` → `en_revision`), las dos con observación obligatoria. Queda
+   implementado en `EstadoLiquidacion.php`.
+
 **Sigue abierto:**
 
 2. **Visibilidad del revisor** (D3): ¿ve todas las liquidaciones ajenas o solo
    las que están en revisión? Hoy está implementado como "ve todas". No cambia
    el esquema, es una Policy.
-3. **Máquina de estados** (D2): la fila `aprobado` ya está confirmada como
-   terminal. Falta confirmar una por una las demás transiciones, en particular
-   si `eliminado` existe y si `rechazado → en_correccion` es el ciclo correcto.
-   La tabla propuesta está más arriba.
 5. **Vía de corrección para una aprobada mal cargada**: si el error es grave
    (un peso mal escrito), ¿se hace una liquidación nueva que referencie a la
    anterior, o se acepta el error? Hoy no existe ninguna de las dos. Con la
    decisión de que `aprobado` es terminal, esta vía es la única salida posible
    para un error grave, así que conviene resolverla antes de construir la FASE 5.
 
-Nota: los puntos 2 y 3 no cambian el esquema de la base de datos, se pueden
-resolver durante la FASE 4. El punto 5 sí afecta el modelo, pero no bloquea: si
-no se decide, la FASE 4 se construye sin la tabla de referencias y se agrega
-despues.
+Nota: el punto 2 no cambia el esquema de la base de datos, se puede resolver
+durante la FASE 4. El punto 5 sí afecta el modelo, pero no bloquea: si no se
+decide, la FASE 4 se construye sin la tabla de referencias y se agrega despues.

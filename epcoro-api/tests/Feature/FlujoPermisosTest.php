@@ -38,7 +38,7 @@ class FlujoPermisosTest extends AuthTestCase
     // ------------------------------------------------------------ 9.7
 
     /**
-     * 20 filas: 4 roles x los destinos que el negocio les asigna, con la
+     * 27 filas: 4 roles x los destinos que el negocio les asigna, con la
      * propiedad cruzada a proposito (siempre hay al menos un caso propio y
      * uno ajeno por rol).
      *
@@ -47,6 +47,7 @@ class FlujoPermisosTest extends AuthTestCase
     public static function matriz(): array
     {
         $motivo = ['motivo' => 'La cota del peso no coincide con la pesada.'];
+        $observacion = ['comentario' => 'El mineral traia tierra; muestrear de nuevo.'];
 
         return [
             // ------------------------------------------------ tecnico
@@ -63,9 +64,12 @@ class FlujoPermisosTest extends AuthTestCase
             'revisor tambien revisa la suya' => ['revisor', 'en_revision', true, 'revisado', [], 200],
             'revisor no aprueba' => ['revisor', 'revisado', false, 'aprobado', [], 403],
             'rechazo sin motivo no pasa' => ['revisor', 'en_revision', false, 'rechazado', [], 422],
-            'revisor solicita correccion con motivo' => ['revisor', 'en_revision', false, 'rechazado', $motivo, 200],
+            'revisor rechaza desde en_revision con motivo' => ['revisor', 'en_revision', false, 'rechazado', $motivo, 200],
             'revisor rechaza desde revisado' => ['revisor', 'revisado', false, 'rechazado', $motivo, 200],
             'revisor no mueve algo en creado' => ['revisor', 'creado', false, 'revisado', [], 422],
+            'devolver al tecnico sin observacion no pasa' => ['revisor', 'en_revision', false, 'en_correccion', [], 422],
+            'revisor devuelve al tecnico con observacion' => ['revisor', 'en_revision', false, 'en_correccion', $observacion, 200],
+            'revisor no devuelve al revisor (falta permiso)' => ['revisor', 'revisado', false, 'en_revision', $observacion, 403],
 
             // ------------------------------------------------- gerente
             'gerente aprueba ajena' => ['gerente', 'revisado', false, 'aprobado', [], 200],
@@ -73,9 +77,13 @@ class FlujoPermisosTest extends AuthTestCase
             'anulacion sin motivo no pasa' => ['gerente', 'en_revision', false, 'anulado', [], 422],
             'gerente anula con motivo' => ['gerente', 'en_revision', false, 'anulado', $motivo, 200],
             'gerente no envia a revision' => ['gerente', 'creado', false, 'en_revision', [], 403],
+            'devolver al revisor sin observacion no pasa' => ['gerente', 'revisado', false, 'en_revision', [], 422],
+            'gerente devuelve al revisor con observacion' => ['gerente', 'revisado', false, 'en_revision', $observacion, 200],
+            'gerente no devuelve al tecnico (solo revisor)' => ['gerente', 'en_revision', false, 'en_correccion', $observacion, 403],
 
             // --------------------------------------------------- admin
             'nadie toca una aprobada' => ['admin', 'aprobado', true, 'anulado', $motivo, 422],
+            'nadie reactiva una rechazada ni la anula' => ['admin', 'rechazado', true, 'anulado', $motivo, 422],
         ];
     }
 
@@ -124,20 +132,23 @@ class FlujoPermisosTest extends AuthTestCase
         );
 
         // El revisor no tiene `anular`, aunque el enum lo permita desde aqui.
+        // Ademas del paso normal a `revisado` y del rechazo, devuelve al
+        // tecnico: `en_revision` -> `en_correccion`.
         $revisor = User::factory()->conRol('revisor')->create();
         $this->assertSame(
-            ['revisado', 'rechazado'],
+            ['revisado', 'rechazado', 'en_correccion'],
             $this->disponibles($revisor, $this->liquidacionDe($tecnico, ['estado' => 'en_revision'])),
         );
 
-        // El gerente aprueba y anula, pero NUNCA lo suyo (4.2).
+        // El gerente aprueba y anula, pero NUNCA lo suyo (4.2). Ademas
+        // devuelve al revisor: `revisado` -> `en_revision`.
         $gerente = User::factory()->conRol('gerente')->create();
         $this->assertSame(
-            ['aprobado', 'rechazado', 'anulado'],
+            ['aprobado', 'rechazado', 'anulado', 'en_revision'],
             $this->disponibles($gerente, $this->liquidacionDe($tecnico, ['estado' => 'revisado'])),
         );
         $this->assertSame(
-            ['rechazado', 'anulado'],
+            ['rechazado', 'anulado', 'en_revision'],
             $this->disponibles($gerente, $this->liquidacionDe($gerente, ['estado' => 'revisado'])),
         );
 

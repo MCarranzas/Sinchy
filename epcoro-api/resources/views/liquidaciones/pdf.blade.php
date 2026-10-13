@@ -30,7 +30,7 @@
     <table>
         <tr><th>Estado</th><td>{{ $liquidacion->estado->etiqueta() }}</td></tr>
         <tr><th>Fecha de transaccion</th><td>{{ $liquidacion->fecha_transaccion?->format('d/m/Y') }}</td></tr>
-        <tr><th>Registrado por</th><td>{{ $liquidacion->registro?->nombre_completo }} ({{ $liquidacion->fecha_registro?->format('d/m/Y H:i') }})</td></tr>
+        <tr><th>Registrado por</th><td>{{ $liquidacion->registro?->username }} ({{ $liquidacion->fecha_registro?->format('d/m/Y H:i') }})</td></tr>
         <tr><th>Observaciones</th><td>{{ $liquidacion->observaciones ?: '-' }}</td></tr>
     </table>
 

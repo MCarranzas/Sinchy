@@ -65,7 +65,7 @@ final class TransicionEstadoService
 
             $actual->forceFill(array_merge(
                 ['estado' => $destino],
-                $this->columnasDe($destino, $usuario, $motivo),
+                $this->columnasDe($destino, $usuario, $motivo, $origen),
             ))->save();
 
             $this->historial($actual, $origen, $destino, $usuario, $comentario);
@@ -99,13 +99,17 @@ final class TransicionEstadoService
      *
      * @return array<string, mixed>
      */
-    private function columnasDe(EstadoLiquidacion $destino, User $usuario, ?string $motivo): array
+    private function columnasDe(EstadoLiquidacion $destino, User $usuario, ?string $motivo, ?EstadoLiquidacion $origen = null): array
     {
         return match ($destino) {
-            EstadoLiquidacion::EnRevision => [
-                'fecha_revision' => now(),
-                'usuario_revision_id' => $usuario->id,
-            ],
+            EstadoLiquidacion::EnRevision => match ($origen) {
+                // Devolver del gerente al revisor: NO pisa fecha_revision
+                EstadoLiquidacion::Revisado => [],
+                default => [
+                    'fecha_revision' => now(),
+                    'usuario_revision_id' => $usuario->id,
+                ],
+            },
             EstadoLiquidacion::Aprobado => [
                 'fecha_aprobacion' => now(),
                 'usuario_aprobacion_id' => $usuario->id,

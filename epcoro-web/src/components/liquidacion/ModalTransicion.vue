@@ -4,9 +4,10 @@
  *
  * El contrato real es el de TransicionRequest: `motivo` OBLIGATORIO en
  * `rechazado` y `anulado` (la razon que el tecnico necesita para corregir),
- * y `comentario` SIEMPRE opcional. Ese es el campo que aqui se ofrece, igual
- * de obligatorio u opcional que alla, para que la UI y la API no se
- * desincronicen (9.9, espejo de las reglas del backend).
+ * `comentario` (la observacion) OBLIGATORIO al DEVOLVER (revisor->tecnico,
+ * gerente->revisor) y OPCIONAL en el resto. Ese es el campo que aqui se
+ * ofrece, igual de obligatorio u opcional que alla, para que la UI y la API
+ * no se desincronicen (9.9, espejo de las reglas del backend).
  */
 import { computed, nextTick, ref, watch } from 'vue'
 
@@ -46,6 +47,7 @@ watch(
 
 const titulo = computed(() => props.accion?.etiqueta ?? 'Confirmar movimiento')
 const esPeligro = computed(() => props.accion?.variante === 'peligro')
+const requiereTexto = computed(() => Boolean(props.accion?.requiereMotivo))
 
 function confirmar(): void {
   if (!props.accion) {
@@ -54,15 +56,17 @@ function confirmar(): void {
 
   const valor = texto.value.trim()
 
-  if (props.accion.requiereMotivo && !valor) {
-    error.value = 'El motivo es obligatorio en esta transición.'
+  if (requiereTexto.value && !valor) {
+    error.value = props.accion?.campo === 'motivo' ? 'El motivo es obligatorio en esta transición.' : 'La observación es obligatoria en esta transición.'
     return
   }
 
-  emit('confirmar', {
+  const esMotivo = props.accion.campo === 'motivo'
+  const payload: TransicionPayload = {
     estado_destino: props.accion.destino,
-    ...(props.accion.requiereMotivo ? { motivo: valor } : { comentario: valor || undefined }),
-  })
+    ...(esMotivo ? { motivo: valor || undefined } : { comentario: valor || undefined }),
+  }
+  emit('confirmar', payload)
 }
 </script>
 
@@ -85,7 +89,9 @@ function confirmar(): void {
         <p class="mt-1 text-sm text-slate-500">
           {{
             accion?.requiereMotivo
-              ? 'El motivo es obligatorio: es la razón que verá el técnico para corregir.'
+              ? accion.campo === 'motivo'
+                ? 'El motivo es obligatorio (se guarda en la auditoría).'
+                : 'La observación es obligatoria: es lo que el destinatario necesita para corregir.'
               : 'El comentario es opcional. Dejá las notas que quieras en el historial.'
           }}
         </p>
@@ -95,7 +101,9 @@ function confirmar(): void {
           v-model="texto"
           rows="3"
           :maxlength="2000"
-          :placeholder="accion?.requiereMotivo ? 'Motivo…' : 'Comentario (opcional)…'"
+          :placeholder="accion?.requiereMotivo
+            ? (accion.campo === 'motivo' ? 'Motivo…' : 'Observación…')
+            : 'Comentario (opcional)…'"
           class="mt-3 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-marca-500 focus:outline-none focus:ring-2 focus:ring-marca-100"
           @keydown.esc="emit('cancelar')"
         />
