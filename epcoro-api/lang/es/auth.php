@@ -5,7 +5,7 @@
 | Mensajes de autenticacion (espanol)
 |--------------------------------------------------------------------------
 |
-| El login de EPCORO escribe sus propios mensajes (LoginRequest), pero estas
+| El login de SINCHI WAYRA escribe sus propios mensajes (LoginRequest), pero estas
 | claves son las que usa el framework en otros puntos: guardias `auth`,
 | confirmacion de contrasena, throttling, etc.
 |

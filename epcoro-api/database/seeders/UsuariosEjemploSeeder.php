@@ -7,16 +7,18 @@ use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
 
 /**
- * Los cuatro usuarios de ejemplo del flujo de aprobacion (FASE 9.7).
+ * Usuarios de ejemplo del flujo de aprobacion (FASE 9.7).
  *
  * `admin` ya lo crea AdminSeeder, y no se duplica: si no existe se avisa y se
- * sigue con los otros tres. Los tres roles del circuito son los que la
- * demostracion necesita para recorrer la maquina de estados de punta a punta
- * (9, criterio de aceptacion):
+ * sigue con los demas. Los roles del circuito son los que la demostracion
+ * necesita para recorrer la maquina de estados de punta a punta (9, criterio
+ * de aceptacion):
  *
- *   tecnico  -> crea y envia a revision (y los suyos unicamente, D3)
- *   revisor  -> revisa o rechaza
- *   gerente  -> aprueba o anula, nunca lo suyo (4.2)
+ *   tecnico   -> crea y envia a revision (y los suyos unicamente, D3)
+ *   tecnico2  -> segundo tecnico del mismo rol: sirve para comprobar que un
+ *                tecnico no accede a las liquidaciones del otro (D3)
+ *   revisor   -> revisa o rechaza
+ *   gerente   -> aprueba o anula, nunca lo suyo (4.2)
  *
  * En desarrollo las contrasenas son las de usuarios_prueba.txt, fijas y
  * conocidas, para no depender de un volcado por consola. Fuera de desarrollo se
@@ -30,13 +32,16 @@ use Illuminate\Support\Str;
 class UsuariosEjemploSeeder extends Seeder
 {
     /**
-     * @var list<array{string, string, string}>
+     * [usuario, correo, nombre, rol]
+     *
+     * @var list<array{string, string, string, string}>
      */
     private const CUENTAS = [
-        ['admin', 'admin@epcoro.local', 'Administrador del Sistema'],
-        ['tecnico', 'tecnico@epcoro.local', 'Tecnico de Captura'],
-        ['revisor', 'revisor@epcoro.local', 'Revisor de Liquidaciones'],
-        ['gerente', 'gerente@epcoro.local', 'Gerente de Comercializacion'],
+        ['admin', 'admin@sinchiwayra.local', 'Administrador del Sistema', 'admin'],
+        ['tecnico', 'tecnico@sinchiwayra.local', 'Tecnico de Captura', 'tecnico'],
+        ['tecnico2', 'tecnico2@sinchiwayra.local', 'Tecnico de Captura (2)', 'tecnico'],
+        ['revisor', 'revisor@sinchiwayra.local', 'Revisor de Liquidaciones', 'revisor'],
+        ['gerente', 'gerente@sinchiwayra.local', 'Gerente de Comercializacion', 'gerente'],
     ];
 
     /**
@@ -47,6 +52,7 @@ class UsuariosEjemploSeeder extends Seeder
     private const PASSWORDS_DESARROLLO = [
         'admin' => 'Admin123',
         'tecnico' => 'Tecnico123',
+        'tecnico2' => 'tecnico2',
         'revisor' => 'Revisor123',
         'gerente' => 'Gerente123',
     ];
@@ -56,9 +62,9 @@ class UsuariosEjemploSeeder extends Seeder
         $produccion = app()->environment('production');
         $filas = [];
 
-        foreach (self::CUENTAS as [$username, $correo, $nombre]) {
+        foreach (self::CUENTAS as [$username, $correo, $nombre, $rol]) {
             if (User::query()->where('username', $username)->exists()) {
-                $filas[] = [$username, '(ya existe)', $username];
+                $filas[] = [$username, '(ya existe)', $rol];
 
                 continue;
             }
@@ -76,9 +82,9 @@ class UsuariosEjemploSeeder extends Seeder
                 'debe_cambiar_password' => false,
             ]);
 
-            $usuario->assignRole($username === 'admin' ? 'admin' : $username);
+            $usuario->assignRole($rol);
 
-            $filas[] = [$username, $password, $username];
+            $filas[] = [$username, $password, $rol];
         }
 
         $this->command->newLine();

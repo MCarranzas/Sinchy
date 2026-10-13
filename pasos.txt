@@ -1,5 +1,5 @@
 ================================================================================
- EPCORO - BITACORA DE EJECUCION
+ SINCHI WAYRA - BITACORA DE EJECUCION
 ================================================================================
  Archivo    : pasos.txt
  Fecha init : 2026-10-05
@@ -142,7 +142,7 @@ RESULTADO : G2 =FORM-              H2 ==C8-> EP-BCB-723I2 =/2024
             C8  ==[1]NOMBRES!D3   -> EP-BCB-723
             F9  ==[1]NOMBRES!R3   -> 2648.57          $/OzT
             F10 ==(F9/31.1035)*F6*C40 -> 1072018.8360554   Bs
-            C11 = EMPRESA ESTATAL DE PRODUCCION Y COMERCIALIZACION DEL ORO
+            C11 = SINCHI WAYRA S.A.
             C12 = 02-2388-05(NIM)      C13 = 1006965023(NIT, numerico)
             C20 = NO                <-- CAJA DE SALUD NO APLICA
             C21 = DYONNE LIZET TITO CORTEZ   C22 = 5956713(CI, numerico)
@@ -841,7 +841,7 @@ RESULTADO : Contenido de la raiz: preguntas_curso_claude/, diagrama, hoja.xlsx,
             Draw.io: NO corriendo -> era seguro mover.
             .git: NO existia -> hacia falta el paso 1.9.
             preguntas_curso_claude/ contiene material de un curso de Claude
-            (PASO 0 a PASO 3). NO es de EPCORO: se deja en la raiz pero se
+            (PASO 0 a PASO 3). NO es de SINCHI WAYRA: se deja en la raiz pero se
             excluye del repositorio.
 ESTADO    : OK
 
@@ -874,7 +874,7 @@ RESULTADO : .gitignore creado. Cubre vendor, node_modules, .env (incluye
             phpunit/phpstan/pint, .sqlite, .vite, .idea, Thumbs.db,
             artefactos de Draw.io (*.bkp, .$*).
             Incluye /preguntas_curso_claude/ para que el material del curso no
-            entre al repositorio de EPCORO.
+            entre al repositorio de SINCHI WAYRA.
             Regla de seguridad: los .env NUNCA se versionan.
 ESTADO    : OK
 
@@ -985,7 +985,7 @@ ESTADO    : OK
 
 ### [63] 18:39 - FASE 2.3 / CONFIGURAR .env PARA POSTGRESQL
 COMANDO   : edit epcoro-api/.env
-RESULTADO : APP_NAME=Laravel -> EPCORO
+RESULTADO : APP_NAME=Laravel -> SINCHI WAYRA
             APP_URL=http://localhost -> http://localhost:8000
             APP_TIMEZONE=America/La_Paz  (agregado; ver la trampa del paso [68])
             APP_LOCALE=en -> es ; APP_FAKER_LOCALE=en_US -> es_BO
@@ -1130,7 +1130,7 @@ RESULTADO : GET /api/health (nombre 'health') fuera del grupo web, o sea sin
             timestamp. Si la base no responde devuelve 503 con status
             'degraded' y el detalle del error en checks.database.
             ruta:list confirma -> GET|HEAD api/health  health
-PRIMERA PRUEBA: {"status":"ok","app":"EPCORO","php":"8.4.26",
+PRIMERA PRUEBA: {"status":"ok","app":"SINCHI WAYRA","php":"8.4.26",
             "laravel":"13.34.0","timezone":"UTC","checks":{"database":"ok"}}
             -> 200. La base respondia, pero el timezone estaba mal (ver [68]).
 TRAMPA   : la primera version del archivo usaba DB:: sin importar el facade y
@@ -1143,7 +1143,7 @@ COMANDO   : Start-Process php artisan serve --host=127.0.0.1 --port=8000
             curl http://127.0.0.1:8000/api/health
             curl http://127.0.0.1:8000/up
 RESULTADO : /api/health -> HTTP 200
-            {"status":"ok","app":"EPCORO","environment":"local","php":"8.4.26",
+            {"status":"ok","app":"SINCHI WAYRA","environment":"local","php":"8.4.26",
              "laravel":"13.34.0","timezone":"America/La_Paz",
              "checks":{"database":"ok"},
              "timestamp":"2026-10-05T18:31:55-04:00"}
@@ -1182,7 +1182,7 @@ RESULTADO : database/database.sqlite SI existia (lo crea el script
             Eso es un riesgo real de despliegue: un desarrollador copiando el
             ejemplo=configuraba MySQL. Reescrito para reflejar la
             configuracion real:
-              APP_NAME=EPCORO, APP_URL=http://localhost:8000,
+              APP_NAME=SINCHI WAYRA, APP_URL=http://localhost:8000,
               APP_TIMEZONE=America/La_Paz, APP_LOCALE=es,
               DB_CONNECTION=pgsql, DB_PORT=5432, SESSION_LIFETIME=480,
               SESSION_SAME_SITE=lax, CORS_ALLOWED_ORIGINS,
@@ -1422,7 +1422,7 @@ DECISION  : No crear las tablas a mano. Usar Spatie Permission para roles y
 
             Para que las Policies no tengan que consultar el pivote en cada fila,
             User lleva un helper rol() que devuelve el unico rol del usuario
-            (en EPCORO cada usuario tiene exactamente un rol).
+            (en SINCHI WAYRA cada usuario tiene exactamente un rol).
               public function rol(): ?string  ->  'admin' | 'gerente' |
                                                        'revisor' | 'tecnico'
             Con eso D3 se chequea en una linea, y si manana un usuario necesita
@@ -2550,10 +2550,10 @@ COMANDO   : (11.2/11.3 verificacion) no quedan $request->all() en app/
             TransicionController, LiquidacionController (pdf/excel),
             ParametrosController y ReporteController. (11.6)
             config/respaldo.php, app/Support/Respaldos.php (nombre, purga por
-            retencion y tamano legible) y comando epcoro:respaldar (pg_dump
+            retencion y tamano legible) y comando sinchiwayra:respaldar (pg_dump
             -Fc, PGPASSWORD por env del hijo, purga); programado en
             routes/console.php a las 02:30 sin solapamiento. (11.4)
-            comando epcoro:revisar-produccion (APP_ENV/DEBUG/KEY/URL/
+            comando sinchiwayra:revisar-produccion (APP_ENV/DEBUG/KEY/URL/
             TIMEZONE, DB_PASSWORD, SESSION_SECURE_COOKIE/ENCRYPT,
             SANCTUM_STATEFUL_DOMAINS, CORS_ALLOWED_ORIGINS y nivel de log;
             avisos con --estricto). (11.7) epcoro-api/.env.production.example
@@ -2605,7 +2605,7 @@ RESULTADO : (a) Se elimino en TODO el stack el modelo LiquidacionDeduccion,
             2026_10_11_000031 (liquidaciones.comprador_id FK, drop de
             comprador_persona_id y recreacion de v_liquidaciones_detalle que
             dependia de la columna: SQLSTATE[2BP01] en el primer intento).
-            Comprador (modelo+factory+seeder EPCORO C11-C13, NIM/NIT como
+            Comprador (modelo+factory+seeder SINCHI WAYRA C11-C13, NIM/NIT como
             texto C5) con backfill de liquidaciones.comprador_id contra la
             razon social (case-insensitive, solo activos). GET
             /catalogos/compradores. Resource comprador.id. El formulario
@@ -2624,7 +2624,7 @@ RESULTADO : (a) Se elimino en TODO el stack el modelo LiquidacionDeduccion,
             con segundas deducciones.
 VERIFICACION: pint OK, phpstan OK, php artisan test: 186 passed / 928
             assertions, vue-tsc -b OK. Migraciones y CompradoresSeeder
-            aplicados en la BD dev (tabla compradores con EPCORO activo).
+            aplicados en la BD dev (tabla compradores con SINCHI WAYRA activo).
 PENDIENTE : comprobacion visual en navegador del autocompletado del
             comprador al crear/editar una liquidacion; commit de esta
             sesion cuando el usuario lo confirme.
@@ -2685,13 +2685,13 @@ ESTADO    : OK.
              (correccion) - bug de carrera en el store de catalogos
 OBJETIVO  : Corregir el pendiente visual de plan_pruebas §6.2: al abrir el alta
             de una liquidacion en ESCRITORIO, la seccion Comprador no se
-            prellenaba con la fila del catalogo `compradores` (EPCORO); los
+            prellenaba con la fila del catalogo `compradores` (SINCHI WAYRA); los
             campos Razon social/NIM/NIT salian vacios.
 COMANDO   : read de epcoro-web (stores/catalogos.ts, composables/
             useLiquidacionForm.ts, views/Liquidaciones/CreateView.vue,
             components/liquidacion/PlantillaCaptura.vue y SelectorUbicacion.vue);
             psql -c "SELECT ... FROM compradores"; npm run build.
-RESULTADO : LA BASE Y LA API ESTABAN BIEN: tabla compradores con la fila EPCORO
+RESULTADO : LA BASE Y LA API ESTABAN BIEN: tabla compradores con la fila SINCHI WAYRA
             (nim 02-2388-05, nit 1006965023, activo t); GET
             /api/v1/catalogos/compradores devuelve { data: [...] } y el
             frontend lo lee con data.data. El bug era de TIMING en el store.

@@ -189,7 +189,7 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Nombres legibles de los campos (EPCORO)
+    | Nombres legibles de los campos (SINCHI WAYRA)
     |--------------------------------------------------------------------------
     |
     | Traduce el nombre tecnico del input al texto que se muestra en el 422.

@@ -73,7 +73,7 @@ class UserFactory extends Factory
     }
 
     /**
-     * Usuario con un rol de los cuatro de EPCORO.
+     * Usuario con un rol de los cuatro de SINCHI WAYRA.
      */
     public function conRol(string $rol): static
     {

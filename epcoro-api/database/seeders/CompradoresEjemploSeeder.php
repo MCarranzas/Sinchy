@@ -6,7 +6,7 @@ use App\Models\Comprador;
 use Illuminate\Database\Seeder;
 
 /**
- * Compradores de ejemplo, ADEMAS del fijo de la hoja (EPCORO) que crea
+ * Compradores de ejemplo, ADEMAS del fijo de la hoja (SINCHI WAYRA) que crea
  * CompradoresSeeder.
  *
  * El catalogo ya admite varias filas (`razon_social`, `nim`, `nit`, `activo`);

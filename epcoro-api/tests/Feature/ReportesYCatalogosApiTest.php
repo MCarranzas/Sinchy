@@ -350,10 +350,10 @@ class ReportesYCatalogosApiTest extends AuthTestCase
         $respuesta = $this->actingAs($tecnico, 'web')
             ->getJson('/api/v1/catalogos/compradores');
 
-        // Solo la activa del seeder (EPCORO): la inactiva no sale del catalogo.
+        // Solo la activa del seeder (SINCHI WAYRA): la inactiva no sale del catalogo.
         $respuesta->assertOk()
             ->assertJsonCount(1, 'data')
-            ->assertJsonPath('data.0.razon_social', 'EMPRESA ESTATAL DE PRODUCCION Y COMERCIALIZACION DEL ORO - EPCORO')
+            ->assertJsonPath('data.0.razon_social', 'SINCHI WAYRA S.A.')
             ->assertJsonPath('data.0.nim', '02-2388-05')
             ->assertJsonPath('data.0.nit', '1006965023');
     }

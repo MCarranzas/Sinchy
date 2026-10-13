@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * Comprador del mineral (hoy un solo fijo: EPCORO, celdas C11-C13).
+ * Comprador del mineral (hoy un solo fijo: SINCHI WAYRA, celdas C11-C13).
  *
  * Catalogo propio para usos posteriores (varios compradores, gestion,
  * reportes). `liquidaciones` conserva el snapshot del dia

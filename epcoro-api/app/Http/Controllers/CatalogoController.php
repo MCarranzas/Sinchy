@@ -172,7 +172,7 @@ class CatalogoController extends Controller
     }
 
     /**
-     * Catalogo de compradores (C11-C13): hoy es una sola fila (EPCORO), la
+     * Catalogo de compradores (C11-C13): hoy es una sola fila (SINCHI WAYRA), la
      * que el formulario prellenada al abrir. Orden alfabetico para que la
      * lista no cambie de orden entre una carga y otra.
      */

@@ -18,11 +18,11 @@ use Illuminate\Support\Facades\File;
  */
 final class Respaldos
 {
-    public const PATRON = 'epcoro-*.dump';
+    public const PATRON = 'sinchiwayra-*.dump';
 
     public static function nombre(?string $marcaDeTiempo = null): string
     {
-        return 'epcoro-'.($marcaDeTiempo ?? Carbon::now()->format('Y-m-d_His')).'.dump';
+        return 'sinchiwayra-'.($marcaDeTiempo ?? Carbon::now()->format('Y-m-d_His')).'.dump';
     }
 
     /**

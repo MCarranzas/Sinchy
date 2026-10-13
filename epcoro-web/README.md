@@ -1,6 +1,6 @@
 # epcoro-web
 
-SPA del sistema EPCORO (captura de liquidaciones de aportes). Frontend de la
+SPA del sistema SINCHI WAYRA (captura de liquidaciones de aportes). Frontend de la
 FASE 7: sesion, permisos y base sobre la que se construyen los modulos de la
 FASE 8 en adelante.
 

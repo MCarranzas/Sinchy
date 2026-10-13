@@ -1,5 +1,5 @@
 ================================================================================
- EPCORO - HOJA DE LIQUIDACION DE LA COMERCIALIZACION DE MINERAL DE ORO
+ SINCHI WAYRA - HOJA DE LIQUIDACION DE LA COMERCIALIZACION DE MINERAL DE ORO
  SISTEMA WEB - PLAN DE TRABAJO, ARQUITECTURA Y PASOS A SEGUIR
 ================================================================================
 Documento : instrucciones.txt
@@ -105,8 +105,7 @@ Bloque 1. INFORMACION DE TRANSACCION (filas 6-9)
   | F10   | = (F9/31.1035)*F6*C40      | CALCULADA     | Bs         |
 
 Bloque 1.1. DATOS DEL COMPRADOR (filas 10-13)
-  | C11 | RAZON SOCIAL | "EMPRESA ESTATAL DE PRODUCCION Y
-  |                  |  COMERCIALIZACION DEL ORO - EPCORO" (fijo)
+  | C11 | RAZON SOCIAL | "SINCHI WAYRA S.A." (fijo)
   | C12 | N NIM        | 02-2388-05
   | C13 | N NIT        | 1006965023
 
@@ -971,7 +970,7 @@ POST /api/liquidaciones
   "fecha_transaccion": "2024-12-02",
   "tipo_cambio": 6.96,
   "cotizacion_usd_oz_t": 2648.57,
-  "comprador_razon_social": "EMPRESA ESTATAL DE PRODUCCION Y COMERCIALIZACION DEL ORO - EPCORO",
+  "comprador_razon_social": "SINCHI WAYRA S.A.",
   "comprador_nim": "02-2388-05",
   "comprador_nit": "1006965023",
   "aplica_caja_salud": true,
@@ -1309,7 +1308,7 @@ FASE 4 - DISENO DE LA BASE DE DATOS DE NEGOCIO
       - Presentaciones de mineral
       - Parametros iniciales (GRAMOS_POR_ONZA_TROY 31.1035,
          ALICUOTA_APORTE 0.018 por D1)
-      - Comprador EPCORO: se siembra en `compradores` (CompradoresSeeder),
+      - Comprador SINCHI WAYRA: se siembra en `compradores` (CompradoresSeeder),
         NO en parametros_generales (2026-10-12)
       NO sembrar ALICUOTA_APORTE_SOLIDARIO: por D1 no existe esa deduccion.
   4.5 Factories para cada modelo (para tests y datos de demostracion)

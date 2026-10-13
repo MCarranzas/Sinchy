@@ -4,7 +4,7 @@
  * trae otro comprador en un caso puntual, corregir los tres campos a mano.
  *
  * Igual que el vendedor (8.4): la razon social, el NIM y el NIT llegan del
- * catalogo. Al abrir se prellenan con el comprador por defecto (EPCORO, celdas
+ * catalogo. Al abrir se prellenan con el comprador por defecto (SINCHI WAYRA, celdas
  * C11-C13) y aqui se puede cambiar por cualquiera de la lista. Los tres campos
  * quedan editables porque el Excel admite otro comprador.
  *

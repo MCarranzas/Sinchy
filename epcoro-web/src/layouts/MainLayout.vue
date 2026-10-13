@@ -70,7 +70,7 @@ const iniciales = computed(() => {
       :class="menuAbierto ? 'translate-x-0' : '-translate-x-full'"
     >
       <div class="flex h-16 items-center gap-2 border-b border-white/10 px-5">
-        <span class="text-lg font-semibold tracking-tight">EPCORO</span>
+        <span class="text-lg font-semibold tracking-tight">SINCHI WAYRA</span>
         <span class="rounded bg-white/10 px-1.5 py-0.5 text-[10px] font-medium text-slate-300">
           v{{ version }}
         </span>

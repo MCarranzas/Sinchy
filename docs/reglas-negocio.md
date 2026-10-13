@@ -1,4 +1,4 @@
-# Reglas de negocio de EPCORO
+# Reglas de negocio de SINCHI WAYRA
 
 Decisiones confirmadas por el usuario de negocio el 2026-10-05. Las dos
 preguntas que bloqueaban el diseño de la base de datos (FASE 4) quedaron

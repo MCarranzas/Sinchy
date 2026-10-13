@@ -1,5 +1,5 @@
 ================================================================================
- EPCORO - REPLICAR EL ENTORNO EN OTRA MAQUINA
+ SINCHI WAYRA - REPLICAR EL ENTORNO EN OTRA MAQUINA
 ================================================================================
  Archivo    : pasos_otra_maquina.txt
  Fecha init : 2026-10-07

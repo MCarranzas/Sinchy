@@ -30,7 +30,7 @@ final class AuditoriaTest extends AuthTestCase
 
         $this->seed(ParametrosSeeder::class);
 
-        $this->ruta = sys_get_temp_dir().DIRECTORY_SEPARATOR.'epcoro-auditoria-'.uniqid('', true).'.log';
+        $this->ruta = sys_get_temp_dir().DIRECTORY_SEPARATOR.'sinchiwayra-auditoria-'.uniqid('', true).'.log';
 
         config([
             'logging.channels.auditoria' => [

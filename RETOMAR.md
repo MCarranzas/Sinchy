@@ -1,4 +1,4 @@
-# EPCORO - dónde lo dejamos (punto de reanudación)
+# SINCHI WAYRA - dónde lo dejamos (punto de reanudación)
 
 Documento para retomar el trabajo en otra máquina. El **entorno** (versiones,
 instalación, PATH, bases) está en `pasos_otra_maquina.txt`; este archivo habla

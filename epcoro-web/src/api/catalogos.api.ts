@@ -79,7 +79,7 @@ export function listarPresentaciones(): Promise<PresentacionMineral[]> {
   return lista<PresentacionMineral>('/catalogos/presentaciones-mineral')
 }
 
-/** Catalogo de compradores (C11-C13). Hoy trae una sola fila: EPCORO. */
+/** Catalogo de compradores (C11-C13). Hoy trae una sola fila: SINCHI WAYRA. */
 export function listarCompradores(): Promise<Comprador[]> {
   return lista<Comprador>('/catalogos/compradores')
 }

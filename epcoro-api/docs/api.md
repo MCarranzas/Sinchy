@@ -1,4 +1,4 @@
-# API Epcoro - `/api/v1`
+# API Sinchi Wayra - `/api/v1`
 
 Documentacion de la API de liquidaciones de mineral oro (seccion 6 del plan de
 desarrollo). Todas las rutas estan bajo el prefijo `/api/v1` y exigen sesion
@@ -238,7 +238,7 @@ insumos se recalcula el calculo en el backend (nunca se confia en el frontend).
   (el tipo de cambio no viaja: lo resuelve el sistema por la fecha).
 - `comprador_id`: opcional y nullable. Se resuelve en el backend igualando la
   `razon_social` enviada contra el catalogo `compradores` (tabla propia, hoy
-  una fila: EPCORO); si no coincide (Excel con otro comprador en casos
+  una fila: SINCHI WAYRA); si no coincide (Excel con otro comprador en casos
   puntuales) queda `null` y el snapshot
   `comprador_razon_social`/`comprador_nim`/`comprador_nit` es lo que se
   imprime en el PDF.

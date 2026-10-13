@@ -15,7 +15,7 @@ Artisan::command('inspire', function () {
 | necesita un cron que ejecute `php artisan schedule:run` cada minuto
 | (ver README, seccion de respaldos).
 */
-Schedule::command('epcoro:respaldar')
+Schedule::command('sinchiwayra:respaldar')
     ->dailyAt('02:30')
     ->withoutOverlapping()
     ->onOneServer();

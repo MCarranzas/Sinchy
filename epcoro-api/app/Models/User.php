@@ -63,7 +63,7 @@ class User extends Authenticatable
     /**
      * Slug del unico rol del usuario.
      *
-     * En EPCORO cada usuario tiene exactamente un rol, asi que se expone como
+     * En SINCHI WAYRA cada usuario tiene exactamente un rol, asi que se expone como
      * un string y no como una relacion. Centralizarlo aqui evita que cada Policy
      * tenga que consultar el pivote de Spatie por separado.
      */

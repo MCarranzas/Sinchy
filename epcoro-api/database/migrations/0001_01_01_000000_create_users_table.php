@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * Tabla de usuarios propia de EPCORO.
+     * Tabla de usuarios propia de SINCHI WAYRA.
      *
      * Reemplaza la de Laravel por dos razones:
      *  - el login pide "usuario", no correo, asi que la clave de acceso es

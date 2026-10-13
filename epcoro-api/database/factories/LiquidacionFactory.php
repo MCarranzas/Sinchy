@@ -58,7 +58,7 @@ class LiquidacionFactory extends Factory
             'tipo_cambio' => $tipoCambio,
             'cotizacion_usd_oz_t' => $cotizacion,
 
-            'comprador_razon_social' => 'EMPRESA ESTATAL DE PRODUCCION Y COMERCIALIZACION DEL ORO - EPCORO',
+            'comprador_razon_social' => 'SINCHI WAYRA S.A.',
             'comprador_nim' => '02-2388-05',
             'comprador_nit' => '1006965023',
             'aplica_caja_salud' => false,

@@ -21,7 +21,7 @@ final class RespaldosTest extends TestCase
     {
         parent::setUp();
 
-        $this->directorio = sys_get_temp_dir().DIRECTORY_SEPARATOR.'epcoro-respaldos-'.uniqid('', true);
+        $this->directorio = sys_get_temp_dir().DIRECTORY_SEPARATOR.'sinchiwayra-respaldos-'.uniqid('', true);
         File::ensureDirectoryExists($this->directorio);
     }
 
@@ -35,17 +35,17 @@ final class RespaldosTest extends TestCase
     public function test_el_nombre_sigue_el_patron_esperado(): void
     {
         $this->assertMatchesRegularExpression(
-            '/^epcoro-\d{4}-\d{2}-\d{2}_\d{6}\.dump$/',
+            '/^sinchiwayra-\d{4}-\d{2}-\d{2}_\d{6}\.dump$/',
             Respaldos::nombre(),
         );
 
-        $this->assertSame('epcoro-2024-12-02_023000.dump', Respaldos::nombre('2024-12-02_023000'));
+        $this->assertSame('sinchiwayra-2024-12-02_023000.dump', Respaldos::nombre('2024-12-02_023000'));
     }
 
     public function test_la_purga_borra_los_vencidos_y_respeta_lo_demas(): void
     {
-        $viejo = $this->directorio.DIRECTORY_SEPARATOR.'epcoro-2024-12-01_023000.dump';
-        $reciente = $this->directorio.DIRECTORY_SEPARATOR.'epcoro-'.Carbon::now()->format('Y-m-d_His').'.dump';
+        $viejo = $this->directorio.DIRECTORY_SEPARATOR.'sinchiwayra-2024-12-01_023000.dump';
+        $reciente = $this->directorio.DIRECTORY_SEPARATOR.'sinchiwayra-'.Carbon::now()->format('Y-m-d_His').'.dump';
         $ajeno = $this->directorio.DIRECTORY_SEPARATOR.'notas.txt';
         $parecido = $this->directorio.DIRECTORY_SEPARATOR.'copia-importante.dump';
 
@@ -61,12 +61,12 @@ final class RespaldosTest extends TestCase
         $this->assertFalse(File::exists($viejo));
         $this->assertTrue(File::exists($reciente));
         $this->assertTrue(File::exists($ajeno), 'no debe tocar archivos ajenos al patron');
-        $this->assertTrue(File::exists($parecido), 'solo el patron epcoro-*.dump cuenta');
+        $this->assertTrue(File::exists($parecido), 'solo el patron sinchiwayra-*.dump cuenta');
     }
 
     public function test_con_retencion_cero_no_borra_nada(): void
     {
-        $viejo = $this->directorio.DIRECTORY_SEPARATOR.'epcoro-2020-01-01_000000.dump';
+        $viejo = $this->directorio.DIRECTORY_SEPARATOR.'sinchiwayra-2020-01-01_000000.dump';
         File::put($viejo, 'x');
         touch($viejo, Carbon::now()->subYears(5)->getTimestamp());
 

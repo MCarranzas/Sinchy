@@ -23,7 +23,7 @@
 <body>
     <div class="encabezado">
         <h1>LIQUIDACION DE MINERAL</h1>
-        <small>EPCORO - {{ $liquidacion->numero_documento }}</small>
+        <small>SINCHI WAYRA - {{ $liquidacion->numero_documento }}</small>
         <small>{{ $liquidacion->codigo_formulario }}</small>
     </div>
 

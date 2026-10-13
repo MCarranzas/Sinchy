@@ -63,7 +63,7 @@ return [
     | will be used by the PHP date and date-time functions. The timezone
     | is set to "UTC" by default as it is suitable for most use cases.
     |
-    | EPCORO: el valor por defecto NO puede seguir siendo UTC. Las
+    | SINCHI WAYRA: el valor por defecto NO puede seguir siendo UTC. Las
     | liquidaciones se registran y se revisan en hora de Bolivia, asi que
     | created_at y updated_at deben coincidir con lo que ve el usuario. Si
     | se deja UTC, una liquidacion creada a las 20:00 en La Paz queda

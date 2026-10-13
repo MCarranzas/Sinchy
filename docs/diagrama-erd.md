@@ -1,4 +1,4 @@
-# Diagrama ERD — EPCORO (FASE 4)
+# Diagrama ERD — SINCHI WAYRA (FASE 4)
 
 Fuente: las migraciones de `epcoro-api/database/migrations/2026_10_06_*.php`.
 El diagrama se deriva del esquema real, no de un dibujo aparte: si cambia una

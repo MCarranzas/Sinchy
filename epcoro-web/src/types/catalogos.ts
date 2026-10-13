@@ -95,7 +95,7 @@ export interface PresentacionMineral {
 }
 
 /**
- * Comprador del mineral (tabla `compradores`, hoy una sola fila: EPCORO,
+ * Comprador del mineral (tabla `compradores`, hoy una sola fila: SINCHI WAYRA,
  * celdas C11-C13). `nim`/`nit` van como string: son identificadores.
  */
 export interface Comprador {

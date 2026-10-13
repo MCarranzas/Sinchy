@@ -47,7 +47,7 @@ class LiquidacionApiTest extends AuthTestCase
         // salud no tiene con que calcular el aporte.
         $this->seed(ParametrosSeeder::class);
 
-        // El comprador EPCORO (C11-C13): para que el alta resuelva
+        // El comprador SINCHI WAYRA (C11-C13): para que el alta resuelva
         // comprador_id cuando la razon social coincide con el catalogo.
         $this->seed(CompradoresSeeder::class);
 
@@ -296,7 +296,7 @@ class LiquidacionApiTest extends AuthTestCase
         $fila = Liquidacion::query()->findOrFail($respuesta->json('data.id'));
         $this->assertSame(Comprador::query()->firstOrFail()->id, $fila->comprador_id);
         $this->assertSame(
-            'EMPRESA ESTATAL DE PRODUCCION Y COMERCIALIZACION DEL ORO - EPCORO',
+            'SINCHI WAYRA S.A.',
             $fila->comprador_razon_social,
         );
         $this->assertSame($fila->comprador_id, $respuesta->json('data.comprador.id'));
@@ -897,7 +897,7 @@ class LiquidacionApiTest extends AuthTestCase
             'tipo_cambio' => '6.9100',
             'cotizacion_usd_oz_t' => '2900.00',
             'aplica_caja_salud' => $cajaDeSalud,
-            'comprador_razon_social' => 'EMPRESA ESTATAL DE PRODUCCION Y COMERCIALIZACION DEL ORO - EPCORO',
+            'comprador_razon_social' => 'SINCHI WAYRA S.A.',
             'comprador_nim' => '02-2388-05',
             'comprador_nit' => '1006965023',
             'vendedor_persona_id' => $vendedor->id,

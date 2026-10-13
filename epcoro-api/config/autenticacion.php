@@ -2,7 +2,7 @@
 
 /*
 |--------------------------------------------------------------------------
-| Parametros de autenticacion de EPCORO
+| Parametros de autenticacion de SINCHI WAYRA
 |--------------------------------------------------------------------------
 |
 | Estaban metidos como numeros sueltos en el AuthController. Se mueven aqui

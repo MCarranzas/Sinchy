@@ -17,7 +17,7 @@
 </head>
 
 <body>
-    <h1>REPORTE DE LIQUIDACIONES - EPCORO</h1>
+    <h1>REPORTE DE LIQUIDACIONES - SINCHI WAYRA</h1>
     <div class="sub">Desde {{ $desde ?: 'inicio' }} hasta {{ $hasta ?: 'hoy' }} - {{ $liquidaciones->count() }} liquidaciones</div>
 
     <table>

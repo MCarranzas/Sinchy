@@ -5,6 +5,7 @@ Usuarios de ejemplo del flujo de estados:
 +---------+--------------------------+---------+
 | admin   | Admin123	             | admin   |
 | tecnico | Tecnico123               | tecnico |
+| tecnico2 | tecnico2                 | tecnico |
 | revisor | Revisor123				 | revisor |
 | gerente | Gerente123				 | gerente |
 +---------+--------------------------+---------+

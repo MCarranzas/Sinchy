@@ -8,7 +8,7 @@ use Illuminate\Database\Seeder;
 
 /**
  * Catalogo de compradores: la unica fila de hoy es la fija de la hoja
- * (EPCORO, celdas C11-C13), la misma que sigue existiendo en
+ * (SINCHI WAYRA, celdas C11-C13), la misma que sigue existiendo en
  * parametros_generales por compatibilidad.
  *
  * Ademas reapunta `liquidaciones.comprador_id` de las filas ya existentes
@@ -19,7 +19,7 @@ class CompradoresSeeder extends Seeder
     public function run(): void
     {
         $comprador = Comprador::query()->updateOrCreate(
-            ['razon_social' => 'EMPRESA ESTATAL DE PRODUCCION Y COMERCIALIZACION DEL ORO - EPCORO'],
+            ['razon_social' => 'SINCHI WAYRA S.A.'],
             [
                 'nim' => '02-2388-05',
                 'nit' => '1006965023',

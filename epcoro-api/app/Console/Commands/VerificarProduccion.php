@@ -13,7 +13,7 @@ use Illuminate\Console\Command;
  * que invalida sesiones, un CORS o Sanctum que siguen apuntando a localhost,
  * una base sin contrasena. Se ejecuta sobre el .env real:
  *
- *     php artisan epcoro:revisar-produccion
+ *     php artisan sinchiwayra:revisar-produccion
  *
  * Devuelve codigo distinto de cero si hay algun fallo critico, para poder
  * encadenarlo en un despliegue que no debe continuar con el entorno mal
@@ -21,7 +21,7 @@ use Illuminate\Console\Command;
  */
 class VerificarProduccion extends Command
 {
-    protected $signature = 'epcoro:revisar-produccion
+    protected $signature = 'sinchiwayra:revisar-produccion
         {--estricto : Falla tambien con los avisos, no solo con los criticos}';
 
     protected $description = 'Verifica que el entorno cumpla los requisitos minimos de produccion.';

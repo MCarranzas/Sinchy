@@ -16,7 +16,7 @@ class HealthTest extends TestCase
         $response->assertOk();
         $response->assertJsonPath('status', 'ok');
         $response->assertJsonPath('checks.database', 'ok');
-        $response->assertJsonPath('app', 'EPCORO');
+        $response->assertJsonPath('app', 'SINCHI WAYRA');
     }
 
     public function test_health_usa_la_zona_horaria_de_bolivia(): void

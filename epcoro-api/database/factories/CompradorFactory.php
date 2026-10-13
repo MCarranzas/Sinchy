@@ -21,7 +21,7 @@ class CompradorFactory extends Factory
     public function definition(): array
     {
         return [
-            'razon_social' => 'EMPRESA ESTATAL DE PRODUCCION Y COMERCIALIZACION DEL ORO - EPCORO',
+            'razon_social' => 'SINCHI WAYRA S.A.',
             'nim' => '02-2388-05',
             'nit' => '1006965023',
             'activo' => true,

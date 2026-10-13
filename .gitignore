@@ -59,7 +59,7 @@ ehthumbs.db
 *.swp
 *.swo
 
-# Material que NO pertenece a EPCORO
+# Material que NO pertenece a SINCHI WAYRA
 # (es material de un curso, vive en la raiz pero no va al repo)
 /preguntas_curso_claude/
 

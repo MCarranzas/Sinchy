@@ -1,4 +1,4 @@
-# Plan de pruebas - EPCORO
+# Plan de pruebas - SINCHI WAYRA
 
 Guia para probar los **flujos** y los **roles** del sistema de liquidaciones de
 mineral. Sirve tanto para una prueba manual por la interfaz como para ubicar la
@@ -424,11 +424,11 @@ Esperado: 201; CI duplicado o formato invalido -> 422.
 
 ### 6.8 Puesta en marcha / respaldo (FASE 11.4 y 11.6)
 
-**OPS-01 - Respaldo.** `php artisan epcoro:respaldar --sin-retener`.
-Esperado: crea `epcoro-<fecha>.dump`; si `pg_dump` no esta, termina con error
-sin dejar archivo a medias. La purga borra solo `epcoro-*.dump` vencidos.
+**OPS-01 - Respaldo.** `php artisan sinchiwayra:respaldar --sin-retener`.
+Esperado: crea `sinchiwayra-<fecha>.dump`; si `pg_dump` no esta, termina con error
+sin dejar archivo a medias. La purga borra solo `sinchiwayra-*.dump` vencidos.
 
-**OPS-02 - Preflight de produccion.** `php artisan epcoro:revisar-produccion`.
+**OPS-02 - Preflight de produccion.** `php artisan sinchiwayra:revisar-produccion`.
 Esperado: en desarrollo marca en rojo `APP_ENV`, `APP_DEBUG`, CORS/Sanctum en
 localhost, etc. (codigo distinto de cero). Con `.env` de produccion correcto,
 todo verde.

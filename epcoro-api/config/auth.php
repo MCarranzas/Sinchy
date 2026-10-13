@@ -65,7 +65,7 @@ return [
         'users' => [
             'driver' => 'eloquent',
             'model' => env('AUTH_MODEL', User::class),
-            // En EPCORO se inicia sesion con "usuario", no con correo, asi que
+            // En SINCHI WAYRA se inicia sesion con "usuario", no con correo, asi que
             // la columna de busqueda es username y no email.
             'username_column' => 'username',
         ],

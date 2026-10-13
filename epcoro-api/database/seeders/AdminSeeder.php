@@ -42,7 +42,7 @@ class AdminSeeder extends Seeder
 
         $usuario = User::query()->create([
             'username' => $username,
-            'email' => 'admin@epcoro.local',
+            'email' => 'admin@sinchiwayra.local',
             'nombre_completo' => 'Administrador del Sistema',
             'password' => $password,
             'activo' => true,

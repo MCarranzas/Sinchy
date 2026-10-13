@@ -24,7 +24,7 @@ final class ConsolaDeProduccionTest extends TestCase
     {
         parent::setUp();
 
-        $this->directorio = sys_get_temp_dir().DIRECTORY_SEPARATOR.'epcoro-comando-'.uniqid('', true);
+        $this->directorio = sys_get_temp_dir().DIRECTORY_SEPARATOR.'sinchiwayra-comando-'.uniqid('', true);
         File::ensureDirectoryExists($this->directorio);
     }
 
@@ -41,14 +41,14 @@ final class ConsolaDeProduccionTest extends TestCase
     {
         config(['respaldo.pg_dump' => PHP_BINARY]);
 
-        $this->artisan('epcoro:respaldar', [
+        $this->artisan('sinchiwayra:respaldar', [
             '--ruta' => $this->directorio,
             '--sin-retener' => true,
         ])->assertFailed();
 
         $this->assertSame(
             [],
-            File::glob($this->directorio.DIRECTORY_SEPARATOR.'epcoro-*.dump'),
+            File::glob($this->directorio.DIRECTORY_SEPARATOR.'sinchiwayra-*.dump'),
             'un respaldo fallido no debe dejar un archivo a medias',
         );
     }
@@ -59,7 +59,7 @@ final class ConsolaDeProduccionTest extends TestCase
     {
         $this->entornoDeProduccion();
 
-        $this->artisan('epcoro:revisar-produccion')->assertSuccessful();
+        $this->artisan('sinchiwayra:revisar-produccion')->assertSuccessful();
     }
 
     public function test_la_revision_de_produccion_falla_con_debug_encendido(): void
@@ -67,7 +67,7 @@ final class ConsolaDeProduccionTest extends TestCase
         $this->entornoDeProduccion();
         config(['app.debug' => true]);
 
-        $this->artisan('epcoro:revisar-produccion')->assertFailed();
+        $this->artisan('sinchiwayra:revisar-produccion')->assertFailed();
     }
 
     public function test_la_revision_de_produccion_falla_si_sanctum_sigue_en_localhost(): void
@@ -75,7 +75,7 @@ final class ConsolaDeProduccionTest extends TestCase
         $this->entornoDeProduccion();
         config(['sanctum.stateful' => ['localhost', 'localhost:5173']]);
 
-        $this->artisan('epcoro:revisar-produccion')->assertFailed();
+        $this->artisan('sinchiwayra:revisar-produccion')->assertFailed();
     }
 
     public function test_la_revision_de_produccion_falla_si_la_base_no_tiene_contrasena(): void
@@ -83,7 +83,7 @@ final class ConsolaDeProduccionTest extends TestCase
         $this->entornoDeProduccion();
         config(['database.connections.pgsql.password' => '']);
 
-        $this->artisan('epcoro:revisar-produccion')->assertFailed();
+        $this->artisan('sinchiwayra:revisar-produccion')->assertFailed();
     }
 
     /**
@@ -96,13 +96,13 @@ final class ConsolaDeProduccionTest extends TestCase
             'app.env' => 'production',
             'app.debug' => false,
             'app.key' => 'base64:'.str_repeat('a', 32),
-            'app.url' => 'https://epcoro.example.gob.bo',
+            'app.url' => 'https://sinchiwayra.example.gob.bo',
             'app.timezone' => 'America/La_Paz',
             'session.secure' => true,
             'session.encrypt' => true,
             'database.connections.pgsql.password' => 'secreto',
-            'sanctum.stateful' => ['epcoro.example.gob.bo'],
-            'cors.allowed_origins' => ['https://epcoro.example.gob.bo'],
+            'sanctum.stateful' => ['sinchiwayra.example.gob.bo'],
+            'cors.allowed_origins' => ['https://sinchiwayra.example.gob.bo'],
         ]);
     }
 }

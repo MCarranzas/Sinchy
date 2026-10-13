@@ -26,7 +26,7 @@ use Symfony\Component\Process\Process;
  */
 class RespaldarBaseDatos extends Command
 {
-    protected $signature = 'epcoro:respaldar
+    protected $signature = 'sinchiwayra:respaldar
         {--ruta= : Directorio destino (por defecto, config respaldo.directorio)}
         {--dias= : Dias de retencion (por defecto, config respaldo.dias_retencion)}
         {--sin-retener : No borra los respaldos vencidos}';
