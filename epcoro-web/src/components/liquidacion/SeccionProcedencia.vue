@@ -6,8 +6,11 @@
  * El backend exige que los cuatro niveles coincidan con el area elegida
  * (trait ValidaUbicacionDelArea), asi que elegir el area rellena la cascada
  * entera; si el usuario cambia un nivel a mano, la validacion del servidor
- * dira si no cuadra. Los codigos municipial y AJAM tambien se copian del
- * catalogo (con su alternativa manual si el catalogo no los trae).
+ * dira si no cuadra. La patente AJAM tambien se copia del catalogo (con su
+ * alternativa manual si el catalogo no la trae).
+ *
+ * El codigo de municipio NO se muestra: se guarda por debajo (lo copia del
+ * area elegida y de la cascada de ubicacion) para que viaje en el payload.
  */
 import { computed, ref } from 'vue'
 
@@ -105,17 +108,7 @@ function alElegir(opcion: OpcionBusqueda): void {
       <SelectorUbicacion :formulario="formulario" />
     </div>
 
-    <div class="mt-4 grid gap-4 sm:grid-cols-2">
-      <CampoEntrada
-        v-bind="formulario.enlazar('codigo_municipio')"
-        etiqueta="Código de municipio"
-        placeholder="Solo dígitos"
-        maxlength="10"
-        ayuda="Se completa desde el área; editable si el Excel lo trae distinto."
-        :error="formulario.error('codigo_municipio')"
-        @blur="formulario.tocar('codigo_municipio')"
-      />
-
+    <div class="mt-4">
       <CampoEntrada
         v-bind="formulario.enlazar('codigo_ajam_patente')"
         etiqueta="Patente AJAM"

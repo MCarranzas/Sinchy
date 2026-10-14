@@ -118,6 +118,16 @@ watch(
     if (!localidades.value.some((localidad) => localidad.id === valores.localidad_id)) {
       props.formulario.asignar('localidad_id', null)
     }
+
+    // El codigo de municipio no se captura: se copia del municipio elegido
+    // para que viaje en el payload. Solo se toca si el municipio esta en la
+    // lista cargada (al editar, la lista llega despues y el codigo ya viene
+    // del expediente; no hay que borrarlo).
+    const municipioElegido = municipios.value.find((municipio) => municipio.id === nuevo)
+
+    if (municipioElegido) {
+      props.formulario.asignar('codigo_municipio', municipioElegido.codigo ?? '')
+    }
   },
   { immediate: true },
 )
