@@ -179,7 +179,7 @@ export interface HistorialEstado {
   id: number
   estado_anterior: string | null
   estado_nuevo: string
-  usuario: { id: number; nombre_completo: string }
+  usuario: { id: number; nombre_completo: string; username?: string | null }
   comentario: string | null
   fecha: string | null
 }

@@ -45,7 +45,7 @@ function etiqueta(estado: string | null): string {
         <BadgeEstado :estado="fila.estado_nuevo as EstadoLiquidacion" />
       </div>
       <p class="mt-0.5 text-xs text-slate-500">
-        {{ fila.usuario.nombre_completo }} · {{ fechaHora(fila.fecha) }}
+        {{ fila.usuario.username ?? fila.usuario.nombre_completo }} · {{ fechaHora(fila.fecha) }}
       </p>
       <p v-if="fila.comentario" class="mt-1 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600">
         {{ fila.comentario }}

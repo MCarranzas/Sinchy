@@ -312,6 +312,7 @@ class LiquidacionController extends Controller
 
         $filas = LiquidacionEstadoHistorial::query()
             ->where('liquidacion_id', $liquidacion->id)
+            ->with('usuario:id,username')
             ->orderBy('id')
             ->get();
 
@@ -320,7 +321,11 @@ class LiquidacionController extends Controller
                 'id' => $fila->id,
                 'estado_anterior' => $fila->estado_anterior?->value,
                 'estado_nuevo' => $fila->estado_nuevo->value,
-                'usuario' => ['id' => $fila->usuario_id, 'nombre_completo' => $fila->usuario_nombre],
+                'usuario' => [
+                    'id' => $fila->usuario_id,
+                    'nombre_completo' => $fila->usuario_nombre,
+                    'username' => $fila->usuario?->username ?? null,
+                ],
                 'comentario' => $fila->comentario,
                 'fecha' => $fila->created_at?->toIso8601String(),
             ]),

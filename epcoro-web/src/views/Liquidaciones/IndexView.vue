@@ -330,65 +330,72 @@ const opcionesEstado: { valor: string; etiqueta: string }[] = [
       <template v-else>
         <!-- escritorio -->
         <table class="hidden w-full text-left text-sm lg:table">
-          <thead class="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
-            <tr>
-              <th class="px-4 py-3 font-medium">Documento</th>
-              <th class="px-4 py-3 font-medium">Vendedor</th>
-              <th class="px-4 py-3 font-medium">Área minera</th>
-              <th class="px-4 py-3 text-right font-medium">Neto</th>
-              <th class="px-4 py-3 text-center font-medium">Estado</th>
-              <th class="px-4 py-3" />
-            </tr>
-          </thead>
+           <thead class="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+             <tr>
+               <th class="px-4 py-3 font-medium">Documento</th>
+               <th class="px-4 py-3 font-medium">Vendedor</th>
+               <th class="px-4 py-3 font-medium">Área minera</th>
+               <th class="px-4 py-3 font-medium">Registrado por</th>
+               <th class="px-4 py-3 text-right font-medium">Neto</th>
+               <th class="px-4 py-3 text-center font-medium">Estado</th>
+               <th class="px-4 py-3" />
+             </tr>
+           </thead>
           <tbody class="divide-y divide-slate-100">
-            <tr v-for="liquidacion in pagina.data" :key="liquidacion.id" class="hover:bg-slate-50/60">
-              <td class="px-4 py-3">
-                <p class="font-medium text-slate-800">{{ liquidacion.numero_documento }}</p>
-                <p class="text-xs text-slate-500">{{ fecha(liquidacion.fecha_transaccion) }}</p>
-              </td>
-              <td class="px-4 py-3 text-slate-700">{{ liquidacion.vendedor.nombre }}</td>
-              <td class="px-4 py-3 text-slate-600">
-                <p>{{ liquidacion.procedencia.nombre_area_minera }}</p>
-                <p class="text-xs text-slate-400">{{ liquidacion.presentacion.nombre }}</p>
-              </td>
-              <td class="px-4 py-3 text-right font-semibold tabular-nums text-slate-800">
-                {{ bs(liquidacion.calculo.valor_neto_bs) }}
-              </td>
-              <td class="px-4 py-3 text-center">
-                <BadgeEstado :estado="liquidacion.estado" />
-              </td>
-              <td class="px-4 py-3 text-right">
-                <RouterLink
-                  :to="{ name: 'liquidaciones-detalle', params: { id: liquidacion.id } }"
-                  class="font-medium text-marca-600 hover:text-marca-700"
-                >
-                  Ver
-                </RouterLink>
-              </td>
-            </tr>
+             <tr v-for="liquidacion in pagina.data" :key="liquidacion.id" class="hover:bg-slate-50/60">
+               <td class="px-4 py-3">
+                 <p class="font-medium text-slate-800">{{ liquidacion.numero_documento }}</p>
+                 <p class="text-xs text-slate-500">{{ fecha(liquidacion.fecha_transaccion) }}</p>
+               </td>
+               <td class="px-4 py-3 text-slate-700">{{ liquidacion.vendedor.nombre }}</td>
+               <td class="px-4 py-3 text-slate-600">
+                 <p>{{ liquidacion.procedencia.nombre_area_minera }}</p>
+                 <p class="text-xs text-slate-400">{{ liquidacion.presentacion.nombre }}</p>
+               </td>
+               <td class="px-4 py-3 text-slate-600">
+                 <p>{{ liquidacion.auditoria.registrado_por?.username ?? '-' }}</p>
+               </td>
+               <td class="px-4 py-3 text-right font-semibold tabular-nums text-slate-800">
+                 {{ bs(liquidacion.calculo.valor_neto_bs) }}
+               </td>
+               <td class="px-4 py-3 text-center">
+                 <BadgeEstado :estado="liquidacion.estado" />
+               </td>
+               <td class="px-4 py-3 text-right">
+                 <RouterLink
+                   :to="{ name: 'liquidaciones-detalle', params: { id: liquidacion.id } }"
+                   class="font-medium text-marca-600 hover:text-marca-700"
+                 >
+                   Ver
+                 </RouterLink>
+               </td>
+             </tr>
           </tbody>
         </table>
 
         <!-- celular -->
         <ul class="divide-y divide-slate-100 lg:hidden">
-          <li v-for="liquidacion in pagina.data" :key="liquidacion.id">
-            <RouterLink
-              :to="{ name: 'liquidaciones-detalle', params: { id: liquidacion.id } }"
-              class="flex flex-col gap-1 px-4 py-3"
-            >
-              <div class="flex items-center justify-between gap-2">
-                <p class="text-sm font-semibold text-slate-800">{{ liquidacion.numero_documento }}</p>
-                <BadgeEstado :estado="liquidacion.estado" />
-              </div>
-              <p class="text-xs text-slate-500">
-                {{ fecha(liquidacion.fecha_transaccion) }} · {{ liquidacion.vendedor.nombre }}
-              </p>
-              <p class="text-xs text-slate-500">{{ liquidacion.procedencia.nombre_area_minera }}</p>
-              <p class="text-sm font-semibold tabular-nums text-marca-700">
-                {{ bs(liquidacion.calculo.valor_neto_bs) }}
-              </p>
-            </RouterLink>
-          </li>
+           <li v-for="liquidacion in pagina.data" :key="liquidacion.id">
+             <RouterLink
+               :to="{ name: 'liquidaciones-detalle', params: { id: liquidacion.id } }"
+               class="flex flex-col gap-1 px-4 py-3"
+             >
+               <div class="flex items-center justify-between gap-2">
+                 <p class="text-sm font-semibold text-slate-800">{{ liquidacion.numero_documento }}</p>
+                 <BadgeEstado :estado="liquidacion.estado" />
+               </div>
+               <p class="text-xs text-slate-500">
+                 {{ fecha(liquidacion.fecha_transaccion) }} · {{ liquidacion.vendedor.nombre }}
+               </p>
+               <p class="text-xs text-slate-500">{{ liquidacion.procedencia.nombre_area_minera }}</p>
+               <p class="text-xs text-slate-500">
+                 Registrado por: {{ liquidacion.auditoria.registrado_por?.username ?? '-' }}
+               </p>
+               <p class="text-sm font-semibold tabular-nums text-marca-700">
+                 {{ bs(liquidacion.calculo.valor_neto_bs) }}
+               </p>
+             </RouterLink>
+           </li>
         </ul>
       </template>
     </div>
