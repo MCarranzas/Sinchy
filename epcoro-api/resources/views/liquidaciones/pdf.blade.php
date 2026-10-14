@@ -68,7 +68,7 @@
             @forelse ($liquidacion->historial as $movimiento)
                 <tr>
                     <td>{{ $movimiento->created_at?->format('d/m/Y H:i') }}</td>
-                    <td>{{ $movimiento->estado_anterior?->etiqueta() ?? '(inicio)' }} &rarr; {{ $movimiento->estado_nuevo->etiqueta() }} - {{ $movimiento->usuario_nombre }}{{ $movimiento->comentario ? ' ('.$movimiento->comentario.')' : '' }}</td>
+                    <td>{{ $movimiento->estado_anterior?->etiqueta() ?? "(inicio)" }} &rarr; {{ $movimiento->estado_nuevo->etiqueta() }} - {{ $movimiento->usuario?->username ?? $movimiento->usuario_nombre }}{{ $movimiento->comentario ? " (".$movimiento->comentario.")" : "" }}</td>
                 </tr>
             @empty
                 <tr><td colspan="2">Sin movimientos</td></tr>

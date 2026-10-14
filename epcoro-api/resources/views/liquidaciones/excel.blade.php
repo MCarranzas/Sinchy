@@ -94,7 +94,7 @@
                     &rarr;
                     {{ $movimiento->estado_nuevo->etiqueta() }}
                     -
-                    {{ $movimiento->usuario_nombre }}
+                    {{ $movimiento->usuario?->username ?? $movimiento->usuario_nombre }}
                     @if ($movimiento->comentario)
                         ({{ $movimiento->comentario }})
                     @endif

@@ -31,7 +31,7 @@
                 <td>{{ number_format((float) $liquidacion->aporte_caja_salud_bs, 2, ',', '.') }}</td>
                 <td>{{ number_format((float) $liquidacion->total_deducciones_bs, 2, ',', '.') }}</td>
                 <td>{{ number_format((float) $liquidacion->valor_neto_bs, 2, ',', '.') }}</td>
-                <td>{{ $liquidacion->registro?->nombre_completo }}</td>
+                <td>{{ $liquidacion->registro?->username }}</td>
             </tr>
         @endforeach
     </tbody>
