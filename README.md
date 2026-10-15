@@ -1,7 +1,6 @@
 # SINCHI WAYRA
 
-Sistema de liquidaciones de mineral para la Empresa Estatal de Producción y
-Comercialización del Oro (SINCHI WAYRA), Bolivia.
+Sistema de liquidaciones de mineral para SINCHI WAYRA, Bolivia.
 
 El sistema reemplaza el formulario `hoja.xlsx` que hoy se completa a mano y se
 archiva en Excel. La prioridad de diseño es que **el sistema cuadre con el

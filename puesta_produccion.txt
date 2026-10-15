@@ -1,0 +1,1428 @@
+================================================================================
+ SINCHI WAYRA - SISTEMA DE LIQUIDACIONES DE MINERAL
+ PUESTA EN PRODUCCION EN INTERNET CON SERVICIOS GRATUITOS
+================================================================================
+
+ Documento:   puesta_produccion.txt
+ Alcance:     tecnologias y herramientas que usa el sistema, y como llevarlo a
+              Internet en un servicio gratuito.
+ Fecha de verificacion de datos: 15 de octubre de 2026.
+ Repositorio:  https://github.com/MCarranzas/epcoro   (rama main)
+
+ AVISO IMPORTANTE
+ ----------------
+ Los planes gratuitos cambian de un mes a otro (limites, precios y hasta la
+ desaparicion del plan). Todo lo que aqui se afirma sobre planes gratuitos se
+ verifico en la fecha indicada arriba contra la documentacion oficial de cada
+ proveedor. Antes de decidir, volver a leer la pagina de precios del proveedor.
+
+ AVISO LEGAL / OPERATIVO
+ -----------------------
+ Este sistema calcula y registra liquidaciones de mineral: son datos con valor
+ economico y fiscal. Un plan gratuito tiene reinicios, suspensiones por
+ inactividad, sin disco persistente y sin respaldo administrado. Sirve para
+ demostrar el sistema, para un piloto o para una capacitacion. Para operar de
+ verdad con liquidaciones reales, la recomendacion tecnica de este documento es
+ la OPCION A (una maquina virtual "siempre gratis"), que es la unica que
+ reproduce completa la arquitectura que el propio sistema espera (Nginx +
+ PHP-FPM + PostgreSQL + cron + disco).
+
+================================================================================
+ INDICE
+================================================================================
+
+  0.  Resumen ejecutivo
+  1.  Inventario de tecnologias y herramientas
+  2.  Requisitos del servidor
+  3.  Arquitectura de produccion que el sistema espera
+  4.  Variables de entorno de produccion
+  5.  Secuencia de despliegue (guion general)
+  6.  Opciones de servicio gratuito en Internet (comparativa)
+  7.  Ajustes obligatorios por las limitaciones del plan gratuito
+  8.  Checklist de puesta en produccion
+  9.  Verificacion despues del despliegue
+  10. CI/CD gratuito con GitHub Actions
+  11. Monitoreo y operacion
+  12. Seguridad
+  13. Limites, riesgos y que NO hacer con un plan gratuito
+  14. Costos
+  Anexos A-F
+
+================================================================================
+ 0. RESUMEN EJECUTIVO
+================================================================================
+
+ El sistema son DOS aplicaciones, no una:
+
+   1) epcoro-api/  -> API REST en Laravel 13 (PHP 8.4) sobre PostgreSQL 17.
+   2) epcoro-web/  -> interfaz de usuario (SPA) en Vue 3 + Vite 8 + Tailwind 4.
+
+ La SPA NO tiene datos ni logica de negocio propia: consume la API en /api/v1.
+ La autenticacion es por COOKIE DE SESION (Laravel Sanctum modo SPA), no por
+ token. Esto tiene una consecuencia que manda sobre toda la estrategia de
+ despliegue:
+
+       LA SPA Y LA API DEBEN VIVIR EN EL MISMO DOMINIO (mismo origen).
+
+ Si se despliegan en dominios distintos (por ejemplo SPA en Netlify y API en
+ otro host), el navegador trata la cookie de sesion como cookie de terceros y
+ la bloquea: el login "funciona" pero la sesion se pierde en la peticion
+ siguiente. Ademas el cliente HTTP del frontend tiene la ruta fija '/api/v1'
+ (ver epcoro-web/src/api/axios.ts), asi que no hay forma de apuntarlo a otro
+ dominio sin modificar codigo.
+
+ De ahi que toda opcion viable sea "un solo origen": un servidor que sirva los
+ archivos estaticos de la SPA y, en el mismo dominio, enrute /api y /sanctum
+ hacia Laravel.
+
+ Lo que el sistema NO necesita (esto abarata mucho el despliegue):
+   - NO usa Redis ni Memcached: cache, sesiones y cola van en la base de datos.
+   - NO usa colas en segundo plano: no hay ningun Job/ShouldQueue en el codigo.
+     La generacion de PDF y Excel es sincrona.
+   - NO usa S3 ni almacenamiento de objetos: no hay carga de archivos.
+   - NO usa servidor de correo: MAIL_MAILER=log (no manda correos).
+   - NO usa WebSockets ni notificaciones en vivo.
+   - NO usa Docker obligatoriamente: es PHP + PostgreSQL, se instala directo.
+
+ Con todo eso, los requisitos reales de un plan gratuito son solamente:
+   PHP 8.4 con extensiones, PostgreSQL, unos 200 MB de disco, HTTPS y (opcional
+   pero recomendado) una tarea cron diaria. Eso descarta de entrada a los
+   hostings gratuitos tipo MySQL/InfinityFree (no tienen PostgreSQL) y a los
+   hostings puramente estaticos (no ejecutan PHP).
+
+ Recomendacion corta:
+   - Sin tarjeta, para demo/piloto ......... OPCION C (Alwaysdata Free)
+   - Sin tarjeta, para demo "de vitrina" ... OPCION B (Render Free + Neon Free)
+   - Para uso real ......................... OPCION A (VM "siempre gratis")
+
+================================================================================
+ 1. INVENTARIO DE TECNOLOGIAS Y HERRAMIENTAS
+================================================================================
+
+ 1.1 RESUMEN POR CAPAS
+
+   Capa               | Tecnologia                          | Version
+   -------------------+-------------------------------------+----------------------
+   Lenguaje backend   | PHP                                 | 8.4.26 (plataforma del lock)
+   Framework backend  | Laravel                             | 13.34.0
+   Base de datos      | PostgreSQL                          | 17
+   Autenticacion      | Laravel Sanctum (modo SPA, cookie)  | 4.3.3
+   Roles/permisos     | spatie/laravel-permission           | 8.3.0
+   Filtros de listado | spatie/laravel-query-builder        | 7.3.5
+   PDF                | barryvdh/laravel-dompdf (dompdf)    | 3.1.2 (dompdf 3.1.6)
+   Excel              | maatwebsite/excel (PhpSpreadsheet)  | 4.0.3 (5.10.0)
+   Framework frontend | Vue                                 | 3.5.42
+   Bundler frontend   | Vite                                | 8.3.3
+   Tipado frontend    | TypeScript + vue-tsc                | 6.0.2 / 3.3.11
+   Estilos            | Tailwind CSS (plugin de Vite)       | 4.3.3
+   Estado global      | Pinia                               | 4.0.3
+   Ruteo frontend     | vue-router (historial HTML5)        | 5.3.1
+   Graficos           | Chart.js                            | 4.5.1
+   Formularios        | vee-validate                        | 4.15.1
+   HTTP cliente       | axios                               | 1.20.0
+   Utilidades Vue     | @vueuse/core                        | 15.0.0
+   Runtime JS         | Node.js                             | 24.21.0 (probado)
+   Gestor de paquetes | npm                                 | 12.1.0 (probado)
+   Gestor PHP         | Composer                            | 2.x
+
+ 1.2 BACKEND (epcoro-api)
+
+   Framework ............ Laravel 13.34.0
+   PHP .................. requiere ^8.3 en composer.json, pero el archivo
+                          composer.lock fija `platform.php = 8.4.26`. Se probo
+                          con PHP 8.4.26. USAR PHP 8.4 EN EL SERVIDOR: instalar
+                          con 8.3 puede hacer fallar la verificacion de
+                          plataforma de Composer.
+   Base de datos ........ PostgreSQL 17, driver `pgsql`.
+                          Las migraciones crean el tipo ENUM
+                          `liquidacion_estado` con DB::statement, que es
+                          sintaxis de PostgreSQL. NO funciona en MySQL ni en
+                          SQLite. Esto es un requisito duro, no una preferencia.
+
+   Paquetes de produccion (composer.lock):
+     laravel/framework                  v13.34.0
+     laravel/sanctum                    v4.3.3
+     laravel/tinker                     v3.0.2
+     barryvdh/laravel-dompdf            v3.1.2
+     dompdf/dompdf                      v3.1.6
+     maatwebsite/excel                  4.0.3
+     phpoffice/phpspreadsheet           5.10.0
+     spatie/laravel-permission          8.3.0
+     spatie/laravel-query-builder       7.3.5
+     nesbot/carbon                      3.14.2
+     league/flysystem                   3.36.0
+     guzzlehttp/guzzle                  8.2.0
+
+   Paquetes de desarrollo (NO se instalan en produccion):
+     phpunit/phpunit 12.5.38, larastan/larastan 3.12.3, laravel/pint 1.32.1,
+     laravel/pail 1.2.7, nunomaduro/collision 8.9.5, mockery/mockery 1.6.15,
+     fakerphp/faker 1.24.1.
+
+   Autenticacion: Sanctum en modo SPA con cookie de sesion. El frontend primero
+   pide `/sanctum/csrf-cookie` y luego hace POST a `/api/v1/auth/login`. Para
+   que Sanctum acepte la peticion como "stateful" hay que declarar el dominio
+   en SANCTUM_STATEFUL_DOMAINS. CORS (`config/cors.php`) tiene
+   `supports_credentials = true` para `api/*` y `sanctum/csrf-cookie`, con el
+   origen declarado en CORS_ALLOWED_ORIGINS.
+
+   Servicios internos (todos dentro de la base de datos, sin servidores extra):
+     SESSION_DRIVER=database   -> sesiones en tabla
+     CACHE_STORE=database      -> cache en tabla
+     QUEUE_CONNECTION=database -> cola en tabla (hoy sin uso: no hay Jobs)
+     FILESYSTEM_DISK=local     -> sin S3
+     MAIL_MAILER=log           -> sin SMTP
+     BROADCAST_CONNECTION=log  -> sin WebSockets
+
+   Exportaciones (sincronas, se generan al momento y se descargan):
+     - PDF de liquidacion y PDF de reporte  -> dompdf.
+     - Excel de liquidacion y reporte       -> maatwebsite/excel.
+     Al ser sincronas, consumen memoria del proceso PHP: reservar al menos
+     256 MB de memory_limit (con datos reales y Excel grandes, 512 MB).
+
+   Auditoria y bitacora:
+     - Canal de log `auditoria`: archivo aparte, rotacion diaria, 180 dias
+       (LOG_AUDITORIA_DAYS). Registra login, logout, intento fallido, bloqueo de
+       cuenta, cambios de estado, cambios de parametros y exportaciones, con
+       usuario, IP y agente (app/Support/Auditoria.php).
+     - Canal normal: rotacion diaria, 30 dias (LOG_DAILY_DAYS).
+     - El historial de transiciones de una liquidacion, ademas, vive en la
+       tabla `liquidacion_estado_historial` (no se pierde con el disco).
+
+   Tareas programadas (routes/console.php):
+     - `sinchiwayra:respaldar` todos los dias a las 02:30 hora del servidor,
+       sin solaparse y en un solo servidor. Necesita un cron que ejecute
+       `php artisan schedule:run` cada minuto.
+     - El respaldo usa `pg_dump --format=custom` (-Fc) y deja archivos
+       `sinchiwayra-AAAA-MM-DD_HHMMSS.dump` en RESPALDO_DIRECTORIO, purgando los
+       mas viejos que RESPALDO_DIAS_RETENCION. La contrasena viaja por la
+       variable PGPASSWORD del proceso hijo, no por la linea de comandos.
+
+   Comandos propios:
+     - `php artisan sinchiwayra:revisar-produccion [--estricto]`
+       Revisa el entorno y devuelve codigo distinto de cero si algo critico esta
+       mal (APP_DEBUG, APP_KEY, URL, timezone, contrasena de base, cookies
+       seguras, Sanctum/CORS y proxys). Es la verificacion previa obligatoria.
+     - `php artisan sinchiwayra:respaldar` (respaldo manual o programado).
+
+   Salud del servicio (para monitoreo):
+     - `GET /up`          -> 200 si la aplicacion responde (Laravel).
+     - `GET /api/health`  -> comprueba tambien la base de datos.
+
+   Tamano real medido en la maquina de desarrollo:
+     - vendor/ (con paquetes de desarrollo): 115,8 MB
+       (con `composer install --no-dev` baja aproximadamente a 60-70 MB).
+     - Codigo de la aplicacion (app/ + config/ + routes/): menos de 1 MB.
+     - Migraciones: 26 archivos. Seeders: 11 archivos. Pruebas: 19 archivos.
+
+ 1.3 FRONTEND (epcoro-web)
+
+   Vue 3.5.42 + Vite 8.3.3 + TypeScript 6.0.2 + Tailwind CSS 4.3.3
+   Pinia 4.0.3 (estado), vue-router 5.3.1 (historial HTML5 -> necesita
+   reescritura de rutas en el servidor), Chart.js 4.5.1 (graficos),
+   vee-validate 4.15.1 (validacion), axios 1.20.0 (HTTP).
+
+   Puntos que importan para el despliegue:
+     - `src/api/axios.ts` tiene `baseURL: '/api/v1'` y `withCredentials: true`.
+       Ruta relativa -> OBLIGA a mismo origen (ver seccion 0).
+     - El router usa historial HTML5, asi que cualquier URL del tipo
+       https://dominio/bandeja debe devolver index.html (fallback del servidor).
+     - El script de build es `vue-tsc -b && vite build`: si hay un error de
+       tipos, el build FALLA. Es intencional y hay que respetarlo en el
+       servidor (no usar `vite build` a secas para "saltarse" el chequeo).
+     - Build verificado el 15/10/2026:
+         Node v24.21.0, npm 12.1.0
+         vite v8.3.3, 165 modulos transformados, construido en 1,64 s
+         dist/index.html                0,50 kB  (gzip  0,34 kB)
+         dist/assets/index-*.css       31,46 kB  (gzip  6,51 kB)
+         dist/assets/index-*.js       489,11 kB  (gzip 164,56 kB)
+         dist/ total                    0,51 MB
+       Es un artefacto pequeno: se puede servir desde cualquier hosting estatico
+       o desde el mismo servidor del backend.
+     - No hay variables de entorno del frontend en produccion (no se necesita
+       ningun archivo .env en epcoro-web). VITE_API_PROXY_TARGET solo afecta al
+       servidor de desarrollo local.
+
+ 1.4 BASE DE DATOS
+
+   PostgreSQL 17. El sistema no trae un archivo de definicion (dump) sino que
+   se construye con migraciones: 26 migraciones + seeders.
+   Datos que se guardan fuera de la tabla (por diseno, no por descuido):
+     - Tipo ENUM PostgreSQL `liquidacion_estado`.
+     - Historial de estados en tabla.
+   Requisito de cliente: el binario `pg_dump` de la MISMA version mayor del
+   servidor PostgreSQL (para el respaldo programado).
+
+ 1.5 HERRAMIENTAS DE CALIDAD Y PRUEBAS (no van al servidor)
+
+   PHPUnit 12.5 ........................ pruebas (19 archivos)
+   Larastan / PHPStan nivel 5 .......... analisis estatico
+   Laravel Pint ........................ formato de codigo
+   Laravel Pail ........................ lectura de logs en vivo (desarrollo)
+   vue-tsc ............................. chequeo de tipos del frontend
+
+   Las pruebas usan PostgreSQL, no SQLite: `phpunit.xml` fija
+   DB_CONNECTION=pgsql y una base de pruebas `epcoro_test`. Para correrlas en
+   integracion continua hace falta un servicio PostgreSQL (ver seccion 10).
+
+ 1.6 QUE NO SE REQUIERE CONTRATAR
+
+   Redis, Memcached, S3, colas administradas, servidor SMTP, CDN propio,
+   balanceador, Docker obligatorio ni un servidor de aplicaciones aparte.
+   Cualquier proveedor que obligue a contratar Redis para "que funcione" con
+   Laravel esta sobre-dimensionado para este sistema.
+
+================================================================================
+ 2. REQUISITOS DEL SERVIDOR
+================================================================================
+
+ 2.1 PHP: VERSION Y EXTENSIONES
+
+   Version: PHP 8.4 (probado con 8.4.26).
+
+   Extensiones exigidas formalmente por las dependencias (esto es lo que
+   verifica `composer check-platform-reqs`):
+
+     ext-ctype   ext-dom        ext-fileinfo   ext-filter   ext-gd
+     ext-hash    ext-iconv      ext-json       ext-libxml   ext-mbstring
+     ext-openssl ext-pcre       ext-session    ext-simplexml ext-tokenizer
+     ext-xml     ext-xmlreader  ext-xmlwriter  ext-zip      ext-zlib
+
+   Extensiones necesarias EN LA PRACTICA y que Composer NO declara (porque no
+   las pide ningun paquete, las usa el codigo propio):
+
+     ext-bcmath    -> OBLIGATORIA. El calculo de la liquidacion
+                      (app/Services/CalculoLiquidacionService.php) usa bcmul,
+                      bccomp, bcadd, bcsub. Sin bcmath el sistema instalado con
+                      "todas las dependencias satisfechas" falla al calcular.
+                      ESTA ES LA TRAMPA MAS FACIL DE PISAR EN UN SERVIDOR NUEVO.
+     pdo_pgsql     -> obligatoria (conexion a PostgreSQL).
+     pgsql         -> recomendada (cliente PostgreSQL).
+     curl          -> recomendada (Guzzle/HTTP saliente).
+     intl          -> opcional (formato de numeros/fechas es_BO).
+     opcache       -> muy recomendada (rendimiento).
+     fileinfo      -> viene con ext-fileinfo (ya listada arriba).
+
+   En Debian/Ubuntu, el paquete que las instala todas de una vez es, por
+   ejemplo:
+
+     apt install -y php8.4-cli php8.4-fpm php8.4-pgsql php8.4-mbstring \
+       php8.4-xml php8.4-gd php8.4-zip php8.4-bcmath php8.4-curl \
+       php8.4-intl php8.4-opcache php8.4-common
+
+   (php8.4-xml arrastra dom, libxml, simplexml, xmlreader y xmlwriter.)
+
+ 2.2 COMO VERIFICARLO EN EL SERVIDOR (antes de tocar la aplicacion)
+
+     php -v
+     php -m | grep -E 'bcmath|pdo_pgsql|pgsql|mbstring|dom|gd|zip|xml|curl|intl|opcache'
+     php -r "echo extension_loaded('bcmath') ? 'bcmath OK' : 'FALTA bcmath';"
+
+   Y dentro del proyecto, con las dependencias instaladas:
+
+     composer check-platform-reqs --no-dev    # avisa si falta alguna exigida
+     php -r "echo bcmul('1.05','2',2);"       # debe imprimir 2.10
+
+ 2.3 OTROS COMPONENTES
+
+   Composer 2 ............ instalacion de dependencias.
+   PostgreSQL 17 ......... servidor de base de datos. Puede ser:
+                             - local en el mismo servidor, o
+                             - gestionado externo y gratuito (Neon, etc.).
+   pg_dump (17) .......... cliente de respaldo, misma version mayor que el
+                           servidor. Solo si se usara el respaldo programado.
+   Node.js 22 o 24 ....... solo para CONSTRUIR el frontend (npm run build).
+                           No hace falta Node en el servidor de produccion: se
+                           sube la carpeta dist/ ya construida.
+   Nginx (+ PHP-FPM) ..... servidor web. Tambien sirve Apache con mod_php, pero
+                           la arquitectura documentada del proyecto es Nginx +
+                           PHP-FPM.
+
+================================================================================
+ 3. ARQUITECTURA DE PRODUCCION QUE EL SISTEMA ESPERA
+================================================================================
+
+ 3.1 DIAGRAMA (UN SOLO DOMINIO)
+
+                         https://liquidaciones.dominio.gob.bo
+                                     |
+                                     v
+                     +-----------------------------------+
+                     |            NGINX  (443/TLS)       |
+                     |                                   |
+                     |  /                -> dist/ SPA    |
+                     |  /api/*           -> PHP-FPM      |
+                     |  /sanctum/*       -> PHP-FPM      |
+                     |  /up              -> PHP-FPM      |
+                     +----------------+------------------+
+                                      |  fastcgi (9000)
+                                      v
+                     +-----------------------------------+
+                     |      PHP-FPM  (Laravel 13)        |
+                     |      epcoro-api/public/index.php  |
+                     +----------------+------------------+
+                                      |  pgsql (5432)
+                                      v
+                     +-----------------------------------+
+                     |        PostgreSQL 17              |
+                     +-----------------------------------+
+
+   La SPA (archivos estaticos con hash en el nombre, cacheables por 30 dias) y
+   la API comparten dominio, puerto y certificado. Nada de CORS en la practica
+   (el navegador lo ve como mismo origen) y la cookie de sesion viaja sin
+   problemas.
+
+ 3.2 REGLA DEL MISMO ORIGEN (por que no se puede separar)
+
+   1) La sesion es una COOKIE. Con SPA en dominio A y API en dominio B, la
+      cookie es "de terceros". Safari la bloquea por defecto; Chrome la bloquea
+      en modo incognito y la limita en navegacion normal. El sintoma tipico es
+      "entro y al hacer clic me devuelve al login".
+   2) El cliente axios tiene baseURL '/api/v1' (relativa). Apuntarlo a otro
+      dominio exige editar codigo y reconstruir el frontend.
+   3) `supports_credentials = true` con origen cruzado obliga a SameSite=None
+      mas Secure, y aun asi el navegador puede descartar la cookie.
+
+   Conclusion: aunque tecnicamente se pueda "proxear" /api desde un CDN
+   (Cloudflare Pages con _redirects, Vercel con rewrites), eso agrega una capa
+   fragil para ahorrar un servidor. No vale la pena.
+
+ 3.3 AJUSTES NECESARIOS PARA SERVIR LA SPA DESDE NGINX
+
+   a) Fallback de historial: cualquier ruta que no sea un archivo real debe
+      devolver index.html, si no, recargar https://dominio/bandeja da 404.
+      Se resuelve con `try_files $uri $uri/ /index.html;` (Anexo C).
+
+   b) Rutas de la API antes que el fallback: `location ~ ^/(api|sanctum)/`
+      debe resolverse a Laravel, nunca a index.html.
+
+   c) Cache: los archivos de dist/assets llevan hash en el nombre, se pueden
+      cachear de forma agresiva. index.html NO se cachea.
+
+   d) Tema del 404 de la API: la API responde JSON con 404; el fallback de la
+      SPA no debe interceptar /api (por eso el punto b va primero).
+
+================================================================================
+ 4. VARIABLES DE ENTORNO DE PRODUCCION
+================================================================================
+
+ Plantilla oficial en el repositorio: epcoro-api/.env.production.example
+ Verificar SIEMPRE con: php artisan sinchiwayra:revisar-produccion
+
+ Tabla de variables (las que importan en produccion):
+
+   Variable                    | Valor de produccion                | Nota
+   ----------------------------+------------------------------------+---------
+   APP_NAME                    | "SINCHI WAYRA"                     |
+   APP_ENV                     | production                         | critico
+   APP_KEY                     | (generada: php artisan key:generate)| critico
+   APP_DEBUG                   | false                              | critico
+   APP_URL                     | https://tu-dominio                 | critico
+   APP_TIMEZONE                | America/La_Paz                     | critico
+   APP_LOCALE                  | es                                 |
+   APP_MAINTENANCE_STORE       | database                           | modo mant.
+   BCRYPT_ROUNDS               | 12                                 |
+   LOG_CHANNEL                 | stack                              |
+   LOG_STACK                   | daily (o stderr, ver seccion 7)    |
+   LOG_LEVEL                   | warning                            |
+   LOG_DAILY_DAYS              | 30                                 |
+   LOG_AUDITORIA_DAYS          | 180                                |
+   DB_CONNECTION               | pgsql                              | critico
+   DB_HOST / DB_PORT           | host y 5432 del PostgreSQL         |
+   DB_DATABASE / DB_USERNAME   | epcoro / epcoro                    |
+   DB_PASSWORD                 | (secreto, nunca vacia)             | critico
+   DB_SSLMODE                  | require (si la base es externa)    | ver 6.3
+   SESSION_DRIVER              | database                           |
+   SESSION_LIFETIME            | 480                                |
+   SESSION_ENCRYPT             | true                               | critico
+   SESSION_SECURE_COOKIE       | true                               | critico
+   SESSION_DOMAIN              | null                               | mismo origen
+   SESSION_SAME_SITE           | lax                                |
+   BROADCAST_CONNECTION        | log                                |
+   FILESYSTEM_DISK             | local                              |
+   QUEUE_CONNECTION            | database (o sync, ver seccion 7)   |
+   CACHE_STORE                 | database                           |
+   MAIL_MAILER                 | log                                | sin SMTP
+   CORS_ALLOWED_ORIGINS        | https://tu-dominio                 | critico
+   SANCTUM_STATEFUL_DOMAINS    | tu-dominio  (SIN https://)         | critico
+   TRUST_PROXIES               | vacio con Nginx mismo host; si hay  |
+                               | proxy/CDN delante, ver 7.6         |
+   FRONTEND_URL                | https://tu-dominio                 |
+   RESPALDO_DIRECTORIO         | /var/backups/sinchiwayra           | ver 7
+   RESPALDO_DIAS_RETENCION     | 30                                 |
+   PG_DUMP_PATH                | /usr/bin/pg_dump                   |
+   AUTH_INTENTOS_MAXIMOS       | 5                                  |
+   AUTH_MINUTOS_BLOQUEO        | 15                                 |
+   AUTH_THROTTLE_LOGIN         | 6,1                                |
+
+ Notas finas:
+   - SANCTUM_STATEFUL_DOMAINS va SIN esquema y SIN puerto: "mi-dominio.gob.bo".
+     Con www y sin www hay que declarar los dos: "mi-dominio.gob.bo,www.mi-dominio.gob.bo".
+   - SESSION_DOMAIN debe quedar en null (un solo dominio). Ponerlo en produccion
+     solo si hay subdominios que deban compartir la sesion.
+   - CORS_ALLOWED_ORIGINS acepta varios separados por coma y SI lleva esquema.
+   - El .env real NUNCA se versiona (ya esta en .gitignore). En un PaaS se
+     cargan como "Environment Variables" del servicio, no como archivo.
+
+================================================================================
+ 5. SECUENCIA DE DESPLIEGUE (GUION GENERAL)
+================================================================================
+
+ Sirve para cualquier opcion de la seccion 6. Los nombres de carpeta son los
+ que usa este documento: /var/www/api (Laravel) y /var/www/web (SPA construida).
+
+ --- FRONTEND (se construye aparte; puede hacerse en tu PC) -----------------
+
+   cd epcoro-web
+   npm ci                     # instalacion reproducible desde package-lock
+   npm run build              # vue-tsc -b && vite build  ->  dist/
+   # subir SOLO la carpeta dist/ al servidor, por ejemplo a /var/www/web
+
+ --- BACKEND -----------------------------------------------------------------
+
+   cd /var/www/api
+   composer install --no-dev --optimize-autoloader --no-interaction
+
+   cp .env.production.example .env     # y completar valores reales
+   php artisan key:generate            # genera APP_KEY (solo la primera vez)
+
+   php artisan migrate --force         # --force porque APP_ENV=production
+   # Datos base (ver Anexo F): NO correr `db:seed` a secas en produccion.
+
+   php artisan config:cache
+   php artisan route:cache
+   php artisan view:cache
+
+   php artisan sinchiwayra:revisar-produccion    # debe terminar en 0
+   php artisan optimize                        # alias de lo anterior en Laravel 13
+
+   # Permisos de escritura (Laravel necesita escribir en storage y cache):
+   chown -R www-data:www-data storage bootstrap/cache
+   chmod -R ug+rwX storage bootstrap/cache
+
+   # Tarea programada (cron del usuario del servicio):
+   * * * * * cd /var/www/api && php artisan schedule:run >> /dev/null 2>&1
+
+ Notas del guion:
+   - `config:cache` es OBLIGATORIO en produccion: sin el, cada peticion lee el
+     .env. Si despues se cambia una variable de entorno hay que volver a
+     ejecutar `php artisan config:cache`.
+   - `route:cache` SE VERIFICO el 15/10/2026 con Laravel 13 y funciona incluso
+     con la ruta con closure de routes/web.php ("Routes cached successfully").
+   - Despues de desplegar codigo nuevo: `php artisan config:cache && php artisan
+     route:cache && php artisan view:cache` (o `php artisan optimize`).
+   - NUNCA subir: .env, vendor/ (se instala), node_modules/, dist/ del repo,
+     y MUCHO MENOS usuarios_prueba.txt (contiene credenciales de prueba).
+
+================================================================================
+ 6. OPCIONES DE SERVICIO GRATUITO EN INTERNET
+================================================================================
+
+ 6.1 FILTROS (lo que descarta una opcion de entrada)
+
+   R1. Debe ejecutar PHP 8.4 con las extensiones de la seccion 2.
+   R2. Debe ofrecer PostgreSQL (no MySQL, no solo SQLite).
+   R3. Debe permitir servir estaticos Y PHP en el MISMO dominio (seccion 3.2).
+   R4. Debe tener HTTPS con certificado valido.
+   R5. Debe tener ~200 MB de disco (vendor + codigo + dist; con --no-dev ~70 MB).
+   Deseables:
+   D1. Disco persistente (para logs de auditoria de 180 dias y respaldos).
+   D2. Una tarea cron (para el respaldo diario).
+   D3. Dominio propio (para que la URL sea institucional y no un subdominio
+       ajeno). Sin esto, la direccion cambia si se muda de proveedor.
+
+ 6.2 OPCION A - MAQUINA VIRTUAL "SIEMPRE GRATIS"  (RECOMENDADA PARA USO REAL)
+
+   Proveedores:
+     - Oracle Cloud "Always Free": VM Ampere ARM. ATENCION: en julio de 2026
+       Oracle redujo la asignacion gratuita de Ampere (las fuentes reportan del
+       orden de 2 OCPU / 12 GB en lugar de 4/24; verificar el cupo vigente al
+       crear la cuenta). Requiere tarjeta de credito para el registro.
+     - Google Cloud "Always Free": una VM e2-micro (1 vCPU / 1 GB) en
+       us-central1, us-west1 o us-east1, con 30 GB de disco. Requiere tarjeta.
+     - (AWS, Azure y otros: sus capas gratuitas son por 12 meses, no permanentes.)
+
+   Por que es la recomendada: es la unica que cumple D1, D2 y D3, y la unica que
+   reproduce exactamente la arquitectura del README (Nginx + PHP-FPM +
+   PostgreSQL). La maquina nunca se apaga, no hay arranque en frio y el respaldo
+   corre de verdad.
+
+   Montaje:
+     a) Instalar Ubuntu LTS (o el sistema que ofrezca el proveedor).
+     b) Instalar PHP 8.4 + extensiones (seccion 2.1), Nginx, PostgreSQL 17,
+        Composer, cron y pg_dump. Alternativa: Docker Compose (Anexo D).
+     c) Crear la base y el usuario:
+          sudo -u postgres createuser --pwprompt epcoro
+          sudo -u postgres createdb --owner=epcoro epcoro
+     d) Desplegar con el guion de la seccion 5 y la config de Nginx del Anexo C.
+     e) HTTPS: usar Caddy (certificado automatico, 3 lineas) o
+        `certbot --nginx`. Con Cloudflare por delante tambien se puede usar su
+        certificado de origen.
+     f) Cron del respaldo (seccion 5) y cron de renovacion del certificado si
+        se uso certbot.
+     g) Cortafuegos: abrir SOLO 80 y 443 al mundo; 5432 (PostgreSQL) nunca
+        expuesto a Internet; SSH por llave, no por contrasena.
+
+   Contras: exige manejar un servidor (parches, copias, certificados). No hay
+   boton magico.
+
+ 6.3 OPCION B - RENDER (FREE, DOCKER) + NEON (POSTGRES FREE)  (DEMO, SIN TARJETA)
+
+   Verificado el 15/10/2026 contra la documentacion oficial de Render
+   (render.com/docs/free):
+
+     Plan Free de Render, servicio web (Docker):
+       - 750 horas de instancia al mes. Si se agotan, Render SUSPENDE los
+         servicios gratuitos hasta el mes siguiente.
+       - Se APAGA a los 15 minutos sin trafico y tarda ~1 minuto en despertar.
+       - Sistema de archivos EFIMERO: lo que se escriba en disco se pierde en
+         cada reinicio, redespliegue o apagado.
+       - 0,1 CPU / 512 MB de RAM. Sin disco persistente. Sin acceso SSH.
+       - Sin trabajos "one-off" y sin escalado.
+       - Bloquea los puertos SMTP (25, 465, 587) de salida.
+       - Dominio propio y HTTPS: SI, incluidos y gratuitos.
+       - La propia documentacion de Render advierte: "Do not use them for
+         production applications."
+     Plan Free de Render, PostgreSQL:
+       - 1 GB de almacenamiento y, sobre todo, EXPIRA A LOS 30 DIAS de creada
+         (14 dias de gracia y luego se BORRA con todos los datos).
+       - Una sola base gratuita por cuenta y sin respaldos administrados.
+       => NO usar la base gratuita de Render para esto. Usar una base externa.
+
+     Neo (Neon.tech) plan Free (PostgreSQL gestionado):
+       - Almacenamiento del orden de 0,5-1 GB por proyecto y ~100 horas de
+         computo al mes (las cifras cambiaron varias veces durante 2026: leer
+         la pagina de precios vigente).
+       - Escala a cero cuando no hay actividad: la primera consulta del dia
+         puede tardar unos segundos (se suma al minuto de despertar de Render).
+       - Permite restaurar a un punto en el pasado dentro de su ventana de
+         retencion (limitada en el plan gratuito).
+       - Conexion por SSL obligatoria => DB_SSLMODE=require.
+
+   Montaje resumido:
+     1) Crear la base en Neon y copiar su cadena de conexion.
+     2) Crear en Render un "Web Service" desde el repositorio de GitHub, con
+        Dockerfile (Anexo B). Render construye la imagen y le inyecta la
+        variable PORT (por defecto 10000): Nginx debe escuchar en esa variable.
+     3) Cargar las variables de entorno de la seccion 4 en el panel de Render
+        (incluyendo DB_* de Neon, DB_SSLMODE=require y APP_KEY).
+     4) Primer despliegue: ejecutar las migraciones. Como no hay SSH, se hace
+        desde el arranque del contenedor (Anexo B) o con un comando de una sola
+        vez ejecutado localmente apuntando a la base de Neon.
+     5) Como TRUST_PROXIES: en Render el trafico entra por su proxy interno y la
+        IP del cliente llega en X-Forwarded-For. El origin no es alcanzable
+        directamente desde Internet, asi que en ese caso concreto se puede usar
+        TRUST_PROXIES=* (el .env.production.example lo prohibe pensando en un
+        servidor con Nginx propio; aqui la justificacion es que nadie puede
+        falsificar la cabecera porque nadie llega al contenedor sin pasar por
+        Render). Documentar esta excepcion.
+     6) Guardar los logs en la salida estandar (LOG_STACK=stderr) porque el
+        disco es efimero y ademas es lo unico que se puede leer en el panel.
+
+   Limitaciones que hay que aceptar:
+     - Arranque en frio de ~1 minuto tras 15 de inactividad.
+     - El respaldo diario NO puede correr (no hay cron ni disco): la proteccion
+       queda a cargo de la ventana de restauracion de Neon. Alternativa
+       gratuita: un flujo programado de GitHub Actions que ejecute pg_dump
+       contra Neon y guarde el archivo como artefacto (Anexo E).
+     - El log de auditoria (180 dias) se pierde en cada reinicio. Si se necesita
+       auditoria persistente, esta opcion NO sirve.
+     - Los Excel/PDF grandes pueden chocar con 512 MB de RAM.
+
+ 6.4 OPCION C - ALWAYSDATA (PLAN FREE)  (MEJOR OPCION SIN TARJETA)
+
+   Verificado el 15/10/2026 en la documentacion oficial de alwaysdata. El plan
+   gratuito incluye:
+
+     Disco ............... 1 GB (incluye archivos, correo y bases de datos)
+     RAM ................. 256 MB
+     CPU ................. 1/4
+     Respaldos ........... 3 dias moviles (administrados por el proveedor)
+     Lenguajes ........... PHP (varias versiones, incluida 8.4) y otros
+     Bases de datos ...... PostgreSQL y MySQL
+     Tareas programadas .. SI (cron)
+     HTTPS ............... SI, certificado gratuito incluido
+     Precio .............. 0 (euros)
+
+   Condiciones que hay que leer antes de decidir (estan en la letra chica):
+     - "El plan Free no puede usarse con fines de lucro."
+     - "La creacion de sitios en este plan esta limitada a la direccion de la
+       cuenta alwaysdata.net" (es decir: NO se puede usar un dominio propio) y
+       no permite ejecutar "services" (procesos propios de larga duracion).
+       Para este sistema no es un problema: no hay workers ni demonios; la cola
+       no se usa y el programador va por cron.
+     - El uso institucional de una entidad estatal con un sistema sin fines de
+       lucro encaja en la letra de la condicion, pero conviene confirmarlo con
+       el proveedor antes de publicarlo.
+
+   Por que encaja bien: es el unico proveedor SIN TARJETA que ofrece
+   PHP + PostgreSQL + cron + HTTPS en un mismo lugar. Y el disco alcanza
+   comodamente: vendor de produccion ~70 MB + codigo + dist 0,5 MB + base
+   pequena, sobre 1 GB.
+
+   Montaje resumido:
+     1) Crear la cuenta y, en el panel, crear la base PostgreSQL (anotar host,
+        puerto, base, usuario y contrasena).
+     2) Subir el backend por SFTP/SSH a ~/api (o por git). Ejecutar
+        `composer install --no-dev --optimize-autoloader` (Composer esta
+        disponible por SSH) y completar el .env.
+     3) Servir la API: en "Web > Sites" crear un sitio de tipo PHP apuntando al
+        directorio public/ de Laravel. Los archivos estaticos de la SPA se
+        colocan en la misma raiz que sirve el sitio, o se usa su funcion de
+        "Rewrite rules" para enviar /api y /sanctum al index.php de Laravel y el
+        resto a index.html. Esta es la parte que exige mas cuidado y pruebas.
+     4) Migraciones y datos base desde SSH (seccion 5).
+     5) Tarea programada: en "Advanced > Scheduled tasks", ejecutar cada minuto
+        `php ~/api/artisan schedule:run`.
+     6) Ajustar el memory_limit de PHP: con 256 MB de RAM conviene dejarlo en
+        256M y evitar exportaciones enormes.
+
+   Contras: 256 MB de RAM (justo para PHP-FPM + exportaciones), sin dominio
+   propio, sin fines de lucro, y un panel poco comun si nunca se uso.
+
+ 6.5 OPCION D - SPA EN CDN + API EN OTRO HOST  (NO RECOMENDADA)
+
+   Ejemplo: SPA en Cloudflare Pages o Netlify (ambos gratuitos) y API en un
+   contenedor aparte.
+
+   Por que NO: la sesion es una cookie (seccion 3.2). Habria que:
+     - cambiar SESSION_SAME_SITE a none y SESSION_DOMAIN al dominio de la API;
+     - activar SESSION_SECURE_COOKIE (ya lo esta);
+     - declarar el dominio de la SPA en SANCTUM_STATEFUL_DOMAINS y en CORS;
+     - Y AUN ASI, el navegador puede bloquear la cookie por ser de terceros.
+   Ademas habria que reescribir el frontend para que llame a una URL absoluta.
+
+   Si de todos modos se quisiera hacer, el unico camino serio es que el CDN
+   ACTUE DE PROXY del mismo origen: en Cloudflare Pages se puede reenviar
+   /api/* y /sanctum/* al backend con reglas de _redirects (rewrite 200 a una
+   URL absoluta) o con una Function. Asi el navegador ve un solo dominio. Es
+   mas fragil y agrega dependencia de la plataforma; solo tiene sentido si se
+   necesita CDN global y no hay forma de tener un contenedor.
+
+ 6.6 OPCIONES DESCARTADAS (y por que)
+
+   - InfinityFree, 000webhost, freehosting y similares: PHP con MySQL, sin
+     PostgreSQL -> incumplen R2. Ademas sin SSH ni Composer, sin cron y con
+     anuncios o limites de peticiones.
+   - Heroku: elimino su capa gratuita.
+   - Railway: ya no tiene plan gratuito (solo credito de prueba).
+   - Fly.io: desde octubre de 2024 no hay capa gratuita para organizaciones
+     nuevas (pago por uso; requiere tarjeta).
+   - Vercel / Netlify / GitHub Pages / Cloudflare Pages por si solos: solo
+     sirven estaticos -> incumplen R1 (no ejecutan Laravel).
+   - Runtime PHP serverless de comunidad en Vercel: tecnicamente posible, pero
+     sin sesiones fiables, sin cron, con arranques en frio y con un sistema de
+     archivos de solo lectura -> incumple R3 en la practica.
+   - Wasmer (Laravel gratis): MySQL -> incumple R2.
+   - Koyeb: tiene instancia gratuita (1 servicio web de 512 MB / 2 GB de disco)
+     y una base PostgreSQL gratuita, PERO la base gratuita esta limitada a
+     5 horas de actividad y 1 GB, y la cuenta exige tarjeta (con cargo del plan
+     prorrateado al registrarse, que luego se puede bajar al plan Starter).
+     Como base de datos persistente no sirve; como servicio web es equivalente
+     a Render con mas tramites.
+
+ 6.7 TABLA COMPARATIVA
+
+   Criterio            | A) VM always-free  | B) Render+Neon    | C) Alwaysdata
+   --------------------+--------------------+-------------------+--------------
+   Tarjeta requerida   | Si                 | No                | No
+   PHP 8.4             | Si (lo instalas)   | Si (imagen Docker)| Si
+   PostgreSQL 17       | Si                 | Si (Neon externo) | Si
+   Mismo origen        | Si                 | Si                | Si (con reglas)
+   Dominio propio      | Si                 | Si                | NO (subdominio)
+   HTTPS               | Si                 | Si                | Si
+   Disco persistente   | Si                 | NO (efimero)      | Si (1 GB)
+   Cron                | Si                 | NO                | Si
+   RAM al servicio     | 1-12 GB            | 512 MB            | 256 MB
+   Arranque en frio    | No                 | Si (~1 min)       | No
+   Auditoria 180 dias  | Si                 | NO (se pierde)    | Si (mientras no
+                       |                    |                   |   se limpie)
+   Respaldo pg_dump    | Si (programado)    | No (ver 6.3)      | Si (cron)
+   Idoneidad           | Uso real / piloto  | Demo publica      | Demo/piloto sin
+                       |                    |                   |   tarjeta
+
+================================================================================
+ 7. AJUSTES OBLIGATORIOS POR LAS LIMITACIONES DEL PLAN GRATUITO
+================================================================================
+
+ 7.1 COLA: QUEUE_CONNECTION -> sync
+   El sistema no encola nada (no hay Jobs/ShouldQueue). En un plan gratuito no
+   hay worker ni cron por minuto para el worker, asi que:
+       QUEUE_CONNECTION=sync
+   Con database tambien funciona (nada se encola), pero sync evita dejar filas
+   huerfanas si en el futuro alguien agrega un Job sin worker.
+
+ 7.2 LOGS: A DONDE ESCRIBIR
+   - En un servidor propio o con disco (Opcion A/C): dejar `daily` (30 dias) y
+     el canal `auditoria` (180 dias) tal como viene. Es la configuracion legal
+     correcta.
+   - En un PaaS con disco efimero (Opcion B): poner
+       LOG_CHANNEL=stderr
+     para que los logs salgan al panel del proveedor y no se pierdan en el
+     disco. OJO: el canal `auditoria` sigue escribiendo a archivo, asi que en un
+     PaaS efimero LA AUDITORIA SE PIERDE. Si la auditoria hace falta, la Opcion
+     B queda descartada.
+
+ 7.3 RESPALDOS
+   - Con cron y pg_dump (Opcion A): dejar el programador como esta
+     (`sinchiwayra:respaldar` a las 02:30) y apuntar RESPALDO_DIRECTORIO a un
+     disco/volumen fuera del arbol de la aplicacion, por ejemplo
+     /var/backups/sinchiwayra. Ademas, copiar ese directorio periodicamente
+     fuera del servidor (otro disco, rclone, o descarga manual): un respaldo en
+     el mismo servidor no protege de perder el servidor.
+   - Sin cron (Opcion B): usar la restauracion a un punto en el tiempo del
+     proveedor de base de datos (Neon) y/o un flujo programado de GitHub
+     Actions que ejecute pg_dump contra la base y guarde el artefacto
+     (plantilla en el Anexo E).
+   - Sin pg_dump (algunos hostings no lo tienen): revisar `PG_DUMP_PATH`; si no
+     existe el binario, el respaldo programado falla (y avisa por el canal de
+     auditoria con estado "fallido"). En ese caso, respaldar desde otra maquina.
+
+ 7.4 SESIONES Y CACHE
+   Ya estan en la base de datos (SESSION_DRIVER=database, CACHE_STORE=database).
+   No cambiar a `file` en un PaaS efimero: se perderia la sesion en cada
+   reinicio y los usuarios serian expulsados.
+
+ 7.5 HTTPS Y PROXY TLS
+   En todos los casos el sitio debe servirse SOLO por HTTPS porque
+   SESSION_SECURE_COOKIE=true y SESSION_ENCRYPT=true. Si el TLS lo termina un
+   proxy (un CDN, o el balanceador del PaaS) y la aplicacion ve HTTP, hay que
+   indicarle que confie en el proxy: TRUST_PROXIES (ver 7.6) y, en Nginx,
+   pasar HTTPS/HTTP_X_FORWARDED_PROTO al FastCGI (Anexo C).
+
+ 7.6 TRUST_PROXIES (IP del cliente)
+   - Nginx en el mismo servidor, sin nada delante: dejar TRUST_PROXIES vacio.
+     FastCGI ya le pasa a PHP la IP real del cliente.
+   - Con Cloudflare u otro proxy delante: poner SOLO las redes de ese proxy,
+     nunca '*'. Excepcion justificada: en un PaaS donde el contenedor no es
+     alcanzable desde Internet (Render), usar '*' es aceptable porque nadie
+     puede falsificar X-Forwarded-For sin pasar por el proveedor. Dejar
+     constancia de la decision.
+   - Sintoma de tenerlo mal: en el log de auditoria todas las IP son la del
+     proxy, o (peor) un cliente puede falsear su IP.
+
+ 7.7 MEMORIA
+   - 512 MB (Render) o 256 MB (Alwaysdata): fijar memory_limit de PHP en 256M y
+     evitar exportar reportes de rangos enormes. Las exportaciones a Excel son
+     las que mas memoria consumen.
+
+ 7.8 DOMINIO GRATUITO
+   - Sin dominio propio (Alwaysdata): la URL sera algo como
+     https://cuenta.alwaysdata.net. Funciona, pero no es institucional y ata la
+     direccion al proveedor.
+   - Con subdominio de prueba: servicios como nip.io/sslip.io permiten probar
+     HTTPS con un nombre tipo 203-0-113-5.nip.io sin comprar dominio. Solo para
+     pruebas, no para entrega.
+
+================================================================================
+ 8. CHECKLIST DE PUESTA EN PRODUCCION
+================================================================================
+
+ Entorno
+ [ ] PHP 8.4 con TODAS las extensiones de 2.1 (incluida bcmath, verificada a mano)
+ [ ] PostgreSQL 17 accesible; base, usuario y contrasena creados
+ [ ] pg_dump de la misma version mayor que el servidor (si habra respaldos)
+ [ ] Nginx + PHP-FPM instalados y funcionando
+ [ ] Node 22/24 disponible SOLO para construir el frontend (no en el servidor)
+
+ Aplicacion
+ [ ] composer install --no-dev --optimize-autoloader
+ [ ] .env completo a partir de .env.production.example
+ [ ] php artisan key:generate
+ [ ] php artisan migrate --force
+ [ ] Datos base cargados (Anexo F), SIN seeders de ejemplo
+ [ ] php artisan config:cache && route:cache && view:cache  (o optimize)
+ [ ] Permisos de escritura en storage/ y bootstrap/cache/
+ [ ] Sin .env ni usuarios_prueba.txt en el servidor
+
+ Web
+ [ ] dist/ de la SPA publicado
+ [ ] Fallback de historial (try_files -> /index.html)
+ [ ] /api y /sanctum enrutados a Laravel (no al fallback)
+ [ ] HTTPS con certificado valido y redireccion de http a https
+ [ ] Puerto 5432 NO expuesto a Internet
+
+ Verificacion
+ [ ] php artisan sinchiwayra:revisar-produccion  (codigo de salida 0)
+ [ ] /up responde 200
+ [ ] /api/health responde 200 y confirma la base de datos
+ [ ] Un login real funciona y la sesion se mantiene
+ [ ] Un PDF y un Excel se descargan bien
+ [ ] cron de schedule:run activo (si aplica)
+ [ ] Un respaldo manual (php artisan sinchiwayra:respaldar) genera el .dump
+ [ ] El log de auditoria registra el login
+ [ ] Monitoreo externo apuntando a /up
+
+================================================================================
+ 9. VERIFICACION DESPUES DEL DESPLIEGUE
+================================================================================
+
+ 9.1 SALUD
+
+   curl -i https://TU-DOMINIO/up                 # 200
+   curl -s https://TU-DOMINIO/api/health          # JSON con la base de datos
+
+ 9.2 REVISION DE ENTORNO
+
+   cd /var/www/api
+   php artisan sinchiwayra:revisar-produccion --estricto
+
+   (Con --estricto tambien falla por avisos, no solo por criticos. Encadenarlo
+   al despliegue: si devuelve distinto de cero, no publicar.)
+
+ 9.3 PRUEBA FUNCIONAL MINIMA (por la interfaz)
+
+   1) Abrir https://TU-DOMINIO  y entrar con un usuario real.
+   2) Recorrer el flujo: alta de una liquidacion -> enviar a revision ->
+      marcar revisado -> aprobar. (Usar datos de prueba y luego anularla, o
+      hacerlo en la base de pruebas, NO en la base real durante la entrega.)
+   3) Descargar el PDF y el Excel de esa liquidacion.
+   4) Cerrar sesion y confirmar que al volver a una URL privada redirige al
+      login (sesion realmente cerrada).
+
+ 9.4 AUDITORIA
+
+   Revisar el archivo del canal de auditoria (o el panel del proveedor) y
+   confirmar que aparece el login con usuario, IP y agente.
+
+ 9.5 RESPALDO
+
+   php artisan sinchiwayra:respaldar
+   ls -lh /var/backups/sinchiwayra       # debe aparecer sinchiwayra-*.dump
+   pg_restore --list /var/backups/sinchiwayra/sinchiwayra-*.dump | head
+
+   (pg_restore --list verifica que el archivo es un respaldo valido y legible.)
+
+================================================================================
+ 10. CI/CD GRATUITO CON GITHUB ACTIONS
+================================================================================
+
+ El repositorio ya esta en GitHub: https://github.com/MCarranzas/epcoro
+ (rama main). GitHub Actions es gratuito para repositorios publicos y trae
+ minutos incluidos para privados.
+
+ 10.1 QUE CONVIENE AUTOMATIZAR
+
+   - Pruebas del backend (PHPUnit) con un servicio PostgreSQL.
+   - Analisis estatico (PHPStan/Larastan) y formato (Pint --test).
+   - Chequeo de tipos y build del frontend (vue-tsc + vite build).
+   - Despliegue (solo si el proveedor tiene "deploy hook" o si se despliega por
+     SSH a la VM de la Opcion A).
+
+ 10.2 PLANTILLA DE FLUJO (guardar como .github/workflows/ci.yml)
+
+   ---------------------------------------------------------------------------
+   name: CI
+
+   on:
+     push:
+       branches: [main]
+     pull_request:
+
+   jobs:
+     api:
+       runs-on: ubuntu-latest
+
+       services:
+         postgres:
+           image: postgres:17
+           env:
+             # El phpunit.xml del proyecto fija estas credenciales; el servicio
+             # de CI debe crearlas tal cual.
+             POSTGRES_USER: epcoro
+             POSTGRES_PASSWORD: epcoro_secret
+             POSTGRES_DB: epcoro_test
+           ports:
+             - 5432:5432
+           options: >-
+             --health-cmd "pg_isready -U epcoro"
+             --health-interval 10s
+             --health-timeout 5s
+             --health-retries 5
+
+       defaults:
+         run:
+           working-directory: epcoro-api
+
+       steps:
+         - uses: actions/checkout@v4
+
+         - uses: shivammathur/setup-php@v2
+           with:
+             php-version: '8.4'
+             extensions: bcmath, pdo_pgsql, pgsql, mbstring, gd, zip, intl, curl
+             coverage: none
+
+         - run: composer install --no-interaction --prefer-dist
+
+         - run: cp .env.example .env && php artisan key:generate
+
+         - run: php artisan test
+
+         - run: vendor/bin/phpstan analyse --no-progress
+         - run: vendor/bin/pint --test
+
+     web:
+       runs-on: ubuntu-latest
+
+       defaults:
+         run:
+           working-directory: epcoro-web
+
+       steps:
+         - uses: actions/checkout@v4
+         - uses: actions/setup-node@v4
+           with:
+             node-version: '24'
+             cache: npm
+             cache-dependency-path: epcoro-web/package-lock.json
+
+         - run: npm ci
+         - run: npm run build
+   ---------------------------------------------------------------------------
+
+   Notas:
+   - `extensions:` de setup-php DEBE incluir bcmath: es la unica forma de que
+     la CI detecte que falta (Composer no la declara).
+   - Las pruebas necesitan PostgreSQL porque las migraciones usan sintaxis de
+     PostgreSQL. El servicio `postgres:17` se crea con las credenciales que
+     phpunit.xml espera.
+   - Fijar la version de PHP en 8.4 igual que el lock (`platform.php`).
+
+ 10.3 DESPLIEGUE
+
+   - Opcion B (Render): crear un "Deploy Hook" en Render y llamarlo desde un
+     job de Actions con un `curl -X POST ${{ secrets.RENDER_DEPLOY_HOOK }}`
+     despues de que pase la CI. Render, ademas, redespliega solo al hacer push
+     si el servicio esta conectado al repositorio.
+   - Opcion A (VM): job que entra por SSH (usar secrets para la llave) y
+     ejecuta: `git pull && composer install --no-dev -o && php artisan migrate
+     --force && php artisan optimize && sudo systemctl reload php8.4-fpm`.
+
+================================================================================
+ 11. MONITOREO Y OPERACION
+================================================================================
+
+   Monitoreo de disponibilidad (gratis):
+     - UptimeRobot o similar: vigilar https://TU-DOMINIO/up cada 5 minutos y
+       avisar por correo si cae. En Opcion B, esto ADEMAS mantiene despierto el
+       servicio (evita el arranque en frio), aunque consume horas de instancia
+       del plan gratuito: 750 h/mes alcanzan para un solo servicio 24/7.
+     - Vigilar tambien /api/health: distingue "la web responde" de "la base de
+       datos responde".
+
+   Errores de aplicacion: Sentry tiene plan gratuito para Laravel y sirve para
+   enterarse de las excepciones sin leer logs a mano. Es opcional; el sistema
+   ya escribe logs y auditoria en archivo.
+
+   Operacion diaria:
+     - Ver el resultado del respaldo (el comando avisa si falla).
+     - Revisar espacio en disco (principalmente por logs y respaldos).
+     - Revisar la auditoria cuando alguien lo pida.
+     - En Opcion A: actualizaciones de seguridad del sistema operativo.
+
+================================================================================
+ 12. SEGURIDAD
+================================================================================
+
+   [ ] APP_ENV=production y APP_DEBUG=false (el preflight lo verifica).
+   [ ] APP_KEY generada y guardada en un gestor de secretos, no en el repositorio.
+   [ ] Contrasena de base fuerte; nunca vacia (el preflight lo verifica).
+   [ ] PostgreSQL NO expuesto a Internet (solo 5432 local o red privada).
+   [ ] HTTPS obligatorio; SESSION_SECURE_COOKIE=true; SESSION_ENCRYPT=true.
+   [ ] CORS_ALLOWED_ORIGINS y SANCTUM_STATEFUL_DOMAINS SOLO con el dominio real
+       (sin localhost).
+   [ ] TRUST_PROXIES acotado (nunca '*' salvo la excepcion justificada de 7.6).
+   [ ] Sin usuarios de ejemplo en produccion (Anexo F). Las contrasenas de
+       usuarios_prueba.txt son publicas y conocidas: si esas cuentas existen en
+       produccion, el sistema esta abierto.
+   [ ] Contrasenas iniciales generadas al azar, entregadas por canal seguro, con
+       cambio obligatorio en el primer ingreso (los seeders ponen
+       debe_cambiar_password=true para el administrador en produccion).
+   [ ] Bloqueo por intentos fallidos activo (AUTH_INTENTOS_MAXIMOS=5,
+       AUTH_MINUTOS_BLOQUEO=15) y limite de login AUTH_THROTTLE_LOGIN=6,1.
+   [ ] Sin archivos sensibles en el servidor web: .env fuera de la raiz
+       publica (Laravel ya sirve solo public/), sin usuarios_prueba.txt, sin
+       pasos.txt ni notas de desarrollo, sin el directorio .git si no hace falta.
+   [ ] Acceso al servidor por llave SSH, no por contrasena (Opcion A).
+   [ ] Respaldos cifrados si salen del servidor (son datos fiscales).
+   [ ] Firmar el acuerdo de tratamiento de datos del proveedor si es externo.
+
+================================================================================
+ 13. LIMITES, RIESGOS Y QUE NO HACER CON UN PLAN GRATUITO
+================================================================================
+
+   Riesgos por opcion:
+
+     A) VM always-free
+        - Riesgo de operacion: nadie parchea el servidor si no hay alguien
+          asignado. Requiere tarjeta (aunque no cobre si se respetan los cupos).
+        - El proveedor puede reclamar la VM si esta inactiva durante mucho
+          tiempo; y los cupos gratuitos cambian (Oracle ya redujo Ampere en 2026).
+
+     B) Render + Neon
+        - Arranque en frio de ~1 min tras 15 min sin trafico.
+        - Disco efimero: se pierde la auditoria de 180 dias y los respaldos.
+        - La base gratuita de Render expira a los 30 dias: por eso se usa Neon.
+        - Render dice explicitamente que su plan gratuito no es para produccion.
+        - 750 h/mes: un solo servicio 24/7 consume casi todo el cupo.
+        - Hay que avivar el servicio para demostraciones (o aceptar el minuto
+          de espera delante del cliente).
+
+     C) Alwaysdata
+        - 256 MB de RAM: justo para exportaciones grandes.
+        - Sin dominio propio y con la clausula de "sin fines de lucro".
+        - Al ser un hosting compartido, no se controla el resto del servidor.
+
+   Que NO hacer:
+     - NO usar el plan gratuito como entorno definitivo de datos fiscales sin
+       respaldo externo y sin auditoria persistente.
+     - NO usar MySQL ni SQLite "para simplificar": las migraciones son de
+       PostgreSQL y fallan.
+     - NO correr `php artisan migrate:fresh` ni `db:seed` a secas en produccion:
+       borran y crean cuentas de demostracion.
+     - NO dejar APP_DEBUG=true para "ver mejor los errores": expone trazas,
+       rutas y credenciales.
+     - NO versionar el .env ni subir usuarios_prueba.txt al servidor.
+     - NO confiar en un respaldo guardado en el mismo servidor.
+     - NO ejecutar el .exe ni los comandos de desarrollo en el servidor.
+
+================================================================================
+ 14. COSTOS
+================================================================================
+
+   Escenario 1 - Opcion B (Render Free + Neon Free) ......... 0 USD/mes
+     Limite: 750 h de instancia, arranque en frio, disco efimero, sin cron.
+     Solo apto para demo/piloto.
+
+   Escenario 2 - Opcion C (Alwaysdata Free) ................ 0 USD/mes
+     Limite: 1 GB de disco, 256 MB de RAM, subdominio alwaysdata.net,
+     sin fines de lucro, sin dominio propio.
+
+   Escenario 3 - Opcion A (Oracle/GCP always-free) ......... 0 USD/mes
+     Limite: los cupos de la capa gratuita; requiere tarjeta y administracion
+     propia. Es la unica que cumple respaldo + cron + disco + dominio propio.
+
+   Escenario 4 - Puesta en produccion "de verdad" (referencia)
+     Dominio .gob.bo o equivalente ........................ ~10-40 USD/anio
+     VM pequena con disco y respaldos (1-2 GB RAM) ........ ~5-10 USD/mes
+     Base de datos administrada con respaldo ............... ~0-15 USD/mes
+     Total orientativo ..................................... ~10-25 USD/mes
+
+   La diferencia entre el escenario gratuito y el real no es la capacidad de
+   calculo (el sistema es liviano), es la GARANTIA: disco persistente,
+   respaldos automaticos, sin suspensiones y con soporte. Para un sistema de
+   liquidaciones de mineral, esa garantia es el punto.
+
+================================================================================
+ ANEXO A - .env MINIMO DE PRODUCCION (para completar)
+================================================================================
+
+   APP_NAME="SINCHI WAYRA"
+   APP_ENV=production
+   APP_KEY=
+   APP_DEBUG=false
+   APP_URL=https://tu-dominio
+
+   APP_TIMEZONE=America/La_Paz
+   APP_LOCALE=es
+   APP_FALLBACK_LOCALE=en
+
+   APP_MAINTENANCE_DRIVER=file
+   APP_MAINTENANCE_STORE=database
+
+   BCRYPT_ROUNDS=12
+
+   LOG_CHANNEL=stack
+   LOG_STACK=daily
+   LOG_LEVEL=warning
+   LOG_DAILY_DAYS=30
+   LOG_AUDITORIA_DAYS=180
+
+   DB_CONNECTION=pgsql
+   DB_HOST=127.0.0.1
+   DB_PORT=5432
+   DB_DATABASE=epcoro
+   DB_USERNAME=epcoro
+   DB_PASSWORD=
+
+   # Base externa (Neon y similares): obligatorio
+   # DB_SSLMODE=require
+
+   SESSION_DRIVER=database
+   SESSION_LIFETIME=480
+   SESSION_ENCRYPT=true
+   SESSION_SECURE_COOKIE=true
+   SESSION_PATH=/
+   SESSION_DOMAIN=null
+   SESSION_SAME_SITE=lax
+
+   BROADCAST_CONNECTION=log
+   FILESYSTEM_DISK=local
+   QUEUE_CONNECTION=database
+   CACHE_STORE=database
+
+   MAIL_MAILER=log
+   MAIL_FROM_ADDRESS="no-reply@tu-dominio"
+   MAIL_FROM_NAME="${APP_NAME}"
+
+   CORS_ALLOWED_ORIGINS=https://tu-dominio
+   SANCTUM_STATEFUL_DOMAINS=tu-dominio
+   TRUST_PROXIES=
+   FRONTEND_URL=https://tu-dominio
+
+   RESPALDO_DIRECTORIO=/var/backups/sinchiwayra
+   RESPALDO_DIAS_RETENCION=30
+   PG_DUMP_PATH=/usr/bin/pg_dump
+
+================================================================================
+ ANEXO B - DOCKERFILE (para la Opcion B: Render y similares)
+================================================================================
+
+ Construye la SPA en una etapa y la sirve con Nginx + PHP-FPM en la misma
+ imagen, en un solo puerto (el que el proveedor inyecte en la variable PORT).
+
+ ------------------------------------------------------------------------------
+ # ---------- Etapa 1: construir la SPA ----------
+ FROM node:24-alpine AS web
+
+ WORKDIR /web
+ COPY epcoro-web/package*.json ./
+ RUN npm ci
+ COPY epcoro-web/ ./
+ RUN npm run build          # vue-tsc -b && vite build
+
+ # ---------- Etapa 2: PHP 8.4 + Nginx ----------
+ FROM php:8.4-fpm-alpine
+
+ # postgresql-dev  -> cabeceras para compilar pdo_pgsql
+ # postgresql17-client -> pg_dump/pg_restore (respaldo programado)
+ RUN apk add --no-cache nginx supervisor postgresql-dev postgresql17-client \
+       libzip-dev libpng-dev libjpeg-turbo-dev freetype-dev icu-dev \
+       oniguruma-dev \
+   && docker-php-ext-configure gd --with-freetype --with-jpeg \
+   && docker-php-ext-install -j"$(nproc)" pdo_pgsql pgsql bcmath gd zip intl \
+   && rm -rf /var/cache/apk/*
+
+ # Composer
+ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
+ WORKDIR /var/www/api
+ COPY epcoro-api/composer.json epcoro-api/composer.lock ./
+ RUN composer install --no-dev --no-interaction --prefer-dist \
+       --optimize-autoloader --no-scripts
+ COPY epcoro-api/ ./
+ RUN composer dump-autoload --no-dev --optimize --no-interaction
+
+ # La SPA queda como raiz de Nginx
+ COPY --from=web /web/dist /var/www/web
+
+ COPY docker/nginx.conf /etc/nginx/http.d/default.conf
+ COPY docker/start.sh /usr/local/bin/start.sh
+ RUN chmod +x /usr/local/bin/start.sh \
+   && chown -R nobody:nobody /var/www/api/storage /var/www/api/bootstrap/cache
+
+ EXPOSE 10000
+ CMD ["/usr/local/bin/start.sh"]
+ ------------------------------------------------------------------------------
+
+ Ajustes que hay que hacer en el repositorio para que esto funcione:
+   - Agregar los archivos docker/nginx.conf y docker/start.sh.
+   - El COPY asume que el contexto de build es la RAIZ del repositorio
+     (epcoro/), no epcoro-api/. Configurar el "Root Directory" en consecuencia.
+
+================================================================================
+ ANEXO C - NGINX (un solo dominio: SPA + API)
+================================================================================
+
+ ------------------------------------------------------------------------------
+ server {
+     listen ${PORT};
+     server_name _;
+
+     root /var/www/web;                 # dist/ de la SPA
+     index index.html;
+
+     client_max_body_size 12m;
+
+     # --- API y CSRF de Sanctum van a Laravel (PHP-FPM) ---
+     location ~ ^/(api|sanctum|up)/? {
+         include fastcgi_params;
+         fastcgi_pass 127.0.0.1:9000;
+
+         fastcgi_param SCRIPT_FILENAME /var/www/api/public/index.php;
+         fastcgi_param SCRIPT_NAME     /index.php;
+         fastcgi_param DOCUMENT_ROOT   /var/www/api/public;
+         fastcgi_param REQUEST_URI     $request_uri;
+         fastcgi_param HTTPS           $https if_not_empty;
+
+         # Si hay un proxy TLS delante (CDN/Paas):
+         # fastcgi_param HTTP_X_FORWARDED_PROTO $http_x_forwarded_proto;
+
+         fastcgi_read_timeout 120s;
+     }
+
+     # --- Estaticos con hash: cache agresiva ---
+     location /assets/ {
+         expires 30d;
+         add_header Cache-Control "public, immutable";
+         try_files $uri =404;
+     }
+
+     # --- SPA con historial HTML5: todo lo demas cae en index.html ---
+     location / {
+         try_files $uri /index.html;
+     }
+ }
+ ------------------------------------------------------------------------------
+
+ En la Opcion B, `${PORT}` lo inyecta el proveedor (Render usa 10000 por
+ defecto). En un servidor propio, reemplazar por `listen 443 ssl;` con el
+ certificado, mas un `server` en el 80 que redirija a https.
+
+================================================================================
+ ANEXO D - DOCKER COMPOSE (Opcion A: un solo servidor)
+================================================================================
+
+ ------------------------------------------------------------------------------
+ services:
+   db:
+     image: postgres:17
+     restart: unless-stopped
+     environment:
+       POSTGRES_DB: epcoro
+       POSTGRES_USER: epcoro
+       POSTGRES_PASSWORD: ${DB_PASSWORD}
+     volumes:
+       - pgdata:/var/lib/postgresql/data
+     healthcheck:
+       test: ["CMD-SHELL", "pg_isready -U epcoro"]
+       interval: 10s
+       retries: 5
+
+   api:
+     build:
+       context: .
+       dockerfile: Dockerfile
+     restart: unless-stopped
+     env_file: .env
+     depends_on:
+       db:
+         condition: service_healthy
+     ports:
+       - "8080:10000"
+
+   # cron del programador (una tarea que ejecuta schedule:run cada minuto)
+   scheduler:
+     image: alpine:3.20
+     restart: unless-stopped
+     depends_on: [api]
+     command: >
+       sh -c "apk add --no-cache docker-cli >/dev/null &&
+              while :; do sleep 60; docker exec epcoro-api-1 php /var/www/api/artisan schedule:run; done"
+
+ volumes:
+   pgdata:
+ ------------------------------------------------------------------------------
+
+ Alternativa mas simple para el programador en un solo servidor: no usar
+ Docker para el cron, sino el `crontab` del sistema ejecutando
+ `docker exec ... artisan schedule:run` (o `artisan` directo si no hay Docker).
+
+================================================================================
+ ANEXO E - RESPALDO AUTOMATICO SIN CRON (GitHub Actions + Neon)
+================================================================================
+
+ Para la Opcion B (donde el servidor no puede ejecutar el respaldo):
+
+ ------------------------------------------------------------------------------
+ name: Respaldo de la base
+
+ on:
+   schedule:
+     - cron: '30 6 * * *'      # 02:30 en Bolivia (UTC-4)
+   workflow_dispatch:
+
+ jobs:
+   dump:
+     runs-on: ubuntu-latest
+     steps:
+       - name: Instalar cliente de PostgreSQL 17
+         run: |
+           sudo sh -c 'echo "deb https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+           curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/pgdg.gpg
+           sudo apt-get update && sudo apt-get install -y postgresql-client-17
+
+       - name: pg_dump en formato custom
+         env:
+           PGPASSWORD: ${{ secrets.DB_PASSWORD }}
+         run: |
+           pg_dump --host=${{ secrets.DB_HOST }} --port=5432 \
+             --username=${{ secrets.DB_USERNAME }} --format=custom \
+             --no-password --file=sinchiwayra-$(date +%Y-%m-%d_%H%M%S).dump \
+             ${{ secrets.DB_DATABASE }}
+
+       - name: Guardar el respaldo como artefacto
+         uses: actions/upload-artifact@v4
+         with:
+           name: respaldo
+           path: sinchiwayra-*.dump
+           retention-days: 30
+ ------------------------------------------------------------------------------
+
+ Notas: los artefactos de Actions tienen retencion limitada y no son un archivo
+ fiscal; para respaldos serios, subirlos a un almacenamiento de objetos con
+ cifrado. Los secretos (DB_HOST, DB_USERNAME, DB_PASSWORD, DB_DATABASE) van en
+ Settings > Secrets and variables > Actions.
+
+================================================================================
+ ANEXO F - SEEDERS: QUE CORRER EN PRODUCCION (IMPORTANTE)
+================================================================================
+
+ `php artisan db:seed` (sin argumentos) ejecuta DatabaseSeeder, que llama a
+ TODOS los seeders, incluidos los de demostracion. En produccion eso crea las
+ cuentas de ejemplo. NO HACER ESO.
+
+ Lo que hay que correr en produccion, en este orden:
+
+   php artisan db:seed --class=RolPermisosSeeder       --force
+   php artisan db:seed --class=CatalogoGeograficoSeeder --force
+   php artisan db:seed --class=PresentacionesSeeder    --force
+   php artisan db:seed --class=ParametrosSeeder        --force
+   php artisan db:seed --class=CompradoresSeeder       --force
+   php artisan db:seed --class=AdminSeeder             --force
+
+ Comportamiento en produccion de cada seeder:
+   - RolPermisosSeeder ......... roles y permisos. IMPRESCINDIBLE.
+   - CatalogoGeograficoSeeder .. departamentos/provincias/municipios. Necesario.
+   - PresentacionesSeeder ...... catalogo de presentaciones del mineral.
+   - ParametrosSeeder .......... parametros del formulario (aporte, regalias,
+                                 cotizacion base...). Necesario para calcular.
+   - CompradoresSeeder ......... comprador institucional fijo.
+   - AdminSeeder ............... crea el usuario administrador. En produccion
+                                 (APP_ENV=production) genera una contrasena
+                                 ALEATORIA de 24 caracteres y la muestra UNA
+                                 SOLA VEZ por consola, con cambio obligatorio en
+                                 el primer ingreso. Anotarla en ese momento.
+
+ Seeders que NO deben correr en produccion:
+
+   - VendedoresEjemploSeeder, CompradoresEjemploSeeder,
+     AreasMinerasEjemploSeeder  -> datos de demostracion. Tienen una guarda que
+     los omite solos cuando APP_ENV=production, pero no hay que invocarlos.
+   - UsuariosEjemploSeeder  -> ATENCION: NO tiene guarda de produccion. Si se
+     ejecuta en produccion CREA las cuentas tecnico, tecnico2, revisor y
+     gerente con contrasenas aleatorias. El propio comentario del archivo dice
+     "en produccion ninguna de estas cuentas debe existir". NO EJECUTARLO.
+
+   Como verificar despues de sembrar:
+     php artisan tinker
+     >>> App\Models\User::pluck('username');
+     # Solo deben aparecer las cuentas reales (por ejemplo: admin) y ninguna
+     # cuenta de demostracion (tecnico, tecnico2, revisor, gerente).
+
+ Las contrasenas de desarrollo de esas cuentas estan en usuarios_prueba.txt.
+ Ese archivo es material de desarrollo: NUNCA debe subirse al servidor.
+
+================================================================================
+ FIN DEL DOCUMENTO
+================================================================================
