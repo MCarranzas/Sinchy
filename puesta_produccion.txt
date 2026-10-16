@@ -7,7 +7,13 @@
  Alcance:     tecnologias y herramientas que usa el sistema, y como llevarlo a
               Internet en un servicio gratuito.
  Fecha de verificacion de datos: 15 de octubre de 2026.
+ Fecha de revision de los artefactos Docker: 16 de octubre de 2026.
  Repositorio:  https://github.com/MCarranzas/epcoro   (rama main)
+
+ Artefactos de despliegue YA presentes en la RAIZ del repositorio:
+   Dockerfile, docker/nginx.conf.template, docker/start.sh, docker/php.ini,
+   .dockerignore, .gitattributes, railway.toml
+ Guia paso a paso para Railway: deploy_railway/despliegue_railway.md
 
  AVISO IMPORTANTE
  ----------------
@@ -46,7 +52,7 @@
   12. Seguridad
   13. Limites, riesgos y que NO hacer con un plan gratuito
   14. Costos
-  Anexos A-F
+  Anexos A-G
 
 ================================================================================
  0. RESUMEN EJECUTIVO
@@ -401,6 +407,10 @@
    d) Tema del 404 de la API: la API responde JSON con 404; el fallback de la
       SPA no debe interceptar /api (por eso el punto b va primero).
 
+   El archivo REAL que implementa esto es `docker/nginx.conf.template`
+   (Anexo C). El puerto se inyecta con `envsubst` en el arranque porque el
+   proveedor lo entrega en la variable PORT.
+
 ================================================================================
  4. VARIABLES DE ENTORNO DE PRODUCCION
 ================================================================================
@@ -512,6 +522,10 @@
      route:cache && php artisan view:cache` (o `php artisan optimize`).
    - NUNCA subir: .env, vendor/ (se instala), node_modules/, dist/ del repo,
      y MUCHO MENOS usuarios_prueba.txt (contiene credenciales de prueba).
+   - Este guion manual aplica a la Opcion A (servidor propio). Para la imagen
+     Docker (Anexo B; Opciones B/C y Railway) los pasos de FRONTEND y BACKEND
+     los hace la propia imagen: el build compila la SPA y `docker/start.sh`
+     aplica migraciones y cachea la configuracion al arrancar.
 
 ================================================================================
  6. OPCIONES DE SERVICIO GRATUITO EN INTERNET
@@ -600,9 +614,11 @@
 
    Montaje resumido:
      1) Crear la base en Neon y copiar su cadena de conexion.
-     2) Crear en Render un "Web Service" desde el repositorio de GitHub, con
-        Dockerfile (Anexo B). Render construye la imagen y le inyecta la
-        variable PORT (por defecto 10000): Nginx debe escuchar en esa variable.
+     2) Crear en Render un "Web Service" desde el repositorio de GitHub y
+        apuntarlo al Dockerfile de la RAIZ del repositorio (Anexo B, ya
+        implementado). El "Root Directory" debe quedar en la raiz del repo.
+        Render construye la imagen e inyecta la variable PORT (por defecto
+        10000); Nginx escucha en ella via envsubst (docker/start.sh).
      3) Cargar las variables de entorno de la seccion 4 en el panel de Render
         (incluyendo DB_* de Neon, DB_SSLMODE=require y APP_KEY).
      4) Primer despliegue: ejecutar las migraciones. Como no hay SSH, se hace
@@ -1175,33 +1191,89 @@
    PG_DUMP_PATH=/usr/bin/pg_dump
 
 ================================================================================
- ANEXO B - DOCKERFILE (para la Opcion B: Render y similares)
+ ANEXO B - DOCKERFILE Y ARCHIVOS DE DESPLIEGUE (Opciones B/C y Railway)
 ================================================================================
 
- Construye la SPA en una etapa y la sirve con Nginx + PHP-FPM en la misma
- imagen, en un solo puerto (el que el proveedor inyecte en la variable PORT).
+ IMPLEMENTADO. La RAIZ del repositorio contiene estos archivos. Ellos son la
+ fuente de verdad; aqui se copia su contenido para que el documento sea
+ autocontenido.
 
+   Dockerfile                     imagen multi-etapa: SPA + API + Nginx
+   docker/nginx.conf.template     Nginx de un solo origen (ver Anexo C)
+   docker/start.sh                arranque: nginx.conf, migraciones, cache
+   docker/php.ini                 memoria, variables_order, opcache, zona hor.
+   .dockerignore                  evita .env, vendor/ y node_modules/
+   .gitattributes                 fuerza finales de linea LF en *.sh y Docker
+   railway.toml                   construccion/arranque en Railway (Anexo G)
+
+ Construye la SPA en una etapa (Node 24) y la sirve con Nginx + PHP-FPM 8.4 en
+ la misma imagen y el mismo puerto ($PORT). El context de build es la RAIZ del
+ repositorio, porque la imagen necesita tanto epcoro-web/ como epcoro-api/.
+
+ Nota sobre PostgreSQL: NO se instala `postgresql17-client` en la imagen. El
+ cliente de respaldo (pg_dump) no se necesita en un PaaS efimero sin cron; en
+ su lugar se deja solo `postgresql-dev`, que es lo que exige compilar
+ pdo_pgsql/pgsql.
+
+ --- Dockerfile (raiz del repositorio) ---
  ------------------------------------------------------------------------------
- # ---------- Etapa 1: construir la SPA ----------
+ # syntax=docker/dockerfile:1
+ #
+ # SINCHI WAYRA - imagen UNICA que sirve la SPA (Vue) y la API (Laravel) en el
+ # MISMO origen. Es un requisito del sistema: la autenticacion es por cookie de
+ # sesion (Sanctum modo SPA) y el cliente axios usa la ruta relativa /api/v1, asi
+ # que la SPA y la API no pueden vivir en dominios distintos.
+ #
+ # El contexto de build debe ser la RAIZ del repositorio (epcoro/), porque se
+ # copian tanto epcoro-web/ como epcoro-api/.
+ #
+ #   Etapa 1 (web)   : Node 24 compila la SPA  ->  /web/dist
+ #   Etapa 2 (final) : PHP 8.4 + Nginx sirve la SPA y enruta /api y /sanctum a
+ #                     PHP-FPM, todo en el mismo puerto (el que inyecta $PORT).
+
+ # ---------------------------------------------------------------------------
+ # Etapa 1: construir la SPA (vue-tsc -b && vite build)
+ # ---------------------------------------------------------------------------
  FROM node:24-alpine AS web
 
  WORKDIR /web
- COPY epcoro-web/package*.json ./
+ COPY epcoro-web/package.json epcoro-web/package-lock.json ./
  RUN npm ci
  COPY epcoro-web/ ./
- RUN npm run build          # vue-tsc -b && vite build
+ RUN npm run build
 
- # ---------- Etapa 2: PHP 8.4 + Nginx ----------
+ # ---------------------------------------------------------------------------
+ # Etapa 2: PHP 8.4 + PostgreSQL + Nginx
+ # ---------------------------------------------------------------------------
  FROM php:8.4-fpm-alpine
 
- # postgresql-dev  -> cabeceras para compilar pdo_pgsql
- # postgresql17-client -> pg_dump/pg_restore (respaldo programado)
- RUN apk add --no-cache nginx supervisor postgresql-dev postgresql17-client \
-       libzip-dev libpng-dev libjpeg-turbo-dev freetype-dev icu-dev \
-       oniguruma-dev \
-   && docker-php-ext-configure gd --with-freetype --with-jpeg \
-   && docker-php-ext-install -j"$(nproc)" pdo_pgsql pgsql bcmath gd zip intl \
-   && rm -rf /var/cache/apk/*
+ # nginx          -> servidor web (sirve la SPA y pasa /api y /sanctum a PHP)
+ # gettext        -> envsubst (inyecta el puerto $PORT en la plantilla de nginx)
+ # postgresql-dev -> cabeceras para compilar pdo_pgsql / pgsql
+ # libzip/libpng/libjpeg/freetype/icu/oniguruma -> zip, gd, intl, mbstring
+ RUN apk add --no-cache \
+         nginx \
+         gettext \
+         postgresql-dev \
+         libzip-dev \
+         libpng-dev \
+         libjpeg-turbo-dev \
+         freetype-dev \
+         icu-dev \
+         oniguruma-dev \
+     && docker-php-ext-configure gd --with-freetype --with-jpeg \
+     && docker-php-ext-install -j"$(nproc)" \
+         pdo_pgsql pgsql bcmath gd zip intl mbstring opcache \
+     && rm -rf /var/cache/apk/*
+
+ # PHP-FPM: escuchar solo en loopback y HEREDAR el entorno del contenedor.
+ # clear_env=no es imprescindible: en un PaaS las variables (APP_KEY, DB_*,
+ # SANCTUM_*) llegan como variables de entorno del contenedor, no como
+ # archivo .env, y por defecto PHP-FPM las borraria.
+ RUN sed -i 's/^listen = .*/listen = 127.0.0.1:9000/' /usr/local/etc/php-fpm.d/www.conf \
+     && echo 'clear_env = no' >> /usr/local/etc/php-fpm.d/www.conf
+
+ COPY docker/php.ini /usr/local/etc/php/conf.d/99-app.ini
 
  # Composer
  COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
@@ -1209,43 +1281,201 @@
  WORKDIR /var/www/api
  COPY epcoro-api/composer.json epcoro-api/composer.lock ./
  RUN composer install --no-dev --no-interaction --prefer-dist \
-       --optimize-autoloader --no-scripts
+         --optimize-autoloader --no-scripts
  COPY epcoro-api/ ./
- RUN composer dump-autoload --no-dev --optimize --no-interaction
+ RUN composer dump-autoload --no-dev --optimize --no-interaction \
+     && mkdir -p storage/app/public storage/framework/cache/data \
+         storage/framework/sessions storage/framework/views storage/logs \
+         bootstrap/cache \
+     && chown -R www-data:www-data storage bootstrap/cache
 
- # La SPA queda como raiz de Nginx
+ # La SPA compilada queda como raiz de Nginx.
  COPY --from=web /web/dist /var/www/web
 
- COPY docker/nginx.conf /etc/nginx/http.d/default.conf
+ COPY docker/nginx.conf.template /etc/nginx/http.d/default.conf.template
  COPY docker/start.sh /usr/local/bin/start.sh
  RUN chmod +x /usr/local/bin/start.sh \
-   && chown -R nobody:nobody /var/www/api/storage /var/www/api/bootstrap/cache
+     && sed -i 's/\r$//' /usr/local/bin/start.sh \
+     && rm -f /etc/nginx/http.d/default.conf
 
- EXPOSE 10000
+ # El proveedor inyecta PORT (Render usa 10000). Sin la variable se usa 8080.
+ ENV PORT=8080
+ EXPOSE 8080
+
  CMD ["/usr/local/bin/start.sh"]
  ------------------------------------------------------------------------------
 
- Ajustes que hay que hacer en el repositorio para que esto funcione:
-   - Agregar los archivos docker/nginx.conf y docker/start.sh.
+ --- docker/start.sh ---
+ ------------------------------------------------------------------------------
+ #!/bin/sh
+ # SINCHI WAYRA - arranque del contenedor.
+ #
+ # Deja todo listo y levanta PHP-FPM + Nginx en el puerto que inyecta el
+ # proveedor ($PORT). Se ejecuta en CADA arranque del contenedor: cachea la
+ # configuracion con las variables ya inyectadas, aplica migraciones y arranca.
+ set -e
+
+ cd /var/www/api
+
+ echo "[start] Generando la configuracion de Nginx para el puerto ${PORT:-8080}"
+ envsubst '${PORT}' < /etc/nginx/http.d/default.conf.template > /etc/nginx/http.d/default.conf
+
+ echo "[start] Cacheando configuracion, rutas y vistas"
+ # config:cache DEBE correr aqui (y no en el build): lee las variables de
+ # entorno que el proveedor inyecta en tiempo de ejecucion. Es critico: si
+ # falla, se detiene el arranque.
+ php artisan config:cache
+ # Rutas y vistas: si no se pueden cachear (por ejemplo una ruta con closure),
+ # se avisa y se sigue con el arranque normal en vez de bloquear el servicio.
+ php artisan route:cache || echo "[start] AVISO: no se pudo cachear rutas; se usaran dinamicas."
+ php artisan view:cache || echo "[start] AVISO: no se pudieron cachear vistas."
+
+ echo "[start] Aplicando migraciones (con reintentos por si la base aun arranca)"
+ intentos=0
+ until php artisan migrate --force; do
+     intentos=$((intentos + 1))
+     if [ "$intentos" -ge 30 ]; then
+         echo "[start] ERROR: la base de datos no respondio tras $intentos intentos." >&2
+         exit 1
+     fi
+     echo "[start] Esperando a la base de datos... (intento $intentos)"
+     sleep 3
+ done
+
+ # Seeders de datos base: se corren UNA SOLA VEZ. Definir SEED=1 en las variables
+ # del servicio, desplegar, y luego QUITAR la variable para no repetirlos en cada
+ # reinicio. Ver el Anexo F.
+ if [ "${SEED:-0}" = "1" ]; then
+     echo "[start] Sembrando datos base (SEED=1)"
+     php artisan db:seed --class=RolPermisosSeeder       --force
+     php artisan db:seed --class=CatalogoGeograficoSeeder --force
+     php artisan db:seed --class=PresentacionesSeeder    --force
+     php artisan db:seed --class=ParametrosSeeder        --force
+     php artisan db:seed --class=CompradoresSeeder       --force
+     php artisan db:seed --class=AdminSeeder             --force
+ fi
+
+ # Lo que Laravel escribe en disco debe ser del usuario de PHP-FPM (www-data).
+ chown -R www-data:www-data storage bootstrap/cache || true
+
+ echo "[start] Arrancando PHP-FPM y Nginx"
+ php-fpm -D
+ exec nginx -g 'daemon off;'
+ ------------------------------------------------------------------------------
+
+ --- docker/php.ini ---
+ ------------------------------------------------------------------------------
+ ; Ajustes de PHP para el contenedor de produccion.
+ ;
+ ; Las exportaciones (Excel con PhpSpreadsheet, PDF con dompdf) son sincronas y
+ ; consumen memoria del proceso; con datos reales conviene 512 MB. En un plan
+ ; con poca RAM, bajar a 256M y evitar reportes de rangos enormes.
+
+ memory_limit = 512M
+ upload_max_filesize = 12M
+ post_max_size = 12M
+ max_execution_time = 120
+ max_input_time = 120
+
+ ; Popula $_ENV ademas de $_SERVER/getenv, que es de donde Laravel lee las
+ ; variables de entorno.
+ variables_order = "EGPCS"
+
+ date.timezone = America/La_Paz
+
+ opcache.enable = 1
+ opcache.memory_consumption = 128
+ opcache.max_accelerated_files = 10000
+ opcache.validate_timestamps = 1
+ opcache.revalidate_freq = 0
+ ------------------------------------------------------------------------------
+
+ --- .dockerignore ---
+ ------------------------------------------------------------------------------
+ # SINCHI WAYRA - que NO entra en el contexto de build de Docker.
+ #
+ # Ojo: .gitignore NO afecta a Docker. Sin este archivo, un `COPY epcoro-api/ .`
+ # copiaria el .env real (con secretos), vendor/ y node_modules/ a la imagen.
+
+ # --- Git y metadatos ---
+ .git
+ .gitignore
+ .gitattributes
+
+ # --- Documentacion y material de desarrollo (no van a la imagen) ---
+ docs
+ auxiliar
+ deploy_railway
+ *.docx
+ manual.docx
+ usuarios_prueba.txt
+ notas1.txt
+ notas_figma.txt
+ pasos.txt
+ pasos_otra_maquina.txt
+ instrucciones.txt
+ plan_pruebas.md
+ prompt.txt
+ puesta_produccion.txt
+ README.md
+ RETOMAR.md
+ epcoro.code-workspace
+
+ # --- Backend: dependencias, entorno y artefactos locales ---
+ epcoro-api/vendor
+ epcoro-api/.env
+ epcoro-api/.env.backup
+ epcoro-api/.env.production
+ epcoro-api/.env.development
+ epcoro-api/node_modules
+ epcoro-api/public/build
+ epcoro-api/public/hot
+ epcoro-api/public/storage
+ epcoro-api/storage/framework/cache/data
+ epcoro-api/storage/framework/sessions
+ epcoro-api/storage/framework/views
+ epcoro-api/storage/logs
+ epcoro-api/.phpunit.result.cache
+ epcoro-api/.phpunit.cache
+
+ # --- Frontend: dependencias y build previo (se reconstruye en la etapa web) ---
+ epcoro-web/node_modules
+ epcoro-web/dist
+ epcoro-web/.env
+ epcoro-web/.env.local
+ epcoro-web/.vscode
+ ------------------------------------------------------------------------------
+
+ Ajustes que hay que tener en cuenta:
+   - Estos archivos YA estan creados en el repositorio.
    - El COPY asume que el contexto de build es la RAIZ del repositorio
      (epcoro/), no epcoro-api/. Configurar el "Root Directory" en consecuencia.
+   - docker/start.sh debe tener finales de linea LF (lo garantiza .gitattributes
+     con `*.sh text eol=lf`); con CRLF el contenedor falla al ejecutarlo.
+   - El puerto lo decide el proveedor en la variable PORT; start.sh reemplaza
+     ${PORT} en la plantilla de Nginx antes de arrancar.
 
 ================================================================================
  ANEXO C - NGINX (un solo dominio: SPA + API)
 ================================================================================
+
+ Archivo REAL: `docker/nginx.conf.template`. Se llama .template a proposito:
+ Nginx no debe cargarlo tal cual porque contiene el literal ${PORT}.
+ `docker/start.sh` lo reemplaza con envsubst y lo escribe como
+ /etc/nginx/http.d/default.conf.
 
  ------------------------------------------------------------------------------
  server {
      listen ${PORT};
      server_name _;
 
-     root /var/www/web;                 # dist/ de la SPA
+     root /var/www/web;                 # dist/ compilado de la SPA
      index index.html;
 
      client_max_body_size 12m;
 
-     # --- API y CSRF de Sanctum van a Laravel (PHP-FPM) ---
-     location ~ ^/(api|sanctum|up)/? {
+     # --- API, CSRF de Sanctum y health check -> Laravel (PHP-FPM) ---
+     location ~ ^/(api|sanctum|up)(/|$) {
          include fastcgi_params;
          fastcgi_pass 127.0.0.1:9000;
 
@@ -1255,13 +1485,17 @@
          fastcgi_param REQUEST_URI     $request_uri;
          fastcgi_param HTTPS           $https if_not_empty;
 
-         # Si hay un proxy TLS delante (CDN/Paas):
-         # fastcgi_param HTTP_X_FORWARDED_PROTO $http_x_forwarded_proto;
+         # El proxy TLS del proveedor termina el HTTPS y manda la cabecera.
+         # Reenviarla es lo que hace que Laravel ($request->isSecure()) genere
+         # URLs https y acepte la cookie SESSION_SECURE_COOKIE=true.
+         fastcgi_param HTTP_X_FORWARDED_PROTO $http_x_forwarded_proto;
+         fastcgi_param HTTP_X_FORWARDED_FOR   $http_x_forwarded_for;
+         fastcgi_param HTTP_X_FORWARDED_HOST  $http_x_forwarded_host;
 
          fastcgi_read_timeout 120s;
      }
 
-     # --- Estaticos con hash: cache agresiva ---
+     # --- Estaticos con hash en el nombre: cache agresiva ---
      location /assets/ {
          expires 30d;
          add_header Cache-Control "public, immutable";
@@ -1275,9 +1509,10 @@
  }
  ------------------------------------------------------------------------------
 
- En la Opcion B, `${PORT}` lo inyecta el proveedor (Render usa 10000 por
- defecto). En un servidor propio, reemplazar por `listen 443 ssl;` con el
- certificado, mas un `server` en el 80 que redirija a https.
+ En un PaaS (Railway, Render), ${PORT} lo inyecta el proveedor y start.sh hace
+ el envsubst. En un servidor propio, reemplazar `listen ${PORT};` por
+ `listen 443 ssl;` con el certificado, mas un `server` en el 80 que redirija
+ a https.
 
 ================================================================================
  ANEXO D - DOCKER COMPOSE (Opcion A: un solo servidor)
@@ -1301,15 +1536,17 @@
 
    api:
      build:
-       context: .
+       context: .        # RAIZ del repo: la imagen necesita epcoro-web/ y epcoro-api/
        dockerfile: Dockerfile
      restart: unless-stopped
      env_file: .env
+     environment:
+       PORT: "8080"
      depends_on:
        db:
          condition: service_healthy
      ports:
-       - "8080:10000"
+       - "8080:8080"
 
    # cron del programador (una tarea que ejecuta schedule:run cada minuto)
    scheduler:
@@ -1324,9 +1561,15 @@
    pgdata:
  ------------------------------------------------------------------------------
 
- Alternativa mas simple para el programador en un solo servidor: no usar
- Docker para el cron, sino el `crontab` del sistema ejecutando
- `docker exec ... artisan schedule:run` (o `artisan` directo si no hay Docker).
+ Notas del Anexo D:
+   - El `context: .` es la RAIZ del repositorio: la imagen necesita tanto
+     epcoro-web/ (para compilar la SPA) como epcoro-api/.
+   - `docker/start.sh` ya aplica `migrate --force` al arrancar. Para sembrar
+     los datos base (Anexo F) una sola vez, definir SEED=1 en el primer
+     arranque y quitarlo despues.
+   - Alternativa mas simple para el programador en un solo servidor: no usar
+     Docker para el cron, sino el `crontab` del sistema ejecutando
+     `docker exec ... artisan schedule:run` (o `artisan` directo si no hay Docker).
 
 ================================================================================
  ANEXO E - RESPALDO AUTOMATICO SIN CRON (GitHub Actions + Neon)
@@ -1422,6 +1665,44 @@
 
  Las contrasenas de desarrollo de esas cuentas estan en usuarios_prueba.txt.
  Ese archivo es material de desarrollo: NUNCA debe subirse al servidor.
+
+================================================================================
+ ANEXO G - RAILWAY (imagen unica: SPA + API en el mismo origen)
+================================================================================
+
+ AVISO SOBRE EL COSTO: Railway YA NO tiene plan gratuito. Las cuentas nuevas
+ reciben un credito de prueba (del orden de USD 5 por 30 dias) y despues un
+ credito mensual minimo; agotado ese credito, los servicios se detienen. Para
+ "gratis de verdad" usar la Opcion B (Render + Neon) o la Opcion C (Alwaysdata).
+
+ Lo que sigue aplica igual a las tres opciones: es la MISMA imagen (Anexo B),
+ un solo servicio que sirve SPA y API en el mismo origen.
+
+ Guia paso a paso, tabla completa de variables y errores frecuentes:
+   deploy_railway/despliegue_railway.md
+
+ Resumen:
+   1) Railway: New Project > Deploy from GitHub repo (MCarranzas/epcoro). Dejar
+      el "Root Directory" en la RAIZ del repositorio (NO en epcoro-api).
+      Railway usa railway.toml y el Dockerfile para construir.
+   2) + New > Database > PostgreSQL (dejandola PRIVADA). Railway expone PGHOST,
+      PGPORT, PGUSER, PGPASSWORD y PGDATABASE.
+   3) Variables del servicio: las de la seccion 4, con DB_* referenciando el
+      servicio Postgres:
+        DB_HOST=${{Postgres.PGHOST}}        DB_PORT=${{Postgres.PGPORT}}
+        DB_DATABASE=${{Postgres.PGDATABASE}}
+        DB_USERNAME=${{Postgres.PGUSER}}    DB_PASSWORD=${{Postgres.PGPASSWORD}}
+      Mas: TRUST_PROXIES=* (excepcion justificada, ver 7.6), QUEUE_CONNECTION=sync
+      y LOG_STACK=stderr (disco efimero).
+   4) Settings > Networking > Generate Domain. Con esa URL fijar APP_URL,
+      CORS_ALLOWED_ORIGINS, FRONTEND_URL y SANCTUM_STATEFUL_DOMAINS (este SIN
+      https:// y SIN puerto). Redeploy.
+   5) Primer arranque: start.sh corre migraciones solo. Para sembrar los datos
+      base (Anexo F), definir SEED=1 una vez, copiar la contrasena del admin
+      desde los logs del deploy y QUITAR SEED.
+
+ Comprobacion: GET /up -> 200; GET /api/health -> JSON con la base de datos;
+ y un login real que sostenga la sesion.
 
 ================================================================================
  FIN DEL DOCUMENTO

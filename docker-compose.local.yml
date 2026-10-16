@@ -1,0 +1,75 @@
+# Prueba LOCAL de la imagen de produccion. NO es el despliegue real.
+#
+# Uso (dentro de WSL, desde la raiz del repositorio):
+#   APP_KEY="base64:..." SEED=1 docker compose -f docker-compose.local.yml up --build
+#
+# Quitar SEED=1 en el segundo arranque. Limpieza total:
+#   docker compose -f docker-compose.local.yml down -v
+
+services:
+  db:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: epcoro_docker
+      POSTGRES_USER: epcoro
+      POSTGRES_PASSWORD: epcoro_secret
+    # Puerto 5433 para no chocar con tu PostgreSQL nativo en 5432 (solo
+    # para inspeccionar desde Windows; el contenedor `api` usa el nombre `db`).
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata_prueba:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U epcoro -d epcoro_docker"]
+      interval: 10s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PORT: "8080"
+      APP_NAME: "SINCHI WAYRA"
+      APP_ENV: production
+      APP_KEY: "${APP_KEY:?Genera una APP_KEY: cd epcoro-api && php artisan key:generate --show}"
+      APP_DEBUG: "false"
+      APP_URL: "http://localhost:8080"
+      APP_TIMEZONE: "America/La_Paz"
+      APP_LOCALE: "es"
+      LOG_CHANNEL: "stack"
+      LOG_STACK: "stderr"
+      LOG_LEVEL: "warning"
+      DB_CONNECTION: "pgsql"
+      DB_HOST: "db"
+      DB_PORT: "5432"
+      DB_DATABASE: "epcoro_docker"
+      DB_USERNAME: "epcoro"
+      DB_PASSWORD: "epcoro_secret"
+      SESSION_DRIVER: "database"
+      SESSION_LIFETIME: "480"
+      SESSION_ENCRYPT: "true"
+      # LOCAL NO HAY HTTPS. En produccion real va "true".
+      SESSION_SECURE_COOKIE: "false"
+      SESSION_DOMAIN: "null"
+      SESSION_SAME_SITE: "lax"
+      BROADCAST_CONNECTION: "log"
+      FILESYSTEM_DISK: "local"
+      QUEUE_CONNECTION: "sync"
+      CACHE_STORE: "database"
+      MAIL_MAILER: "log"
+      CORS_ALLOWED_ORIGINS: "http://localhost:8080"
+      SANCTUM_STATEFUL_DOMAINS: "localhost,localhost:8080"
+      TRUST_PROXIES: "*"
+      # "1" solo en el primer arranque: siembra los datos base (Anexo F).
+      SEED: "${SEED:-0}"
+    ports:
+      - "8080:8080"
+
+volumes:
+  pgdata_prueba:

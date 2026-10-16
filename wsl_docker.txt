@@ -1,0 +1,205 @@
+================================================================================
+ SINCHI WAYRA - PROBAR LA IMAGEN EN LOCAL (WSL2 + DOCKER)
+================================================================================
+
+ Documento:   wsl_docker.txt
+ Proposito:   verificar que el Dockerfile construye y que la imagen sirve la
+              SPA y la API en el mismo origen ANTES de gastar credito en
+              Railway. El codigo de la aplicacion NO cambia.
+
+ PROGRESO (16/10/2026, 12:23):
+   [x] Seccion 1, paso 1: features habilitadas (DISM exit=3010 en ambas)
+         - Microsoft-Windows-Subsystem-Linux ... Enabled
+         - VirtualMachinePlatform ............ Enabled
+   [ ] REINICIAR WINDOWS          <-- FALTA (obligatorio, lo pide DISM)
+   [ ] Seccion 1, paso 2: instalar distro Ubuntu (wsl --install -d Ubuntu)
+         (wsl --install se NIEGA hasta que la feature este activa tras el
+         reinicio; por eso no se pudo completar en el primer intento)
+   [ ] Seccion 2 en adelante: Docker Engine, build, prueba
+   El script de instalacion de Ubuntu queda en Temp\opencode\instala_ubuntu.ps1
+
+ Archivos relacionados:
+   deploy_railway/PROBAR_LOCAL.md         guia detallada
+   docker-compose.local.yml               prueba local (imagen + postgres)
+   deploy_railway/despliegue_railway.md   despliegue real en Railway
+
+================================================================================
+ 0. ¿VALE LA PENA INSTALAR DOCKER?
+================================================================================
+
+ No es OBLIGATORIO. Tu aplicacion ya corre local sin Docker.
+
+  - Lo que ya quedo verificado SIN Docker:
+      * extensiones PHP (bcmath, gd, zip, intl, mbstring, pdo_pgsql, pgsql,
+        opcache) -> presentes en tu PHP 8.4.26
+      * composer check-platform-reqs --no-dev -> todo "success"
+      * npm run build (etapa 1 de la imagen) -> vue-tsc sin errores y dist/ OK
+      * el comportamiento de la cookie con mismo origen: el proxy de Vite en
+        desarrollo hace EXACTAMENTE lo que hara Nginx en produccion
+
+  - Lo que SOLO se prueba con Docker (o con el build de Railway):
+      1) que los nombres de paquetes `apk` existan en el Alpine de
+         php:8.4-fpm-alpine            <-- riesgo real, el unico
+      2) que `clear_env = no` le pase las variables a PHP-FPM
+      3) sintaxis del template de Nginx + envsubst + el enrutado de /up
+      4) que docker/start.sh ejecute dentro del contenedor
+
+ Instalar Docker = habilitar WSL2 (permisos de administrador y reinicio) +
+ Docker Engine (~4-6 GB). Si no te molestas depurar desde los logs de Railway,
+ NO LO INSTALES: un build fallido alla cuesta minutos de credito, no dinero.
+
+ Tu equipo verificado: Windows 11 (build 26200) 64 bits, WSL NO instalado,
+ 113 GB libres en C:.
+
+================================================================================
+ 1. HABILITAR WSL2  (requiere ADMINISTRADOR y REINICIO)
+================================================================================
+
+ PowerShell COMO ADMINISTRADOR:
+
+     wsl --install -d Ubuntu
+
+ Reinicia. Al volver, Ubuntu se configura sola (pide usuario y contrasena).
+
+ Comprobacion, desde PowerShell normal:
+
+     wsl --status
+     wsl -l -v          # Ubuntu debe aparecer con "Running"
+
+================================================================================
+ 2. INSTALAR DOCKER ENGINE EN UBUNTU
+================================================================================
+
+ Abrir la terminal de UBUNTU (no PowerShell):
+
+     sudo apt update
+     sudo apt install -y docker.io docker-compose-v2
+     sudo service docker start
+     sudo usermod -aG docker $USER
+
+ Cerrar y volver a abrir la terminal de Ubuntu (para que tome el grupo), y
+ comprobar:
+
+     docker version
+     docker compose version
+
+ Notas:
+   - Si "docker-compose-v2" no existe en tu version, usa
+     "sudo apt install -y docker-compose" y escribe "docker-compose" (con
+     guion) en lugar de "docker compose".
+   - Alternativa grafica: Docker Desktop for Windows con backend WSL2. Los
+     pasos de abajo son los mismos.
+
+================================================================================
+ 3. COPIAR EL REPO AL DISCO DE LINUX  (velocidad)
+================================================================================
+
+ Montar el disco de Windows en /mnt/c funciona, pero compilar ahi es lento.
+ Copiar primero:
+
+     cp -r /mnt/c/MarioC/webs_figma/epcoro ~/epcoro
+     cd ~/epcoro
+
+ Si despues haces cambios en Windows, vuelve a copiar (o usa rsync -a --delete).
+
+================================================================================
+ 4. GENERAR LA APP_KEY  (desde Windows, donde ya tienes PHP)
+================================================================================
+
+ En PowerShell:
+
+     cd C:\MarioC\webs_figma\epcoro\epcoro-api
+     php artisan key:generate --show
+
+ Copiar el valor completo "base64:...". Solo se genera UNA vez: si la cambias,
+ invalidas las sesiones existentes.
+
+================================================================================
+ 5. CONSTRUIR Y ARRANCAR
+================================================================================
+
+ En Ubuntu:
+
+     cd ~/epcoro
+     APP_KEY="base64:PEGA_AQUI_TU_CLAVE" SEED=1 \
+       docker compose -f docker-compose.local.yml up --build
+
+ El primer build tarda varios minutos (descarga imagenes, compila las
+ extensiones PHP, instala Composer y compila la SPA). Es normal.
+
+   - SEED=1 siembra los datos base la primera vez (Anexo F de
+     puesta_produccion.txt).
+   - En el SEGUNDO arranque quita SEED=1, o la repeticion de los seeders puede
+     abortar el contenedor.
+
+================================================================================
+ 6. QUE PROBAR
+================================================================================
+
+   URL                                Esperado
+   ---------------------------------  -------------------------------------
+   http://localhost:8080/up           200 (health de Laravel)
+   http://localhost:8080/api/health   JSON confirmando la base de datos
+   http://localhost:8080              Carga la SPA (login)
+
+ Usuario: "admin". La contrasena es ALEATORIA y se imprime UNA SOLA VEZ en los
+ logs del contenedor "api" (buscar AdminSeeder / "contrasena").
+
+ Ademas: recorrer una liquidacion, descargar un PDF y un Excel, y confirmar que
+ la sesion aguanta Esa es la prueba del mismo origen + cookie.
+
+================================================================================
+ 7. SI ALGO FALLA
+================================================================================
+
+   Sintoma                      Que mirar
+   ---------------------------  ------------------------------------------
+   npm ci falla                 package-lock.json desincronizado de
+                                package.json. En Windows:
+                                cd epcoro-web && npm install, y commitea el
+                                lock.
+   apk add falla                Nombre de paquete segun la version de
+                                Alpine. El log del build dice cual.
+   Arranca pero todo da 500     clear_env = no no llego a PHP-FPM: revisa
+                                los logs del arranque.
+   SQLSTATE: could not connect  El servicio "db" no estaba listo o las
+                                credenciales DB_* no coinciden.
+   Login entra y sale           SANCTUM_STATEFUL_DOMAINS no incluye el host.
+   Contenedor muere al sembrar  Quita SEED=1 y arranca de nuevo (los seeders
+                                ya corrieron).
+
+================================================================================
+ 8. LIMPIEZA
+================================================================================
+
+     docker compose -f docker-compose.local.yml down -v
+
+ "down -v" borra tambien el volumen de la base de prueba.
+
+================================================================================
+ 9. DIFERENCIAS ENTRE LA PRUEBA LOCAL Y RAILWAY
+================================================================================
+
+   Tema                    Local                    Railway
+   ----------------------  -----------------------  -------------------------
+   HTTPS                   No hay                   Si (dominio .railway.app)
+   SESSION_SECURE_COOKIE   false                    true
+   Base de datos           contenedor postgres:17   servicio Postgres
+                           en la misma red
+   Variables               docker-compose.local.yml panel de variables
+   TRUST_PROXIES           *                        * (excepcion justificada)
+
+ Es decir: lo que verifiques aqui se traslada, salvo lo de HTTPS y las
+ variables del proveedor, que se configuran en el paso 4 de
+ deploy_railway/despliegue_railway.md.
+
+================================================================================
+ 10. DESPUES DE LA PRUEBA
+================================================================================
+
+ Si local esta OK, desplegar en Railway con:
+   deploy_railway/despliegue_railway.md   (guia paso a paso)
+   puesta_produccion.txt, Anexo G         (resumen)
+
+ OJO: Railway YA NO tiene plan gratuito. Para "gratis de verdad", las opciones
+ B (Render + Neon) y C (Alwaysdata) usan la MISMA imagen.

@@ -1,0 +1,55 @@
+# SINCHI WAYRA - que NO entra en el contexto de build de Docker.
+#
+# Ojo: .gitignore NO afecta a Docker. Sin este archivo, un `COPY epcoro-api/ .`
+# copiaria el .env real (con secretos), vendor/ y node_modules/ a la imagen.
+
+# --- Git y metadatos ---
+.git
+.gitignore
+.gitattributes
+
+# --- Documentacion y material de desarrollo (no van a la imagen) ---
+docs
+auxiliar
+deploy_railway
+*.docx
+manual.docx
+usuarios_prueba.txt
+notas1.txt
+notas_figma.txt
+pasos.txt
+pasos_otra_maquina.txt
+instrucciones.txt
+plan_pruebas.md
+prompt.txt
+puesta_produccion.txt
+README.md
+RETOMAR.md
+epcoro.code-workspace
+
+# --- Backend: dependencias, entorno y artefactos locales ---
+epcoro-api/vendor
+epcoro-api/.env
+epcoro-api/.env.backup
+epcoro-api/.env.production
+epcoro-api/.env.development
+epcoro-api/node_modules
+epcoro-api/public/build
+epcoro-api/public/hot
+epcoro-api/public/storage
+epcoro-api/storage/framework/cache/data
+epcoro-api/storage/framework/sessions
+epcoro-api/storage/framework/views
+epcoro-api/storage/logs
+epcoro-api/.phpunit.result.cache
+epcoro-api/.phpunit.cache
+
+# --- Prueba local (no va a la imagen) ---
+docker-compose.local.yml
+
+# --- Frontend: dependencias y build previo (se reconstruye en la etapa web) ---
+epcoro-web/node_modules
+epcoro-web/dist
+epcoro-web/.env
+epcoro-web/.env.local
+epcoro-web/.vscode

@@ -69,3 +69,5 @@ ehthumbs.db
 
 # Archivos de bloqueo de LibreOffice (llevan usuario y ruta de la maquina)
 .~lock.*#
+# Credenciales de prueba (no subir nunca)
+usuarios_prueba.txt

@@ -1,0 +1,7 @@
+# Forzar finales de linea LF en los archivos que se ejecutan dentro del
+# contenedor Linux. Sin esto, en Windows el script ./docker/start.sh puede
+# terminar con CRLF y el contenedor falla con "not found" / bad interpreter.
+
+*.sh text eol=lf
+Dockerfile text eol=lf
+*.template text eol=lf

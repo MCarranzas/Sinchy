@@ -1,0 +1,16 @@
+# Configuracion de Railway para SINCHI WAYRA.
+#
+# Railway debe construir con el Dockerfile de la RAIZ del repositorio (que ya
+# compila la SPA y arma la imagen con Nginx + PHP-FPM). El "Root Directory" del
+# servicio tiene que quedar en la raiz del repo, no en epcoro-api/.
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+# Laravel expone su health check en /up (nginx lo enruta a PHP-FPM).
+healthcheckPath = "/up"
+healthcheckTimeout = 300
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
