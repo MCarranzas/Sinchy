@@ -1,0 +1,29 @@
+CÓMO VOLVER A HACER DEPLOY EN RAILWAY
+======================================
+
+1. DESDE LA INTERFAZ WEB (REDEPLOY)
+-----------------------------------
+- Abre tu proyecto en el Panel de Railway (https://railway.app).
+- Haz clic en el servicio que deseas actualizar.
+- Ve a la pestaña 'Deployments' (Implementaciones).
+- Haz clic en el botón de los tres puntos (...) al lado del despliegue que quieres relanzar.
+- Selecciona la opción 'Redeploy'.
+
+2. ACTUALIZANDO CON GIT (AUTOMÁTICO)
+------------------------------------
+- Si tu proyecto está conectado a GitHub, haz un 'git push' a la rama vinculada (ej. main o master).
+- Railway detectará los cambios e iniciará el nuevo despliegue de forma automática.
+- Si no se activa, puedes desconectar y volver a conectar el repositorio en la configuración del servicio.
+
+3. USANDO LA RAILWAY CLI (TERMINAL)
+-----------------------------------
+Ejecuta uno de estos comandos dentro de la carpeta de tu proyecto:
+- 'railway redeploy' : Vuelve a desplegar el servicio actual.
+- 'railway restart'  : Reinicia el servicio.
+- 'railway up'       : Sube y despliega un nuevo build desde tu máquina.
+
+4. HACER UN ROLLBACK (VERSIÓN ANTERIOR)
+---------------------------------------
+- Ve a la pestaña 'Deployments'.
+- Busca el último despliegue que funcionaba correctamente.
+- Haz clic en los tres puntos (...) y selecciona 'Rollback'.
