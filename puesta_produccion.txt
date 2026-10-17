@@ -1657,6 +1657,15 @@
      gerente con contrasenas aleatorias. El propio comentario del archivo dice
      "en produccion ninguna de estas cuentas debe existir". NO EJECUTARLO.
 
+   EXCEPCION CONTROLADA - DESPLIEGUE DE DEMOSTRACION:
+   Para un despliegue de vitrina/demo/capacitacion (NO produccion real) existe
+   DatosDemoSeeder, que carga de una sola vez usuarios con contrasena conocida,
+   tipos de cambio, cotizaciones, compradores, vendedores y areas mineras. Se
+   dispara con la variable DEMO_SEED=1 en docker/start.sh (una vez, y luego se
+   quita), NUNCA ejecutando `db:seed` a secas (ese si corre UsuariosEjemploSeeder
+   con claves aleatorias). Es idempotente y solo de DEMO. Ver
+   deploy_railway/despliegue_railway.md, seccion 6.1.
+
    Como verificar despues de sembrar:
      php artisan tinker
      >>> App\Models\User::pluck('username');

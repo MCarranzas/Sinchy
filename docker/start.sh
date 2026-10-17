@@ -46,6 +46,16 @@ if [ "${SEED:-0}" = "1" ]; then
     php artisan db:seed --class=AdminSeeder             --force
 fi
 
+# Datos de DEMOSTRACION (usuarios con contrasenas conocidas, tipos de cambio,
+# cotizaciones, compradores, vendedores y areas mineras). NO es produccion real:
+# solo para demo/piloto/capacitacion. Requiere los datos base (SEED=1) ya
+# cargados. Definir DEMO_SEED=1 una vez, desplegar, y luego QUITARLO.
+if [ "${DEMO_SEED:-0}" = "1" ]; then
+    echo "[start] Sembrando datos de DEMO (DEMO_SEED=1)"
+    php artisan db:seed --class=DatosDemoSeeder --force
+fi
+
+
 # Lo que Laravel escribe en disco debe ser del usuario de PHP-FPM (www-data).
 chown -R www-data:www-data storage bootstrap/cache || true
 

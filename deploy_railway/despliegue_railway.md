@@ -126,10 +126,32 @@ El contenedor, al arrancar (`docker/start.sh`), hace con `set -e`:
 4. Si `SEED=1`: corre los seeders base (Anexo F) — **incluido `AdminSeeder`**,
    que en producción imprime por consola una **contraseña aleatoria** de una
    sola vez. Mírala en los **logs del deploy** y guárdala.
-5. Arranca PHP-FPM y Nginx.
+5. Si `DEMO_SEED=1`: corre `DatosDemoSeeder` (ver 6.1). Opcional.
+6. Arranca PHP-FPM y Nginx.
 
 Para sembrar la primera vez: agrega la variable `SEED=1`, despliega, copia la
 contraseña del admin desde los logs y **luego borra `SEED`**.
+
+### 6.1 Datos de demostración (`DEMO_SEED=1`)
+
+Para un despliegue de **vitrina / demo / capacitación** (NO producción real)
+existe el seeder `DatosDemoSeeder`, que carga de una sola vez:
+
+- **Usuarios** con contraseña conocida y su rol: `admin`/`Admin123`,
+  `tecnico`/`Tecnico123`, `tecnico2`/`tecnico2`, `revisor`/`Revisor123`,
+  `gerente`/`Gerente123`.
+- **31 tipos de cambio** de octubre 2026 (de 10.00 a 25.00, +0.50 por día).
+- **4 cotizaciones quincenales** (quincenas 19-22: octubre y noviembre 2026).
+- **4 compradores**, **10 vendedores** y **5 áreas mineras** de ejemplo.
+
+Es **idempotente** (busca por clave natural y actualiza, no duplica), así que se
+puede reejecutar sin daño. Requiere que los datos base (`SEED=1`) ya estén
+corridos, porque las áreas mineras resuelven su geografía por nombre.
+
+Flujo: `SEED=1` → despliega y copia la clave del admin → agrega `DEMO_SEED=1` →
+despliega → **borra `DEMO_SEED`**. No correr `db:seed` a secas: ese sí ejecutaría
+`UsuariosEjemploSeeder`, que en producción crea cuentas con contraseñas
+**aleatorias**. Ver `puesta_produccion.txt`, Anexo F.
 
 ## 7. Verificación
 
