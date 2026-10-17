@@ -184,3 +184,7 @@ Railway ya no tiene plan gratuito. Con el crédito de prueba agotado, servicios
 detenidos. Si el objetivo es **gratis de verdad**, revisa las alternativas de
 `puesta_produccion.txt` (sección 6): el **mismo `Dockerfile` sirve en Render
 Free + Neon**, o se adapta a **Alwaysdata Free** (PHP + PostgreSQL + cron).
+
+Alternativa recomendada con costo fijo bajo y predecible: **VPS propio + Coolify**
+(≈€4/mes), con el **mismo `Dockerfile`** y `docker-compose.prod.yml`. Guía:
+`deploy_vps/despliegue_vps.md`.

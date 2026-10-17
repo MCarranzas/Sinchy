@@ -1,0 +1,99 @@
+# SINCHI WAYRA - despliegue de PRODUCCION en un VPS (API + PostgreSQL).
+#
+# La SPA (Vue) y la API (Laravel) salen del MISMO contenedor y puerto: la
+# autenticacion es por cookie de sesion (Sanctum modo SPA), asi que no pueden
+# vivir en dominios distintos (ver puesta_produccion.txt, seccion 3.2).
+#
+# Pensado para dos escenarios:
+#   A) Coolify, como recurso de tipo "Docker Compose" (recomendado). Coolify
+#      expone el servicio `api` y le asigna el dominio/TLS con la variable
+#      SERVICE_FQDN_API_8080 (ver deploy_vps/despliegue_vps.md).
+#   B) Docker Compose directo en el VPS, detras de un proxy TLS (Traefik/Caddy).
+#      En ese caso publica el puerto del `api` (ver el comentario en `ports`).
+#
+# Uso (ambos casos ya requieren un archivo de variables, ver .env.prod.example):
+#   docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --build
+#
+# Primer arranque con datos base: agrega SEED=1 (y DEMO_SEED=1 si es vitrina).
+# ITERAR: quitarlos despues para no re-sembrar en cada reinicio.
+#
+# name: distinto del compose local (docker-compose.local.yml usa "epcoro") para
+# que este stack NO pise los contenedores de desarrollo. Coolify lo ignora
+# porque lanza con su propio -p.
+
+name: epcoro-prod
+
+services:
+  db:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_DATABASE}
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME} -d ${DB_DATABASE}"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PORT: "8080"
+      APP_NAME: ${APP_NAME:-SINCHI WAYRA}
+      APP_ENV: production
+      # Genera la clave UNA vez: cd epcoro-api && php artisan key:generate --show
+      APP_KEY: ${APP_KEY:?Falta APP_KEY (php artisan key:generate --show)}
+      APP_DEBUG: "false"
+      APP_URL: ${APP_URL:?Falta APP_URL, por ejemplo https://epcoro.tudominio.com}
+      APP_TIMEZONE: America/La_Paz
+      APP_LOCALE: es
+      LOG_CHANNEL: stack
+      LOG_STACK: stderr
+      LOG_LEVEL: warning
+      DB_CONNECTION: pgsql
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_DATABASE: ${DB_DATABASE}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      SESSION_DRIVER: database
+      SESSION_LIFETIME: "480"
+      SESSION_ENCRYPT: "true"
+      SESSION_SECURE_COOKIE: "true"
+      SESSION_DOMAIN: "null"
+      SESSION_SAME_SITE: lax
+      BROADCAST_CONNECTION: log
+      FILESYSTEM_DISK: local
+      QUEUE_CONNECTION: sync
+      CACHE_STORE: database
+      MAIL_MAILER: log
+      CORS_ALLOWED_ORIGINS: ${APP_URL}
+      # Solo el host, sin https:// ni puerto.
+      SANCTUM_STATEFUL_DOMAINS: ${SANCTUM_DOMAIN:?Falta SANCTUM_DOMAIN (solo el host)}
+      TRUST_PROXIES: "*"
+      SEED: ${SEED:-0}
+      DEMO_SEED: ${DEMO_SEED:-0}
+    # Coolify / red interna alcanzan el 8080 sin publicar nada al host.
+    expose:
+      - "8080"
+    # Escenario B (sin Coolify): descomenta para publicar en loopback y poner
+    # delante un Caddy/Traefik en el mismo VPS.
+    # ports:
+    #   - "127.0.0.1:8080:8080"
+    volumes:
+      # Persiste logs de auditoria, subidas y cache entre reinicios.
+      - api-storage:/var/www/api/storage
+
+volumes:
+  pgdata:
+  api-storage:

@@ -209,6 +209,16 @@ El respaldo diario (`sinchiwayra:respaldar`) queda programado en
 `routes/console.php` a las 02:30 y purga los que superan la retencion de
 `config/respaldo.php`.
 
+### Despliegue en un servidor
+
+La app se despliega como **una imagen unica** (SPA + API en el mismo origen, por
+Sanctum). Hay dos guias paso a paso:
+
+- `deploy_vps/despliegue_vps.md` - **VPS propio con Coolify** (o Docker Compose
+  directo con Caddy). Usa `docker-compose.prod.yml` y
+  `deploy_vps/.env.prod.example`. Costo fijo bajo (~€4-12/mes).
+- `deploy_railway/despliegue_railway.md` - Railway (ya no tiene plan gratuito).
+
 ## Estado
 
 | Fase | Estado |
