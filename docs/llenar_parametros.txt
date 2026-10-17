@@ -1,0 +1,5 @@
+1. llenar el tipo de cambio para el mes de Octubre/2026 con valores desde 10.00 aumentando .50 hasta llenar todo el mes
+2. llenar la cotizaciòn quincenal para los meses de Octubre y Noviembre 2026 comenzando con 2.648,57 aumentando 100 cada vez
+3. inserta 4 registros de compradores
+4. inserta 10 registros de vendedores
+5. inserta 5 registros de areas mineras 

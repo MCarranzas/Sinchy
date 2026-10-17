@@ -1,0 +1,235 @@
+================================================================================
+ SINCHI WAYRA - EJECUCION EN CASA (WSL2 + Docker Desktop)
+================================================================================
+ Archivo : ejecucion_casa.txt
+ Objetivo: construir y levantar la imagen UNICA (SPA + API en el mismo origen)
+           en tu PC, y verificar que funciona antes de subirla a la nube.
+
+ Que se va a ejecutar:
+   - Docker Desktop (backend WSL2) construye el Dockerfile de la RAIZ.
+   - Levanta 2 contenedores: `db` (postgres:17) y `api` (Nginx + PHP-FPM 8.4).
+   - Se accede todo por http://localhost:8080  (NO se usa 8000 ni 5173).
+
+ Estado de ESTA maquina (ya verificado):
+   [x] WSL2 habilitado (wsl -l -v -> docker-desktop, version 2)
+   [x] Docker Desktop instalado (cliente 29.8.1) PERO el motor esta apagado
+   [x] PHP 8.4.26 en C:\tools\php84  (solo para generar la APP_KEY)
+   [x] Repositorio en C:\marioc\webs_figma\epcoro
+
+ NO hay que instalar nada mas. Solo arrancar Docker Desktop.
+ Todos los comandos son en PowerShell y se ejecutan DESDE
+ C:\marioc\webs_figma\epcoro excepto donde se indique.
+
+================================================================================
+ PASO 1 - ARRANCAR DOCKER DESKTOP Y ESPERAR AL MOTOR
+================================================================================
+
+ 1.1 Arrancar Docker Desktop:
+
+     Start-Process "C:\Program Files\Docker\Docker\Docker Desktop.exe"
+
+ 1.2 Esperar (30-60 s la primera vez) hasta que el MOTOR responda. Comprobar:
+
+     docker version
+
+     DEBE aparecer una seccion "Server:" con "Engine: ...". Si da error
+     "cannot connect to the Docker API", todavia no ha terminado de arrancar:
+     espera y repite. Tambien vale mirar el icono de la ballena en la
+     bandeja del sistema: debe estar estable.
+
+     Alternativa de comprobacion rapida:
+
+     docker info
+
+     (la salida debe empezar con "Server Version: 29.x").
+
+================================================================================
+ PASO 2 - SITUARSE EN LA RAIZ DEL REPOSITORIO
+================================================================================
+
+     cd C:\marioc\webs_figma\epcoro
+
+================================================================================
+ PASO 3 - GENERAR LA APP_KEY (una sola vez)
+================================================================================
+
+ El docker-compose.local.yml EXIGE la variable APP_KEY y no arranca sin ella.
+ Se genera desde Windows (donde ya tienes PHP 8.4):
+
+     cd epcoro-api
+     php artisan key:generate --show
+     cd ..
+
+ Imprime algo como:
+     base64:xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx=
+
+ COPIA ese valor completo (incluido "base64:"). Se pega en el PASO 4.
+ Nota: si la cambias, invalidas las sesiones existentes. Generala UNA vez.
+
+================================================================================
+ PASO 4 - PRIMER ARRANQUE (construye la imagen y siembra la base)
+================================================================================
+
+ En la MISMA ventana de PowerShell, define las variables (sustituye la clave):
+
+     $env:APP_KEY = "base64:PEGA_AQUI_TU_CLAVE"
+     $env:SEED    = "1"
+
+ Y construye y levanta:
+
+     docker compose -f docker-compose.local.yml up --build
+
+ QUE ESPERAR:
+   - El primer build tarda VARIOS MINUTOS (descarga imagenes, compila las
+     extensiones PHP, instala Composer y compila la SPA con Node). Es normal.
+   - NO interrumpas el build la primera vez.
+   - SEED=1 siembra los datos base (roles, catalogos, parametros, compradores
+     y el usuario admin).
+   - Cuando veas que Nginx queda delante (el comando se queda "pegado"
+     mostrando logs), ya esta arrancado.
+
+================================================================================
+ PASO 5 - VERIFICAR QUE ARRANCO
+================================================================================
+
+ Desde OTRA ventana de PowerShell (o el navegador):
+
+   curl http://localhost:8080/up
+     -> debe responder 200 (health check de Laravel)
+
+   curl http://localhost:8080/api/health
+     -> JSON con "database":"ok"
+
+   http://localhost:8080
+     -> carga la pantalla de login de la SPA
+
+================================================================================
+ PASO 6 - OBTENER LA CONTRASENA DEL ADMIN
+================================================================================
+
+ Con APP_ENV=production el AdminSeeder genera una CONTRASENA ALEATORIA y la
+ imprime UNA SOLA VEZ en los logs del contenedor `api`.
+
+ 6.1 En la ventana donde corre `docker compose ... up`, sube por el log hasta
+     la tabla "Usuario administrador creado." (columnas usuario | contrasena).
+
+ 6.2 Si ya no la ves, buscala desde otra terminal:
+
+     cd C:\marioc\webs_figma\epcoro
+     docker compose -f docker-compose.local.yml logs api | Select-String "contrasena"
+
+ 6.3 Entrar a http://localhost:8080 con:
+       usuario:     admin
+       contrasena:  (la de la tabla)
+     El primer ingreso OBLIGA a cambiar la contrasena (debe_cambiar_password).
+
+ 6.4 GUARDA esa contrasena: no se vuelve a mostrar.
+
+================================================================================
+ PASO 7 - USO DIARIO (segundo arranque, SIN volver a sembrar)
+================================================================================
+
+ Para parar: en la ventana de logs pulsa  Ctrl + C.
+
+ Para volver a arrancar (los datos ya estan en el volumen de la base, NO uses
+ SEED de nuevo o los seeders pueden abortar el arranque):
+
+     cd C:\marioc\webs_figma\epcoro
+     $env:APP_KEY = "base64:TU_MISMA_CLAVE"
+     Remove-Item Env:\SEED -ErrorAction SilentlyContinue
+     docker compose -f docker-compose.local.yml up
+
+ Si ABRES UNA TERMINAL NUEVA, $env:APP_KEY se pierde: vuelve a definirlo.
+ Truco: guarda la clave en un archivo aparte para reutilizarla.
+
+================================================================================
+ PASO 8 - DETENER Y LIMPIAR
+================================================================================
+
+ Detener y borrar los CONTENEDORES (conserva la base):
+
+     docker compose -f docker-compose.local.yml down
+
+ Borrar TODO, incluida la base de prueba (pide volver a sembrar luego):
+
+     docker compose -f docker-compose.local.yml down -v
+
+================================================================================
+ PASO 9 - PROBLEMAS FRECUENTES
+================================================================================
+
+  Sintoma                          Que hacer
+  -------------------------------  -----------------------------------------
+  cannot connect to the Docker API Arranca Docker Desktop (PASO 1) y espera.
+  "APP_KEY is required"            Falta $env:APP_KEY en ESTA terminal (PASO 4).
+  npm ci falla                     package-lock.json desincronizado:
+                                   cd epcoro-web; npm install; (commitear).
+  apk add falla                    Version de Alpine distinta; el log dice cual.
+  Todo da 500 tras arrancar        clear_env no llego a PHP-FPM; revisa logs.
+  500 "Uninitialized string offset" en Request.php (getPort) pero no da: es
+                                   HTTP_X_FORWARDED_HOST vacia. Ya corregido
+                                   en docker/nginx.conf.template con
+                                   `if_not_empty`; si reaparece, reconstruye:
+                                   docker compose -f docker-compose.local.yml
+                                   up --build -d
+  SQLSTATE: could not connect      El contenedor `db` aun no estaba listo;
+                                   el arranque reintenta solo, espera.
+  Login entra y sale               SANCTUM_STATEFUL_DOMAINS sin "localhost";
+                                   ya viene bien en el compose local.
+  Contenedor muere al sembrar      Quitaste/ pusiste SEED mal: quita SEED y
+                                   arranca otra vez (los seeders ya corrieron).
+  Puerto 8080 ocupado              Cierra el proceso que lo usa o cambia el
+                                   mapeo "8080:8080" en docker-compose.local.yml.
+
+================================================================================
+ VERIFICACION FINAL (recorrido funcional)
+================================================================================
+  [ ] http://localhost:8080/up  -> 200
+  [ ] http://localhost:8080/api/health -> {"database":"ok"}
+  [ ] Login con admin + contrasena de los logs
+  [ ] Cambio de contrasena obligatorio funciona
+  [ ] Crear/editar una liquidacion
+  [ ] Descargar un PDF y un Excel
+  [ ] Cerrar sesion y confirmar que una ruta privada vuelve al login
+      (esto valida el "mismo origen + cookie", que es el punto de la imagen)
+
+================================================================================
+ ANEXO - ALTERNATIVA CON DOCKER ENGINE DENTRO DE WSL UBUNTU
+================================================================================
+ Solo si prefieres el flujo de los documentos (wsl_docker.txt / PROBAR_LOCAL.md).
+ OJO: requiere instalar una distro Ubuntu (Docker Desktop ya sirve; esto es
+ opcional). En PowerShell como ADMINISTRADOR:
+
+     wsl --install -d Ubuntu          # reiniciar; Ubuntu pide usuario/clave
+
+ En la terminal de UBUNTU:
+
+     sudo apt update
+     sudo apt install -y docker.io docker-compose-v2
+     sudo service docker start
+     sudo usermod -aG docker $USER    # cerrar y reabrir la terminal
+
+ Copiar el repo al disco de Linux (compilar en /mnt/c es lento):
+
+     cp -r /mnt/c/marioc/webs_figma/epcoro ~/epcoro
+     cd ~/epcoro
+
+ Generar la APP_KEY (en PowerShell, con el PHP de Windows):
+
+     cd C:\marioc\webs_figma\epcoro\epcoro-api
+     php artisan key:generate --show
+
+ Arrancar (en Ubuntu):
+
+     APP_KEY="base64:PEGA_AQUI_TU_CLAVE" SEED=1 \
+       docker compose -f docker-compose.local.yml up --build
+
+ Limpieza:  docker compose -f docker-compose.local.yml down -v
+
+================================================================================
+ DESPUES DE VERIFICAR EN CASA
+================================================================================
+ Si local esta OK, desplegar en la nube gratuita (misma imagen):
+   - deploy_railway/despliegue_railway.md   (Railway)
+   - puesta_produccion.txt, seccion 6        (Render + Neon / Alwaysdata)
+================================================================================
