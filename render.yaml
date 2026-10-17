@@ -1,0 +1,111 @@
+# SINCHI WAYRA - Blueprint de Render (plan FREE, sin tarjeta).
+#
+# Render lee este archivo al crear un "Blueprint" desde el repositorio y
+# aprovisiona: un web service (tu Dockerfile de la raiz) + una base PostgreSQL
+# free. La SPA y la API salen del MISMO contenedor y origen (requisito de
+# Sanctum): no cambies eso.
+#
+# Guia paso a paso: deploy_render/despliegue_render.md
+#
+# Notas del plan free:
+#   - El web service duerme a los 15 min sin trafico (despierta en ~1 min).
+#   - Free Postgres: 1 GB y EXPIRA a los 30 dias (de sobra para una semana).
+#   - Sin disco persistente: los logs de auditoria se pierden al reiniciar.
+#   - No usar en produccion real (segun el propio Render).
+
+databases:
+  - name: epcoro-db
+    databaseName: epcoro
+    user: epcoro
+    plan: free
+    region: ohio
+
+services:
+  - type: web
+    name: epcoro
+    runtime: docker
+    plan: free
+    region: ohio
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /up
+    autoDeploy: true
+    envVars:
+      - key: APP_NAME
+        value: SINCHI WAYRA
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: "false"
+      # Genera la clave UNA vez: cd epcoro-api && php artisan key:generate --show
+      - key: APP_KEY
+        sync: false
+      # Se completan DESPUES del primer deploy con la URL real (paso 5 de la guia).
+      - key: APP_URL
+        sync: false
+      - key: APP_TIMEZONE
+        value: America/La_Paz
+      - key: APP_LOCALE
+        value: es
+      - key: LOG_CHANNEL
+        value: stack
+      - key: LOG_STACK
+        value: stderr
+      - key: LOG_LEVEL
+        value: warning
+      - key: DB_CONNECTION
+        value: pgsql
+      - key: DB_HOST
+        fromDatabase:
+          name: epcoro-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: epcoro-db
+          property: port
+      - key: DB_DATABASE
+        fromDatabase:
+          name: epcoro-db
+          property: database
+      - key: DB_USERNAME
+        fromDatabase:
+          name: epcoro-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: epcoro-db
+          property: password
+      - key: SESSION_DRIVER
+        value: database
+      - key: SESSION_LIFETIME
+        value: "480"
+      - key: SESSION_ENCRYPT
+        value: "true"
+      - key: SESSION_SECURE_COOKIE
+        value: "true"
+      - key: SESSION_DOMAIN
+        value: "null"
+      - key: SESSION_SAME_SITE
+        value: lax
+      - key: BROADCAST_CONNECTION
+        value: log
+      - key: FILESYSTEM_DISK
+        value: local
+      - key: QUEUE_CONNECTION
+        value: sync
+      - key: CACHE_STORE
+        value: database
+      - key: MAIL_MAILER
+        value: log
+      # Tambien se completan DESPUES del primer deploy (paso 5 de la guia).
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false
+      - key: SANCTUM_STATEFUL_DOMAINS
+        sync: false
+      - key: TRUST_PROXIES
+        value: "*"
+      # Primer arranque: pon SEED=1 (y DEMO_SEED=1 para demo). Luego vuelve a "0".
+      - key: SEED
+        value: "0"
+      - key: DEMO_SEED
+        value: "0"

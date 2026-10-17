@@ -217,6 +217,8 @@ Sanctum). Hay dos guias paso a paso:
 - `deploy_vps/despliegue_vps.md` - **VPS propio con Coolify** (o Docker Compose
   directo con Caddy). Usa `docker-compose.prod.yml` y
   `deploy_vps/.env.prod.example`. Costo fijo bajo (~€4-12/mes).
+- `deploy_render/despliegue_render.md` - **Render plan Free** (sin tarjeta, con
+  `render.yaml`). Ideal para demos cortas; el servicio duerme a los 15 min.
 - `deploy_railway/despliegue_railway.md` - Railway (ya no tiene plan gratuito).
 
 ## Estado
