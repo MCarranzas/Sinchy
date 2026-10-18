@@ -67,7 +67,7 @@ administrador**. Recomendado enseguida: en **Settings → Instance Domain** pon
 
 1. **+ New → Application → Public Repository** (o Private si el repo es privado;
    conecta la GitHub App).
-2. Repositorio `https://github.com/MCarranzas/epcoro`, rama **`main`**.
+2. Repositorio `https://github.com/MCarranzas/Sinchy`, rama **`main`**.
 3. **Build Pack: `Dockerfile`** (NO Nixpacks).
 4. **Base Directory**: raíz del repo (vacío / `/`). El `Dockerfile` de la raíz
    necesita ver `epcoro-web/` y `epcoro-api/` juntos.
@@ -193,7 +193,7 @@ en el VPS con Docker Compose y un proxy TLS delante (Caddy o Traefik).
 2. Clona el repo y crea el archivo de variables:
 
    ```bash
-   git clone https://github.com/MCarranzas/epcoro.git && cd epcoro
+   git clone https://github.com/MCarranzas/Sinchy.git && cd Sinchy
    cp deploy_vps/.env.prod.example .env.prod
    # edita .env.prod: APP_KEY, APP_URL, SANCTUM_DOMAIN, DB_* y, para el primer
    # arranque, SEED=1 (y DEMO_SEED=1 si es demo)

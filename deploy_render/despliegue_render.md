@@ -30,7 +30,7 @@ Copia el valor completo (`base64:...`); lo pegas en el paso 3.
 ## 2. Crea el proyecto (Blueprint)
 
 1. Entra a https://render.com y crea la cuenta con GitHub (no pide tarjeta).
-2. **New → Blueprint** y conecta el repositorio `MCarranzas/epcoro` (rama
+2. **New → Blueprint** y conecta el repositorio `MCarranzas/Sinchy` (rama
    `main`). Render lee `render.yaml` y muestra lo que va a crear: un **web
    service** (`epcoro`, con tu Dockerfile) y una **base PostgreSQL** (`epcoro-db`),
    ambos en plan Free.

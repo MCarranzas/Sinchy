@@ -39,7 +39,7 @@ Copia el valor completo (`base64:...`) para pegarlo como variable en Railway.
 2. Revisa el plan: el plan gratuito ya no existe; hay **crédito de prueba**
    (USD 5 por 30 días) y luego USD 1/mes. No cambies a Hobby si quieres seguir
    en USD 0.
-3. **New Project → Deploy from GitHub repo** y elige `MCarranzas/epcoro`.
+3. **New Project → Deploy from GitHub repo** y elige `MCarranzas/Sinchy`.
 4. En el servicio, abre **Settings**:
    - **Root Directory**: dejar en la **raíz del repositorio** (vacío / `/`),
      NO `epcoro-api`. Si lo cambias, el Dockerfile no encuentra `epcoro-web/`.

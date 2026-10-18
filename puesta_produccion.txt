@@ -8,7 +8,7 @@
               Internet en un servicio gratuito.
  Fecha de verificacion de datos: 15 de octubre de 2026.
  Fecha de revision de los artefactos Docker: 16 de octubre de 2026.
- Repositorio:  https://github.com/MCarranzas/epcoro   (rama main)
+ Repositorio:  https://github.com/MCarranzas/Sinchy   (rama main)
 
  Artefactos de despliegue YA presentes en la RAIZ del repositorio:
    Dockerfile, docker/nginx.conf.template, docker/start.sh, docker/php.ini,
@@ -912,7 +912,7 @@
  10. CI/CD GRATUITO CON GITHUB ACTIONS
 ================================================================================
 
- El repositorio ya esta en GitHub: https://github.com/MCarranzas/epcoro
+ El repositorio ya esta en GitHub: https://github.com/MCarranzas/Sinchy
  (rama main). GitHub Actions es gratuito para repositorios publicos y trae
  minutos incluidos para privados.
 
@@ -1691,7 +1691,7 @@
    deploy_railway/despliegue_railway.md
 
  Resumen:
-   1) Railway: New Project > Deploy from GitHub repo (MCarranzas/epcoro). Dejar
+   1) Railway: New Project > Deploy from GitHub repo (MCarranzas/Sinchy). Dejar
       el "Root Directory" en la RAIZ del repositorio (NO en epcoro-api).
       Railway usa railway.toml y el Dockerfile para construir.
    2) + New > Database > PostgreSQL (dejandola PRIVADA). Railway expone PGHOST,
