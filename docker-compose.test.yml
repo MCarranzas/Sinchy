@@ -1,0 +1,31 @@
+# SINCHI WAYRA - PostgreSQL SOLO para la suite de tests (php artisan test).
+#
+# Los tests usan RefreshDatabase: crean y borran el esquema en cada corrida. Por
+# eso se usa una base DEDICADA (epcoro_test) y NO la del desarrollo, para no
+# borrar datos.
+#
+# Uso (desde la raiz del repositorio):
+#   docker compose -f docker-compose.test.yml up -d --wait
+#   cd epcoro-api && php artisan test
+#   docker compose -f docker-compose.test.yml down -v    # al terminar
+#
+# El puerto del host es 5433 (igual que docker-compose.local.yml) para no chocar
+# con un PostgreSQL nativo en 5432. phpunit.xml apunta a 127.0.0.1:5433.
+#
+# Sin volumen: los datos viven en el contenedor y se descartan al hacer "down".
+
+services:
+  db-test:
+    image: postgres:17
+    restart: "no"
+    environment:
+      POSTGRES_DB: epcoro_test
+      POSTGRES_USER: epcoro
+      POSTGRES_PASSWORD: epcoro_secret
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U epcoro -d epcoro_test"]
+      interval: 3s
+      timeout: 3s
+      retries: 20

@@ -78,6 +78,12 @@ Al aplicar el Blueprint, Render pide solo las variables marcadas `sync: false`:
 El resto (y las `DB_*`) las completa el Blueprint solo: enlaza la base al
 servicio con `fromDatabase`. Pulsa **Apply** y espera el primer build.
 
+> **Zona horaria.** El Blueprint fija `APP_TIMEZONE=America/La_Paz` y la
+> conexión de PostgreSQL hereda esa zona (`DB_TIMEZONE` por defecto es
+> `APP_TIMEZONE`). No lo cambies: el Postgres de Render corre en UTC y, si la
+> sesión no se alinea con la app, los vencimientos y los bloqueos de cuenta se
+> leen desplazados 4 h (el bloqueo "no funciona").
+
 ## 4. Corrige la URL real
 
 1. Cuando el deploy termine, copia la URL del servicio: normalmente
@@ -126,6 +132,7 @@ Después **vuelve `SEED` y `DEMO_SEED` a `0`** para no re-sembrar en cada reinic
 | `419` en el login | `SESSION_SECURE_COOKIE=true` sin HTTPS (Render da HTTPS por defecto, no debería pasar). |
 | `SQLSTATE: could not connect` | El Blueprint no enlazó la base: revisa que existan `DB_HOST`/`DB_PASSWORD`. |
 | `Connection: sqlite` o `near "TYPE": syntax error` | El servicio no tiene la base PostgreSQL enlazada (por eso Laravel cae a SQLite). Abre **Environment** y confirma que existan `DB_CONNECTION=pgsql` y `DB_HOST`; si faltan, el servicio no se creó desde el Blueprint. Enlaza la base a mano (sección 2.1) o bórralo y recréalo con **New → Blueprint**. |
+| El bloqueo por intentos fallidos no funciona (o vence 4 h antes/después) | La sesión de PostgreSQL no usa la zona de la app. Confirma `APP_TIMEZONE=America/La_Paz` en **Environment**; la conexión fija `DB_TIMEZONE` a partir de ella. No pongas el Postgres en otra zona. |
 | Primera petición muy lenta (~1 min) | Es el *cold start* del plan Free. |
 | A las semanas la base "desaparece" | El free Postgres expira a los 30 días; para 1 semana no aplica. |
 

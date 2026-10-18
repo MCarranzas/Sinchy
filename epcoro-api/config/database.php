@@ -97,6 +97,13 @@ return [
             'prefix_indexes' => true,
             'search_path' => 'public',
             'sslmode' => env('DB_SSLMODE', 'prefer'),
+            // La sesion de PostgreSQL debe usar la misma zona horaria que la
+            // aplicacion: el grammar de Laravel envia los timestamps sin offset
+            // y las columnas timestamptz las interpretan en la zona de la
+            // sesion. Si la sesion quedara en UTC y la app en La_Paz (-4), los
+            // bloqueos/vencimientos se leerian 4 h desplazados (en Render, cuyo
+            // Postgres es UTC, esto romperia el bloqueo de cuentas).
+            'timezone' => env('DB_TIMEZONE', env('APP_TIMEZONE', 'UTC')),
         ],
 
         'sqlsrv' => [
