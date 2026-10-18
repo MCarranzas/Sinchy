@@ -40,7 +40,7 @@ class HealthTest extends TestCase
 
         $contenido = $response->getContent();
 
-        $this->assertStringNotContainsString('epcoro_secret', $contenido);
+        $this->assertStringNotContainsString('sinchy_secret', $contenido);
         $this->assertStringNotContainsString(config('app.key'), $contenido);
     }
 }

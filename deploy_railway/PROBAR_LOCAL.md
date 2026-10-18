@@ -60,8 +60,8 @@ Montar el disco de Windows en `/mnt/c` funciona, pero compilar allí es lento.
 Copia primero:
 
 ```bash
-cp -r /mnt/c/MarioC/webs_figma/epcoro ~/epcoro
-cd ~/epcoro
+cp -r /mnt/c/MarioC/webs_figma/sinchy ~/sinchy
+cd ~/sinchy
 ```
 
 (Si haces cambios en Windows, vuelve a copiar o usa `rsync -a --delete`.)
@@ -69,7 +69,7 @@ cd ~/epcoro
 ## 4. Generar la APP_KEY (desde Windows, donde ya tienes PHP)
 
 ```powershell
-cd C:\MarioC\webs_figma\epcoro\epcoro-api
+cd C:\MarioC\webs_figma\sinchy\sinchy-api
 php artisan key:generate --show
 ```
 
@@ -80,7 +80,7 @@ Copia el valor `base64:...`.
 En Ubuntu:
 
 ```bash
-cd ~/epcoro
+cd ~/sinchy
 APP_KEY="base64:PEGA_AQUI_TU_CLAVE" SEED=1 \
   docker compose -f docker-compose.local.yml up --build
 ```
@@ -110,7 +110,7 @@ aguanta (esa es la prueba del mismo origen + cookie).
 
 | Síntoma | Qué mirar |
 |---|---|
-| `npm ci` falla | `package-lock.json` desincronizado de `package.json`. En Windows: `cd epcoro-web && npm install`, y commitea el lock. |
+| `npm ci` falla | `package-lock.json` desincronizado de `package.json`. En Windows: `cd sinchy-web && npm install`, y commitea el lock. |
 | `apk add` falla | Nombre de paquete según la versión de Alpine. El log dice cuál. |
 | Contenedor arranca pero todo da 500 | `clear_env = no` no llegó a PHP-FPM: revisa los logs del arranque. |
 | `SQLSTATE: could not connect` | El servicio `db` no estaba listo o las credenciales `DB_*` no coinciden. |

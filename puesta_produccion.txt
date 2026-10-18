@@ -60,8 +60,8 @@
 
  El sistema son DOS aplicaciones, no una:
 
-   1) epcoro-api/  -> API REST en Laravel 13 (PHP 8.4) sobre PostgreSQL 17.
-   2) epcoro-web/  -> interfaz de usuario (SPA) en Vue 3 + Vite 8 + Tailwind 4.
+   1) sinchy-api/  -> API REST en Laravel 13 (PHP 8.4) sobre PostgreSQL 17.
+   2) sinchy-web/  -> interfaz de usuario (SPA) en Vue 3 + Vite 8 + Tailwind 4.
 
  La SPA NO tiene datos ni logica de negocio propia: consume la API en /api/v1.
  La autenticacion es por COOKIE DE SESION (Laravel Sanctum modo SPA), no por
@@ -74,7 +74,7 @@
  otro host), el navegador trata la cookie de sesion como cookie de terceros y
  la bloquea: el login "funciona" pero la sesion se pierde en la peticion
  siguiente. Ademas el cliente HTTP del frontend tiene la ruta fija '/api/v1'
- (ver epcoro-web/src/api/axios.ts), asi que no hay forma de apuntarlo a otro
+ (ver sinchy-web/src/api/axios.ts), asi que no hay forma de apuntarlo a otro
  dominio sin modificar codigo.
 
  De ahi que toda opcion viable sea "un solo origen": un servidor que sirva los
@@ -131,7 +131,7 @@
    Gestor de paquetes | npm                                 | 12.1.0 (probado)
    Gestor PHP         | Composer                            | 2.x
 
- 1.2 BACKEND (epcoro-api)
+ 1.2 BACKEND (sinchy-api)
 
    Framework ............ Laravel 13.34.0
    PHP .................. requiere ^8.3 en composer.json, pero el archivo
@@ -220,7 +220,7 @@
      - Codigo de la aplicacion (app/ + config/ + routes/): menos de 1 MB.
      - Migraciones: 26 archivos. Seeders: 11 archivos. Pruebas: 19 archivos.
 
- 1.3 FRONTEND (epcoro-web)
+ 1.3 FRONTEND (sinchy-web)
 
    Vue 3.5.42 + Vite 8.3.3 + TypeScript 6.0.2 + Tailwind CSS 4.3.3
    Pinia 4.0.3 (estado), vue-router 5.3.1 (historial HTML5 -> necesita
@@ -245,7 +245,7 @@
        Es un artefacto pequeno: se puede servir desde cualquier hosting estatico
        o desde el mismo servidor del backend.
      - No hay variables de entorno del frontend en produccion (no se necesita
-       ningun archivo .env en epcoro-web). VITE_API_PROXY_TARGET solo afecta al
+       ningun archivo .env en sinchy-web). VITE_API_PROXY_TARGET solo afecta al
        servidor de desarrollo local.
 
  1.4 BASE DE DATOS
@@ -267,7 +267,7 @@
    vue-tsc ............................. chequeo de tipos del frontend
 
    Las pruebas usan PostgreSQL, no SQLite: `phpunit.xml` fija
-   DB_CONNECTION=pgsql y una base de pruebas `epcoro_test`. Para correrlas en
+   DB_CONNECTION=pgsql y una base de pruebas `sinchy_test`. Para correrlas en
    integracion continua hace falta un servicio PostgreSQL (ver seccion 10).
 
  1.6 QUE NO SE REQUIERE CONTRATAR
@@ -364,7 +364,7 @@
                                       v
                      +-----------------------------------+
                      |      PHP-FPM  (Laravel 13)        |
-                     |      epcoro-api/public/index.php  |
+                     |      sinchy-api/public/index.php  |
                      +----------------+------------------+
                                       |  pgsql (5432)
                                       v
@@ -415,7 +415,7 @@
  4. VARIABLES DE ENTORNO DE PRODUCCION
 ================================================================================
 
- Plantilla oficial en el repositorio: epcoro-api/.env.production.example
+ Plantilla oficial en el repositorio: sinchy-api/.env.production.example
  Verificar SIEMPRE con: php artisan sinchiwayra:revisar-produccion
 
  Tabla de variables (las que importan en produccion):
@@ -438,7 +438,7 @@
    LOG_AUDITORIA_DAYS          | 180                                |
    DB_CONNECTION               | pgsql                              | critico
    DB_HOST / DB_PORT           | host y 5432 del PostgreSQL         |
-   DB_DATABASE / DB_USERNAME   | epcoro / epcoro                    |
+   DB_DATABASE / DB_USERNAME   | sinchy / sinchy                    |
    DB_PASSWORD                 | (secreto, nunca vacia)             | critico
    DB_SSLMODE                  | require (si la base es externa)    | ver 6.3
    SESSION_DRIVER              | database                           |
@@ -482,7 +482,7 @@
 
  --- FRONTEND (se construye aparte; puede hacerse en tu PC) -----------------
 
-   cd epcoro-web
+   cd sinchy-web
    npm ci                     # instalacion reproducible desde package-lock
    npm run build              # vue-tsc -b && vite build  ->  dist/
    # subir SOLO la carpeta dist/ al servidor, por ejemplo a /var/www/web
@@ -565,8 +565,8 @@
      b) Instalar PHP 8.4 + extensiones (seccion 2.1), Nginx, PostgreSQL 17,
         Composer, cron y pg_dump. Alternativa: Docker Compose (Anexo D).
      c) Crear la base y el usuario:
-          sudo -u postgres createuser --pwprompt epcoro
-          sudo -u postgres createdb --owner=epcoro epcoro
+          sudo -u postgres createuser --pwprompt sinchy
+          sudo -u postgres createdb --owner=sinchy sinchy
      d) Desplegar con el guion de la seccion 5 y la config de Nginx del Anexo C.
      e) HTTPS: usar Caddy (certificado automatico, 3 lineas) o
         `certbot --nginx`. Con Cloudflare por delante tambien se puede usar su
@@ -944,20 +944,20 @@
            env:
              # El phpunit.xml del proyecto fija estas credenciales; el servicio
              # de CI debe crearlas tal cual.
-             POSTGRES_USER: epcoro
-             POSTGRES_PASSWORD: epcoro_secret
-             POSTGRES_DB: epcoro_test
+             POSTGRES_USER: sinchy
+             POSTGRES_PASSWORD: sinchy_secret
+             POSTGRES_DB: sinchy_test
            ports:
              - 5432:5432
            options: >-
-             --health-cmd "pg_isready -U epcoro"
+             --health-cmd "pg_isready -U sinchy"
              --health-interval 10s
              --health-timeout 5s
              --health-retries 5
 
        defaults:
          run:
-           working-directory: epcoro-api
+           working-directory: sinchy-api
 
        steps:
          - uses: actions/checkout@v4
@@ -982,7 +982,7 @@
 
        defaults:
          run:
-           working-directory: epcoro-web
+           working-directory: sinchy-web
 
        steps:
          - uses: actions/checkout@v4
@@ -990,7 +990,7 @@
            with:
              node-version: '24'
              cache: npm
-             cache-dependency-path: epcoro-web/package-lock.json
+             cache-dependency-path: sinchy-web/package-lock.json
 
          - run: npm ci
          - run: npm run build
@@ -1157,8 +1157,8 @@
    DB_CONNECTION=pgsql
    DB_HOST=127.0.0.1
    DB_PORT=5432
-   DB_DATABASE=epcoro
-   DB_USERNAME=epcoro
+   DB_DATABASE=sinchy
+   DB_USERNAME=sinchy
    DB_PASSWORD=
 
    # Base externa (Neon y similares): obligatorio
@@ -1208,7 +1208,7 @@
 
  Construye la SPA en una etapa (Node 24) y la sirve con Nginx + PHP-FPM 8.4 en
  la misma imagen y el mismo puerto ($PORT). El context de build es la RAIZ del
- repositorio, porque la imagen necesita tanto epcoro-web/ como epcoro-api/.
+ repositorio, porque la imagen necesita tanto sinchy-web/ como sinchy-api/.
 
  Nota sobre PostgreSQL: NO se instala `postgresql17-client` en la imagen. El
  cliente de respaldo (pg_dump) no se necesita en un PaaS efimero sin cron; en
@@ -1224,8 +1224,8 @@
  # sesion (Sanctum modo SPA) y el cliente axios usa la ruta relativa /api/v1, asi
  # que la SPA y la API no pueden vivir en dominios distintos.
  #
- # El contexto de build debe ser la RAIZ del repositorio (epcoro/), porque se
- # copian tanto epcoro-web/ como epcoro-api/.
+ # El contexto de build debe ser la RAIZ del repositorio (sinchy/), porque se
+ # copian tanto sinchy-web/ como sinchy-api/.
  #
  #   Etapa 1 (web)   : Node 24 compila la SPA  ->  /web/dist
  #   Etapa 2 (final) : PHP 8.4 + Nginx sirve la SPA y enruta /api y /sanctum a
@@ -1237,9 +1237,9 @@
  FROM node:24-alpine AS web
 
  WORKDIR /web
- COPY epcoro-web/package.json epcoro-web/package-lock.json ./
+ COPY sinchy-web/package.json sinchy-web/package-lock.json ./
  RUN npm ci
- COPY epcoro-web/ ./
+ COPY sinchy-web/ ./
  RUN npm run build
 
  # ---------------------------------------------------------------------------
@@ -1279,10 +1279,10 @@
  COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
  WORKDIR /var/www/api
- COPY epcoro-api/composer.json epcoro-api/composer.lock ./
+ COPY sinchy-api/composer.json sinchy-api/composer.lock ./
  RUN composer install --no-dev --no-interaction --prefer-dist \
          --optimize-autoloader --no-scripts
- COPY epcoro-api/ ./
+ COPY sinchy-api/ ./
  RUN composer dump-autoload --no-dev --optimize --no-interaction \
      && mkdir -p storage/app/public storage/framework/cache/data \
          storage/framework/sessions storage/framework/views storage/logs \
@@ -1394,7 +1394,7 @@
  ------------------------------------------------------------------------------
  # SINCHI WAYRA - que NO entra en el contexto de build de Docker.
  #
- # Ojo: .gitignore NO afecta a Docker. Sin este archivo, un `COPY epcoro-api/ .`
+ # Ojo: .gitignore NO afecta a Docker. Sin este archivo, un `COPY sinchy-api/ .`
  # copiaria el .env real (con secretos), vendor/ y node_modules/ a la imagen.
 
  # --- Git y metadatos ---
@@ -1419,37 +1419,37 @@
  puesta_produccion.txt
  README.md
  RETOMAR.md
- epcoro.code-workspace
+ sinchy.code-workspace
 
  # --- Backend: dependencias, entorno y artefactos locales ---
- epcoro-api/vendor
- epcoro-api/.env
- epcoro-api/.env.backup
- epcoro-api/.env.production
- epcoro-api/.env.development
- epcoro-api/node_modules
- epcoro-api/public/build
- epcoro-api/public/hot
- epcoro-api/public/storage
- epcoro-api/storage/framework/cache/data
- epcoro-api/storage/framework/sessions
- epcoro-api/storage/framework/views
- epcoro-api/storage/logs
- epcoro-api/.phpunit.result.cache
- epcoro-api/.phpunit.cache
+ sinchy-api/vendor
+ sinchy-api/.env
+ sinchy-api/.env.backup
+ sinchy-api/.env.production
+ sinchy-api/.env.development
+ sinchy-api/node_modules
+ sinchy-api/public/build
+ sinchy-api/public/hot
+ sinchy-api/public/storage
+ sinchy-api/storage/framework/cache/data
+ sinchy-api/storage/framework/sessions
+ sinchy-api/storage/framework/views
+ sinchy-api/storage/logs
+ sinchy-api/.phpunit.result.cache
+ sinchy-api/.phpunit.cache
 
  # --- Frontend: dependencias y build previo (se reconstruye en la etapa web) ---
- epcoro-web/node_modules
- epcoro-web/dist
- epcoro-web/.env
- epcoro-web/.env.local
- epcoro-web/.vscode
+ sinchy-web/node_modules
+ sinchy-web/dist
+ sinchy-web/.env
+ sinchy-web/.env.local
+ sinchy-web/.vscode
  ------------------------------------------------------------------------------
 
  Ajustes que hay que tener en cuenta:
    - Estos archivos YA estan creados en el repositorio.
    - El COPY asume que el contexto de build es la RAIZ del repositorio
-     (epcoro/), no epcoro-api/. Configurar el "Root Directory" en consecuencia.
+     (sinchy/), no sinchy-api/. Configurar el "Root Directory" en consecuencia.
    - docker/start.sh debe tener finales de linea LF (lo garantiza .gitattributes
      con `*.sh text eol=lf`); con CRLF el contenedor falla al ejecutarlo.
    - El puerto lo decide el proveedor en la variable PORT; start.sh reemplaza
@@ -1524,19 +1524,19 @@
      image: postgres:17
      restart: unless-stopped
      environment:
-       POSTGRES_DB: epcoro
-       POSTGRES_USER: epcoro
+       POSTGRES_DB: sinchy
+       POSTGRES_USER: sinchy
        POSTGRES_PASSWORD: ${DB_PASSWORD}
      volumes:
        - pgdata:/var/lib/postgresql/data
      healthcheck:
-       test: ["CMD-SHELL", "pg_isready -U epcoro"]
+       test: ["CMD-SHELL", "pg_isready -U sinchy"]
        interval: 10s
        retries: 5
 
    api:
      build:
-       context: .        # RAIZ del repo: la imagen necesita epcoro-web/ y epcoro-api/
+       context: .        # RAIZ del repo: la imagen necesita sinchy-web/ y sinchy-api/
        dockerfile: Dockerfile
      restart: unless-stopped
      env_file: .env
@@ -1555,7 +1555,7 @@
      depends_on: [api]
      command: >
        sh -c "apk add --no-cache docker-cli >/dev/null &&
-              while :; do sleep 60; docker exec epcoro-api-1 php /var/www/api/artisan schedule:run; done"
+              while :; do sleep 60; docker exec sinchy-api-1 php /var/www/api/artisan schedule:run; done"
 
  volumes:
    pgdata:
@@ -1563,7 +1563,7 @@
 
  Notas del Anexo D:
    - El `context: .` es la RAIZ del repositorio: la imagen necesita tanto
-     epcoro-web/ (para compilar la SPA) como epcoro-api/.
+     sinchy-web/ (para compilar la SPA) como sinchy-api/.
    - `docker/start.sh` ya aplica `migrate --force` al arrancar. Para sembrar
      los datos base (Anexo F) una sola vez, definir SEED=1 en el primer
      arranque y quitarlo despues.
@@ -1692,7 +1692,7 @@
 
  Resumen:
    1) Railway: New Project > Deploy from GitHub repo (MCarranzas/Sinchy). Dejar
-      el "Root Directory" en la RAIZ del repositorio (NO en epcoro-api).
+      el "Root Directory" en la RAIZ del repositorio (NO en sinchy-api).
       Railway usa railway.toml y el Dockerfile para construir.
    2) + New > Database > PostgreSQL (dejandola PRIVADA). Railway expone PGHOST,
       PGPORT, PGUSER, PGPASSWORD y PGDATABASE.

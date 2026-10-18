@@ -1,8 +1,8 @@
 # Dependencias
 /vendor/
 /node_modules/
-/epcoro-api/vendor/
-/epcoro-web/node_modules/
+/sinchy-api/vendor/
+/sinchy-web/node_modules/
 
 # Entorno
 .env
@@ -10,23 +10,23 @@
 .env.*.local
 .env.production
 .env.development
-/epcoro-api/.env
-/epcoro-api/.env.production
-/epcoro-api/.env.development
-/epcoro-web/.env
-/epcoro-web/.env.production
-/epcoro-web/.env.development
+/sinchy-api/.env
+/sinchy-api/.env.production
+/sinchy-api/.env.development
+/sinchy-web/.env
+/sinchy-web/.env.production
+/sinchy-web/.env.development
 
 # Compilados
 /build/
 /dist/
-/epcoro-api/storage/*.key
-/epcoro-api/storage/framework/cache/*
-/epcoro-api/storage/framework/sessions/*
-/epcoro-api/storage/framework/views/*
-/epcoro-api/storage/logs/*
-/epcoro-api/bootstrap/cache/*
-/epcoro-web/.vite/
+/sinchy-api/storage/*.key
+/sinchy-api/storage/framework/cache/*
+/sinchy-api/storage/framework/sessions/*
+/sinchy-api/storage/framework/views/*
+/sinchy-api/storage/logs/*
+/sinchy-api/bootstrap/cache/*
+/sinchy-web/.vite/
 
 # Base de datos
 *.sqlite
@@ -37,16 +37,16 @@
 .phpunit.result.cache
 /.phpunit.cache/
 /coverage/
-/epcoro-api/.phpunit.result.cache
-/epcoro-api/.phpunit.cache/
-/epcoro-api/coverage/
+/sinchy-api/.phpunit.result.cache
+/sinchy-api/.phpunit.cache/
+/sinchy-api/coverage/
 
 # Herramientas
 /.php-cs-fixer.cache
-/epcoro-api/.php-cs-fixer.cache
+/sinchy-api/.php-cs-fixer.cache
 /.phpstan.cache
-/epcoro-api/.phpstan.cache
-/epcoro-api/.pint.cache
+/sinchy-api/.phpstan.cache
+/sinchy-api/.pint.cache
 
 # Sistema
 Thumbs.db

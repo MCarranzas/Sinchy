@@ -2,7 +2,7 @@
 #
 # Railway debe construir con el Dockerfile de la RAIZ del repositorio (que ya
 # compila la SPA y arma la imagen con Nginx + PHP-FPM). El "Root Directory" del
-# servicio tiene que quedar en la raiz del repo, no en epcoro-api/.
+# servicio tiene que quedar en la raiz del repo, no en sinchy-api/.
 
 [build]
 builder = "DOCKERFILE"

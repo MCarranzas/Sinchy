@@ -97,8 +97,8 @@
  Montar el disco de Windows en /mnt/c funciona, pero compilar ahi es lento.
  Copiar primero:
 
-     cp -r /mnt/c/MarioC/webs_figma/epcoro ~/epcoro
-     cd ~/epcoro
+     cp -r /mnt/c/MarioC/webs_figma/sinchy ~/sinchy
+     cd ~/sinchy
 
  Si despues haces cambios en Windows, vuelve a copiar (o usa rsync -a --delete).
 
@@ -108,7 +108,7 @@
 
  En PowerShell:
 
-     cd C:\MarioC\webs_figma\epcoro\epcoro-api
+     cd C:\MarioC\webs_figma\sinchy\sinchy-api
      php artisan key:generate --show
 
  Copiar el valor completo "base64:...". Solo se genera UNA vez: si la cambias,
@@ -120,7 +120,7 @@
 
  En Ubuntu:
 
-     cd ~/epcoro
+     cd ~/sinchy
      APP_KEY="base64:PEGA_AQUI_TU_CLAVE" SEED=1 \
        docker compose -f docker-compose.local.yml up --build
 
@@ -156,7 +156,7 @@
    ---------------------------  ------------------------------------------
    npm ci falla                 package-lock.json desincronizado de
                                 package.json. En Windows:
-                                cd epcoro-web && npm install, y commitea el
+                                cd sinchy-web && npm install, y commitea el
                                 lock.
    apk add falla                Nombre de paquete segun la version de
                                 Alpine. El log del build dice cual.

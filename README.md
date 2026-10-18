@@ -10,12 +10,12 @@ Gerencia.
 ## Estructura
 
 ```
-epcoro/
-|-- epcoro-api/       API REST en Laravel 13 + PostgreSQL 17
-|-- epcoro-web/       SPA en Vue 3 + Vite + Tailwind
+sinchy/
+|-- sinchy-api/       API REST en Laravel 13 + PostgreSQL 17
+|-- sinchy-web/       SPA en Vue 3 + Vite + Tailwind
 |-- docs/
 |   |-- hoja.xlsx                     formulario oficial (fuente de verdad)
-|   |-- diagrama_sist_epcoro.drawio   flujo de estados y roles
+|   |-- diagrama_sist_sinchy.drawio   flujo de estados y roles
 |   |-- diagrama-erd.md               entidad-relacion (deriva de las migraciones)
 |   |-- catalogo-campos.md            celda Excel <-> columna BD <-> campo UI
 |   `-- reglas-negocio.md             formulas y maquina de estados
@@ -29,9 +29,9 @@ epcoro/
 |---|---|
 | `instrucciones.txt` | Especificacion tecnica completa v1.2. Correcciones C1-C9 y decisiones D1-D4. |
 | `docs/hoja.xlsx` | El formulario real. Todos los casos de prueba salen de aca. |
-| `docs/diagrama_sist_epcoro.drawio` | Roles y flujo de estados. |
+| `docs/diagrama_sist_sinchy.drawio` | Roles y flujo de estados. |
 | `docs/reglas-negocio.md` | Decisiones D1-D4 del negocio y redondeo verificado. |
-| `epcoro-api/docs/api.md` | Contrato de la API `/api/v1` (endpoints, estados, recursos, errores). |
+| `sinchy-api/docs/api.md` | Contrato de la API `/api/v1` (endpoints, estados, recursos, errores). |
 | `pasos.txt` | Bitacora. **Solo decisiones, bugs raros y verificaciones (ver Proceso).** |
 
 ## Proceso (protocolo ligero)
@@ -114,7 +114,7 @@ cambio `6.96`:
 - Composer 2.9.7
 - PostgreSQL 17.6 nativo, servicio `postgresql-x64-17`, puerto `5432`
 - Node.js 24 / npm 11
-- Base: `epcoro` - rol `epcoro` / `epcoro_secret` (**solo desarrollo**)
+- Base: `sinchy` - rol `sinchy` / `sinchy_secret` (**solo desarrollo**)
 - Zona horaria: `America/La_Paz`
 
 XAMPP sigue instalado y sus Apache y MySQL funcionan; su PHP 8.2 quedo atras en
@@ -127,10 +127,10 @@ Requisitos: **PHP 8.3+** con las extensiones `pdo_pgsql`, `pgsql`, `mbstring`,
 **npm**. En Windows, el cliente de PostgreSQL (`pg_dump`) debe estar en el
 `PATH` para los respaldos.
 
-### Backend (`epcoro-api/`)
+### Backend (`sinchy-api/`)
 
 ```bash
-cd epcoro-api
+cd sinchy-api
 composer install
 copy .env.example .env            # bash: cp .env.example .env
 php artisan key:generate
@@ -142,9 +142,9 @@ Editar `.env` y apuntar la base de datos:
 DB_CONNECTION=pgsql
 DB_HOST=127.0.0.1
 DB_PORT=5432
-DB_DATABASE=epcoro
-DB_USERNAME=epcoro
-DB_PASSWORD=epcoro_secret
+DB_DATABASE=sinchy
+DB_USERNAME=sinchy
+DB_PASSWORD=sinchy_secret
 ```
 
 Crear la base y sembrarla (esquema, catalogos, parametros y 4 usuarios de
@@ -161,10 +161,10 @@ El seeding deja las cuatro cuentas de ejemplo con las contrasenas conocidas de
 fuera de `local`/`testing` los seeders generan una aleatoria que se muestra una
 sola vez. Ninguna de estas cuentas debe existir en produccion.
 
-### Frontend (`epcoro-web/`)
+### Frontend (`sinchy-web/`)
 
 ```bash
-cd epcoro-web
+cd sinchy-web
 npm ci
 copy .env.example .env.local      # opcional: solo cambia el proxy de Vite
 npm run dev                       # http://localhost:5173
@@ -177,9 +177,9 @@ llama a rutas relativas: en produccion es Nginx quien enruta al backend.
 ### Verificacion (antes de dar por bueno un cambio)
 
 ```bash
-cd epcoro-api
+cd sinchy-api
 composer check                    # pint + phpstan + php artisan test
-cd ../epcoro-web
+cd ../sinchy-web
 npm run build                     # vue-tsc + vite build
 ```
 
@@ -231,7 +231,7 @@ Sanctum). Hay dos guias paso a paso:
 | 3 - Autenticacion y roles | completa: login por cookie Sanctum, roles Spatie, bloqueo y 23 tests en verde |
 | 4 - Esquema de base de datos | completa: 15 migraciones, ENUM de estados, catalogos sembrados, 13 factories, `LiquidacionPolicy` y 45 tests en verde |
 | 5 - Servicio de calculo | completa (salvo 5.4.8, que necesita la API): calculo puro, parametros, numerador, maquina de estados y 87 tests en verde |
-| 6 - API CRUD de liquidaciones | completa: `/api/v1` (auth, catalogos, parametros, liquidaciones, PDF/Excel, transiciones, observaciones, historial y reportes), 127 tests en verde, pint y phpstan limpios. Ver `epcoro-api/docs/api.md` |
+| 6 - API CRUD de liquidaciones | completa: `/api/v1` (auth, catalogos, parametros, liquidaciones, PDF/Excel, transiciones, observaciones, historial y reportes), 127 tests en verde, pint y phpstan limpios. Ver `sinchy-api/docs/api.md` |
 | 7 - Frontend base y login | completa: SPA vue-ts con axios `/api/v1`, store auth, guard de sesion/permiso/cambio obligatorio, layouts, LoginView, pantalla de cambio de contrasena y menu por permisos. Login y cambio de contrasena verificados end-to-end por el proxy de Vite (`/api` + `/sanctum`). Queda solo la comprobacion visual en navegador |
 | 8 - Captura de liquidacion | completa (8.1-8.12): planilla de captura reutilizada por crear/editar, wizard responsive de 5 pasos, validacion vee-validate espejo de `StoreLiquidacionRequest`, calculo en vivo espejo de `CalculoLiquidacionService` (BigInt, 1 solo redondeo half-up), lista con filtros y paginacion por URL (incluye municipio y vendedor con autocompletado), detalle con PDF/Excel e historial. El comprador se autocompleta desde su tabla propia (`compradores`, `GET /catalogos/compradores`, FK `liquidaciones.comprador_id`). Build verde y smoke test E2E via proxy. Queda solo la comprobacion visual en navegador |
 | 9 - Flujo de estados y permisos | completa (9.1-9.7): barra de estado con `transiciones_disponibles`, modal de transicion (motivo obligatorio en rechazado/anulado), timeline de historial, edicion condicionada a auth+propiedad+estado, banda `GET /api/v1/bandeja` con pestanas por rol (tambien el item "Mi bandeja" en el menu y la ruta `/bandeja`), seeder de 4 usuarios de ejemplo, fix de paginacion (`page`, no `pagina`) y 153 tests en verde (26 nuevos). El backend ya cortaba por estado (422) antes que por permiso (403) |
@@ -246,11 +246,11 @@ tener tabla propia (`compradores`) con FK `liquidaciones.comprador_id`
 `compradores`, no de `parametros_generales`. Detalle en `pasos.txt` [122].
 
 Tambien se agregaron los mensajes de validacion en espanol
-(`epcoro-api/lang/es/`): las reglas genericas (required, regex, exists, decimal,
+(`sinchy-api/lang/es/`): las reglas genericas (required, regex, exists, decimal,
 etc.) ya no caen al ingles de respaldo y los campos muestran su nombre legible
 via el bloque `attributes`. Fijado con un test de candado en `pasos.txt` [123].
 
-Comprobacion (`epcoro-api/`):
+Comprobacion (`sinchy-api/`):
 
 ```bash
 php artisan migrate:fresh --seed   # crea todo sin errores

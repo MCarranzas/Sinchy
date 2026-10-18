@@ -35,8 +35,8 @@ DigitalOcean Droplet 2 GB (~$12/mes), Contabo, Vultr.
 ## 2. Apuntar el DNS
 
 Crea un registro **A** de tu dominio hacia la IP del VPS, por ejemplo
-`epcoro.tudominio.com → 123.123.123.123`. Espera la propagación (míralo con
-`dig +short epcoro.tudominio.com`). Coolify emitirá el certificado TLS de Let's
+`sinchy.tudominio.com → 123.123.123.123`. Espera la propagación (míralo con
+`dig +short sinchy.tudominio.com`). Coolify emitirá el certificado TLS de Let's
 Encrypt solo si el DNS ya resuelve.
 
 ## 3. Instalar Coolify
@@ -53,7 +53,7 @@ administrador**. Recomendado enseguida: en **Settings → Instance Domain** pon
 
 ## 4. Crear la base de datos PostgreSQL
 
-1. Crea un **Project** (por ejemplo `epcoro`) y dentro un **Environment**
+1. Crea un **Project** (por ejemplo `sinchy`) y dentro un **Environment**
    (`production`).
 2. **+ New → Database → PostgreSQL**.
 3. Elige versión **17**, define nombre, usuario y una **contraseña fuerte**
@@ -70,9 +70,9 @@ administrador**. Recomendado enseguida: en **Settings → Instance Domain** pon
 2. Repositorio `https://github.com/MCarranzas/Sinchy`, rama **`main`**.
 3. **Build Pack: `Dockerfile`** (NO Nixpacks).
 4. **Base Directory**: raíz del repo (vacío / `/`). El `Dockerfile` de la raíz
-   necesita ver `epcoro-web/` y `epcoro-api/` juntos.
+   necesita ver `sinchy-web/` y `sinchy-api/` juntos.
 5. **Ports Exposes**: `8080`.
-6. **Domains**: `https://epcoro.tudominio.com`. Coolify asigna el dominio al
+6. **Domains**: `https://sinchy.tudominio.com`. Coolify asigna el dominio al
    servicio y pide el certificado automáticamente (Traefik).
 7. **Health Check**: ruta `/up`, puerto `8080`.
 8. **Persistent Storage** (para que sobrevivan logs de auditoría y subidas):
@@ -89,7 +89,7 @@ Railway, sección 4):
 | `APP_ENV` | `production` |
 | `APP_KEY` | `base64:...` (genérala una sola vez, ver abajo) |
 | `APP_DEBUG` | `false` |
-| `APP_URL` | `https://epcoro.tudominio.com` |
+| `APP_URL` | `https://sinchy.tudominio.com` |
 | `APP_TIMEZONE` | `America/La_Paz` |
 | `APP_LOCALE` | `es` |
 | `LOG_CHANNEL` | `stack` |
@@ -98,7 +98,7 @@ Railway, sección 4):
 | `DB_CONNECTION` | `pgsql` |
 | `DB_HOST` | host interno de la base (paso 4) |
 | `DB_PORT` | `5432` |
-| `DB_DATABASE` | `epcoro` (o el que definiste) |
+| `DB_DATABASE` | `sinchy` (o el que definiste) |
 | `DB_USERNAME` | usuario de la base |
 | `DB_PASSWORD` | contraseña de la base |
 | `SESSION_DRIVER` | `database` |
@@ -112,14 +112,14 @@ Railway, sección 4):
 | `QUEUE_CONNECTION` | `sync` |
 | `CACHE_STORE` | `database` |
 | `MAIL_MAILER` | `log` |
-| `CORS_ALLOWED_ORIGINS` | `https://epcoro.tudominio.com` |
-| `SANCTUM_STATEFUL_DOMAINS` | `epcoro.tudominio.com` (solo el host) |
+| `CORS_ALLOWED_ORIGINS` | `https://sinchy.tudominio.com` |
+| `SANCTUM_STATEFUL_DOMAINS` | `sinchy.tudominio.com` (solo el host) |
 | `TRUST_PROXIES` | `*` |
 
 Genera la `APP_KEY` una sola vez, desde tu máquina:
 
 ```bash
-cd epcoro-api
+cd sinchy-api
 php artisan key:generate --show
 ```
 
@@ -148,8 +148,8 @@ no re-sembrar en cada reinicio.
 
 ## 8. Verificación
 
-- `https://epcoro.tudominio.com/up` → 200 (health check de Laravel).
-- `https://epcoro.tudominio.com/api/health` → JSON que confirma la base.
+- `https://sinchy.tudominio.com/up` → 200 (health check de Laravel).
+- `https://sinchy.tudominio.com/api/health` → JSON que confirma la base.
 - Entra con `admin` y la contraseña de los logs (o con los usuarios de demo).
 - Recorre una liquidación, descarga un PDF y un Excel.
 - Cierra sesión y confirma que una URL privada redirige al login.
@@ -210,7 +210,7 @@ en el VPS con Docker Compose y un proxy TLS delante (Caddy o Traefik).
 5. Pon delante un proxy TLS. Con Caddy basta un `Caddyfile`:
 
    ```caddy
-   epcoro.tudominio.com {
+   sinchy.tudominio.com {
        reverse_proxy 127.0.0.1:8080
    }
    ```

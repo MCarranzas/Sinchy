@@ -1,4 +1,4 @@
-# epcoro-web
+# sinchy-web
 
 SPA del sistema SINCHI WAYRA (captura de liquidaciones de aportes). Frontend de la
 FASE 7: sesion, permisos y base sobre la que se construyen los modulos de la
@@ -12,10 +12,10 @@ vue-router 5 y axios.
 Necesita el backend levantado en el puerto 8000:
 
 ```bash
-cd epcoro-api
+cd sinchy-api
 php artisan serve --host=127.0.0.1 --port=8000
 
-cd epcoro-web
+cd sinchy-web
 npm install
 npm run dev        # http://localhost:5173
 npm run build      # vue-tsc + vite build

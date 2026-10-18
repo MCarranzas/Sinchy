@@ -17,11 +17,11 @@
 # Primer arranque con datos base: agrega SEED=1 (y DEMO_SEED=1 si es vitrina).
 # ITERAR: quitarlos despues para no re-sembrar en cada reinicio.
 #
-# name: distinto del compose local (docker-compose.local.yml usa "epcoro") para
+# name: distinto del compose local (docker-compose.local.yml usa "sinchy") para
 # que este stack NO pise los contenedores de desarrollo. Coolify lo ignora
 # porque lanza con su propio -p.
 
-name: epcoro-prod
+name: sinchy-prod
 
 services:
   db:
@@ -51,10 +51,10 @@ services:
       PORT: "8080"
       APP_NAME: ${APP_NAME:-SINCHI WAYRA}
       APP_ENV: production
-      # Genera la clave UNA vez: cd epcoro-api && php artisan key:generate --show
+      # Genera la clave UNA vez: cd sinchy-api && php artisan key:generate --show
       APP_KEY: ${APP_KEY:?Falta APP_KEY (php artisan key:generate --show)}
       APP_DEBUG: "false"
-      APP_URL: ${APP_URL:?Falta APP_URL, por ejemplo https://epcoro.tudominio.com}
+      APP_URL: ${APP_URL:?Falta APP_URL, por ejemplo https://sinchy.tudominio.com}
       APP_TIMEZONE: America/La_Paz
       APP_LOCALE: es
       LOG_CHANNEL: stack

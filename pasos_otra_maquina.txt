@@ -5,7 +5,7 @@
  Fecha init : 2026-10-07
  Fuente     : versiones LEIDAS de la maquina original (no estimadas) y de
               composer.lock / package-lock.json
- Project    : C:\marioc\webs_figma\epcoro
+ Project    : C:\marioc\webs_figma\sinchy
 --------------------------------------------------------------------------------
  OS original: Microsoft Windows 10 Pro, build 19045, x64
  Arquitectura PHP: 64-bit (PHP_INT_SIZE = 8 bytes)
@@ -151,21 +151,21 @@
            la clave y el comando CUELGA - trampa del paso [65])
 
   4.3 BASES Y ROL DE DESARROLLO (credenciales SOLO de desarrollo)
-        rol    : epcoro / epcoro_secret   (LOGIN, CREATEDB - Laravel lo
-                                          necesita para crear epcoro_test)
-        bases  : epcoro      (desarrollo)
-                 epcoro_test (tests; el phpunit.xml apunta a esta)
-        ambas  : owner epcoro, ENCODING UTF8,
+        rol    : sinchy / sinchy_secret   (LOGIN, CREATEDB - Laravel lo
+                                          necesita para crear sinchy_test)
+        bases  : sinchy      (desarrollo)
+                 sinchy_test (tests; el phpunit.xml apunta a esta)
+        ambas  : owner sinchy, ENCODING UTF8,
                  LC_COLLATE / LC_CTYPE = Spanish_Bolivia.1252,
                  TEMPLATE template0
         TZ del servidor: America/La_Paz (ya viene bien en el instalador)
 
-      Script (psql -U epcoro -h 127.0.0.1 -d postgres):
-        CREATE ROLE epcoro LOGIN PASSWORD 'epcoro_secret' CREATEDB;
-        CREATE DATABASE epcoro OWNER epcoro ENCODING 'UTF8'
+      Script (psql -U sinchy -h 127.0.0.1 -d postgres):
+        CREATE ROLE sinchy LOGIN PASSWORD 'sinchy_secret' CREATEDB;
+        CREATE DATABASE sinchy OWNER sinchy ENCODING 'UTF8'
           TEMPLATE template0 LC_COLLATE 'Spanish_Bolivia.1252'
           LC_CTYPE 'Spanish_Bolivia.1252';
-        CREATE DATABASE epcoro_test OWNER epcoro ENCODING 'UTF8'
+        CREATE DATABASE sinchy_test OWNER sinchy ENCODING 'UTF8'
           TEMPLATE template0 LC_COLLATE 'Spanish_Bolivia.1252'
           LC_CTYPE 'Spanish_Bolivia.1252';
 
@@ -178,7 +178,7 @@
 
 
 ################################################################################
- # 5. COMPOSER - VERSIONES EXACTAS DEL BACKEND (epcoro-api)
+ # 5. COMPOSER - VERSIONES EXACTAS DEL BACKEND (sinchy-api)
 ################################################################################
 
   Composer 2.9.7 con platform.php fijada a 8.4.26 (evita que una resolucion
@@ -207,7 +207,7 @@
 
 
 ################################################################################
- # 6. NODE / NPM - VERSIONES EXACTAS DEL FRONTEND (epcoro-web)
+ # 6. NODE / NPM - VERSIONES EXACTAS DEL FRONTEND (sinchy-web)
 ################################################################################
 
   Node.js v24.21.0 / npm 11.19.0
@@ -262,20 +262,20 @@
   [S8]  Crear rol y bases (seccion 4.3). Verificar $LASTEXITCODE = 0.
 
   [S9]  Clonar el repo y montar el backend:
-        git clone <repo> epcoro && cd epcoro\epcoro-api
+        git clone <repo> sinchy && cd sinchy\sinchy-api
         composer install
         copy .env.example .env
         php artisan key:generate
-        (editar .env: DB_PASSWORD=epcoro_secret)
+        (editar .env: DB_PASSWORD=sinchy_secret)
         php artisan migrate --seed --force
         php artisan test          -> debe dar tests en verde
 
   [S10] Montar el frontend:
-        cd ..\epcoro-web
+        cd ..\sinchy-web
         npm install
         npm run build             -> vue-tsc + vite build sin errores
 
-  [S11] VS Code: abrir epcoro.code-workspace e instalar las extensiones
+  [S11] VS Code: abrir sinchy.code-workspace e instalar las extensiones
         recomendadas: PHP Intelephense, Laravel Blade, EditorConfig,
         Prettier, ESLint, Vue - Official (Volar), Tailwind CSS IntelliSense,
         DotENV, Duplicate.
@@ -286,11 +286,11 @@
 ################################################################################
 
   Terminal 1 (backend, puerto 8000):
-      cd epcoro-api
+      cd sinchy-api
       php artisan serve --host=127.0.0.1 --port=8000
 
   Terminal 2 (frontend, puerto 5173):
-      cd epcoro-web
+      cd sinchy-web
       npm run dev
 
   Verificaciones:
@@ -302,7 +302,7 @@
         ('/api' y '/sanctum' -> http://localhost:8000; sin el mapeo
          /sanctum el backend responde 419 - paso [109] de pasos.txt)
 
-  Calidad de codigo (en epcoro-api):
+  Calidad de codigo (en sinchy-api):
       php artisan test              -> tests en verde
       vendor\bin\pint --test        -> passed
       vendor\bin\phpstan analyse    -> [OK] No errors

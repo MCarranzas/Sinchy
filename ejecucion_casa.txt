@@ -14,11 +14,11 @@
    [x] WSL2 habilitado (wsl -l -v -> docker-desktop, version 2)
    [x] Docker Desktop instalado (cliente 29.8.1) PERO el motor esta apagado
    [x] PHP 8.4.26 en C:\tools\php84  (solo para generar la APP_KEY)
-   [x] Repositorio en C:\marioc\webs_figma\epcoro
+   [x] Repositorio en C:\marioc\webs_figma\sinchy
 
  NO hay que instalar nada mas. Solo arrancar Docker Desktop.
  Todos los comandos son en PowerShell y se ejecutan DESDE
- C:\marioc\webs_figma\epcoro excepto donde se indique.
+ C:\marioc\webs_figma\sinchy excepto donde se indique.
 
 ================================================================================
  PASO 1 - ARRANCAR DOCKER DESKTOP Y ESPERAR AL MOTOR
@@ -47,7 +47,7 @@
  PASO 2 - SITUARSE EN LA RAIZ DEL REPOSITORIO
 ================================================================================
 
-     cd C:\marioc\webs_figma\epcoro
+     cd C:\marioc\webs_figma\sinchy
 
 ================================================================================
  PASO 3 - GENERAR LA APP_KEY (una sola vez)
@@ -56,7 +56,7 @@
  El docker-compose.local.yml EXIGE la variable APP_KEY y no arranca sin ella.
  Se genera desde Windows (donde ya tienes PHP 8.4):
 
-     cd epcoro-api
+     cd sinchy-api
      php artisan key:generate --show
      cd ..
 
@@ -115,7 +115,7 @@
 
  6.2 Si ya no la ves, buscala desde otra terminal:
 
-     cd C:\marioc\webs_figma\epcoro
+     cd C:\marioc\webs_figma\sinchy
      docker compose -f docker-compose.local.yml logs api | Select-String "contrasena"
 
  6.3 Entrar a http://localhost:8080 con:
@@ -134,7 +134,7 @@
  Para volver a arrancar (los datos ya estan en el volumen de la base, NO uses
  SEED de nuevo o los seeders pueden abortar el arranque):
 
-     cd C:\marioc\webs_figma\epcoro
+     cd C:\marioc\webs_figma\sinchy
      $env:APP_KEY = "base64:TU_MISMA_CLAVE"
      Remove-Item Env:\SEED -ErrorAction SilentlyContinue
      docker compose -f docker-compose.local.yml up
@@ -163,7 +163,7 @@
   cannot connect to the Docker API Arranca Docker Desktop (PASO 1) y espera.
   "APP_KEY is required"            Falta $env:APP_KEY en ESTA terminal (PASO 4).
   npm ci falla                     package-lock.json desincronizado:
-                                   cd epcoro-web; npm install; (commitear).
+                                   cd sinchy-web; npm install; (commitear).
   apk add falla                    Version de Alpine distinta; el log dice cual.
   Todo da 500 tras arrancar        clear_env no llego a PHP-FPM; revisa logs.
   500 "Uninitialized string offset" en Request.php (getPort) pero no da: es
@@ -211,12 +211,12 @@
 
  Copiar el repo al disco de Linux (compilar en /mnt/c es lento):
 
-     cp -r /mnt/c/marioc/webs_figma/epcoro ~/epcoro
-     cd ~/epcoro
+     cp -r /mnt/c/marioc/webs_figma/sinchy ~/sinchy
+     cd ~/sinchy
 
  Generar la APP_KEY (en PowerShell, con el PHP de Windows):
 
-     cd C:\marioc\webs_figma\epcoro\epcoro-api
+     cd C:\marioc\webs_figma\sinchy\sinchy-api
      php artisan key:generate --show
 
  Arrancar (en Ubuntu):

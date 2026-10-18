@@ -11,9 +11,9 @@ services:
     image: postgres:17
     restart: unless-stopped
     environment:
-      POSTGRES_DB: epcoro_docker
-      POSTGRES_USER: epcoro
-      POSTGRES_PASSWORD: epcoro_secret
+      POSTGRES_DB: sinchy_docker
+      POSTGRES_USER: sinchy
+      POSTGRES_PASSWORD: sinchy_secret
     # Puerto 5433 para no chocar con tu PostgreSQL nativo en 5432 (solo
     # para inspeccionar desde Windows; el contenedor `api` usa el nombre `db`).
     ports:
@@ -21,7 +21,7 @@ services:
     volumes:
       - pgdata_prueba:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U epcoro -d epcoro_docker"]
+      test: ["CMD-SHELL", "pg_isready -U sinchy -d sinchy_docker"]
       interval: 10s
       retries: 10
 
@@ -37,7 +37,7 @@ services:
       PORT: "8080"
       APP_NAME: "SINCHI WAYRA"
       APP_ENV: production
-      APP_KEY: "${APP_KEY:?Genera una APP_KEY: cd epcoro-api && php artisan key:generate --show}"
+      APP_KEY: "${APP_KEY:?Genera una APP_KEY: cd sinchy-api && php artisan key:generate --show}"
       APP_DEBUG: "false"
       APP_URL: "http://localhost:8080"
       APP_TIMEZONE: "America/La_Paz"
@@ -48,9 +48,9 @@ services:
       DB_CONNECTION: "pgsql"
       DB_HOST: "db"
       DB_PORT: "5432"
-      DB_DATABASE: "epcoro_docker"
-      DB_USERNAME: "epcoro"
-      DB_PASSWORD: "epcoro_secret"
+      DB_DATABASE: "sinchy_docker"
+      DB_USERNAME: "sinchy"
+      DB_PASSWORD: "sinchy_secret"
       SESSION_DRIVER: "database"
       SESSION_LIFETIME: "480"
       SESSION_ENCRYPT: "true"

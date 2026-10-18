@@ -24,7 +24,7 @@ nuevos (`Dockerfile`, `docker/`, `railway.toml`, `.dockerignore`,
 Genera la `APP_KEY` una sola vez, desde tu máquina:
 
 ```bash
-cd epcoro-api
+cd sinchy-api
 php artisan key:generate --show
 ```
 
@@ -42,7 +42,7 @@ Copia el valor completo (`base64:...`) para pegarlo como variable en Railway.
 3. **New Project → Deploy from GitHub repo** y elige `MCarranzas/Sinchy`.
 4. En el servicio, abre **Settings**:
    - **Root Directory**: dejar en la **raíz del repositorio** (vacío / `/`),
-     NO `epcoro-api`. Si lo cambias, el Dockerfile no encuentra `epcoro-web/`.
+     NO `sinchy-api`. Si lo cambias, el Dockerfile no encuentra `sinchy-web/`.
    - Railway detecta el `Dockerfile` y lo usa automáticamente.
 
 ## 3. Agregar PostgreSQL
@@ -108,7 +108,7 @@ Notas:
 ## 5. Generar el dominio y cerrar las variables dependientes
 
 1. En el servicio: **Settings → Networking → Generate Domain**.
-2. Copia la URL HTTPS (por ejemplo `https://epcoro-production.up.railway.app`).
+2. Copia la URL HTTPS (por ejemplo `https://sinchy-production.up.railway.app`).
 3. Actualiza `APP_URL`, `CORS_ALLOWED_ORIGINS` y `FRONTEND_URL` con esa URL, y
    `SANCTUM_STATEFUL_DOMAINS` con solo el host.
 4. Vuelve a desplegar (Railway redespliega al guardar variables).
@@ -170,7 +170,7 @@ Si algo falla, revisa los **Deploy Logs** (build) y los logs del contenedor.
 | Síntoma | Causa probable |
 |---|---|
 | Build falla en `apk add` | Versión de Alpine distinta. Revisa el nombre de los paquetes (`postgresql-dev`, `libjpeg-turbo-dev`, ...) en los logs. |
-| Build falla en `npm ci` | `package-lock.json` desincronizado respecto a `package.json`. Correr `npm install` en `epcoro-web/` y volver a commitear el lock. |
+| Build falla en `npm ci` | `package-lock.json` desincronizado respecto a `package.json`. Correr `npm install` en `sinchy-web/` y volver a commitear el lock. |
 | `SQLSTATE: could not connect` | `DB_*` mal referenciadas o el servicio Postgres no está activo. |
 | Login "entra y me devuelve al login" | `SANCTUM_STATEFUL_DOMAINS` no incluye el host real (o quedó con `localhost`). |
 | Error 500 al login ("Session store not set") | Falta el dominio de la API en `SANCTUM_STATEFUL_DOMAINS`. |

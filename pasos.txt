@@ -4,7 +4,7 @@
  Archivo    : pasos.txt
  Fecha init : 2026-10-05
  Responsable: opencode (agente Build)
- Project    : C:\marioc\webs_figma\epcoro
+ Project    : C:\marioc\webs_figma\sinchy
 --------------------------------------------------------------------------------
  REGLA DE ESTE ARCHIVO
    Todo comando ejecutado durante el proyecto queda registrado aqui.
@@ -31,7 +31,7 @@
 ### [1] 2026-10-05 17:50 - FASE 0 / AUDITORIA
 OBJETIVO  : Inventariar archivos del proyecto de trabajo.
 COMANDO   : dir
-RESULTADO : notas_curso_claude\, diagrama_sist_epcoro.drawio, hoja.xlsx,
+RESULTADO : notas_curso_claude\, diagrama_sist_sinchy.drawio, hoja.xlsx,
             instrucciones.txt, notas1.txt, notas_figma.txt, prompt.txt
 ESTADO    : OK
 
@@ -193,7 +193,7 @@ ESTADO    : OK (defecto confirmado, menor)
 
 ### [15] 2026-10-05 17:55 - FASE 0 / ARQUITECTURA
 OBJETIVO  : Contrastar el diseno de BD propuesto contra el diagrama drawio.
-COMANDO   : python -c "<regex value= sobre diagrama_sist_epcoro.drawio>"
+COMANDO   : python -c "<regex value= sobre diagrama_sist_sinchy.drawio>"
 RESULTADO : Nodos: Tecnico, Administracion de Liquidaciones, Gerente,
             Iniciar sesion, Captura, Cambio de Estado, Reportes,
             Revisado, Aprobado, Rechazado,
@@ -253,7 +253,7 @@ ESTADO    : OK
 ================================================================================
  [D1] Framework    : Laravel 13 (exige PHP 8.3+)
  [D2] PHP          : 8.4.26 NTS x64 en C:\tools\php84, XAMPP intacto
- [D3] Base de datos: PostgreSQL 17 (instalador nativo, NO Docker), rol epcoro
+ [D3] Base de datos: PostgreSQL 17 (instalador nativo, NO Docker), rol sinchy
  [D4] Aporte solidario 1%: la tabla se crea pero el parametro queda INACTIVO
                       hasta que negocio confirme (no existe en hoja.xlsx)
  [D5] Bitacora     : este archivo (pasos.txt), un bloque por comando
@@ -293,7 +293,7 @@ ESTADO    : OK
      CORRECCION: C7 = 2024-12-02 (no 2024-12-03 como el ejemplo de payload).
  [C7] Seccion 2 - ruta de bootstrap/app.php.
      DEFECTO : el doc lo ubica en app/Support/bootstrap/app.php.
-     CORRECCION: va en la RAIZ del proyecto (epcoro-api/bootstrap/app.php) en
+     CORRECCION: va en la RAIZ del proyecto (sinchy-api/bootstrap/app.php) en
                Laravel 11+.
  [C8] Seccion 1 - nota sobre el desplegable SI/NO.
      DEFECTO : el doc afirma que C20 tiene lista validada.
@@ -483,15 +483,15 @@ RESULTADO : version() = PostgreSQL 17.6 on x86_64-windows, msvc-19.44.35213, 64-
 ESTADO    : OK
 
 ### [33] 2026-10-05 19:07 - FASE 1.4 / ROL Y BASE (intento 1: FALLO)
-OBJETIVO  : Crear el rol epcoro y la base epcoro de forma idempotente.
+OBJETIVO  : Crear el rol sinchy y la base sinchy de forma idempotente.
 COMANDO   : DO $$ ... $$; con here-string de doble comilla @"..."@
 RESULTADO : ERROR de sintaxis en«BEGIN», «RAISE», «ELSE», «END IF».
             CAUSA RAIZ: en un here-string de DOBLE comilla @"..."@ PowerShell
             expande las variables, y "$$" en PowerShell es una variable
             (codigo de salida del ultimo comando). El bloque PL/pgSQL quedo
             destrozado.
-            ERROR adicional: "no existe el rol epcoro".
-            PEOR: el script anuncio "base epcoro creada" porque no se comprobo
+            ERROR adicional: "no existe el rol sinchy".
+            PEOR: el script anuncio "base sinchy creada" porque no se comprobo
             el codigo de salida de psql; el CREATE DATABASE en realidad habia
             fallado por no existir el rol owner.
 LECCION   : (1) usar here-string LITERAL @'...'@ con $$; (2) SIEMPRE verificar
@@ -502,9 +502,9 @@ ESTADO    : FALLA
 OBJETIVO  : Crear rol y base con SQL seguro y verificacion real.
 COMANDO   : here-string literal @'...'@ + delimitador $BODY$
             [IO.File]::WriteAllText($sql,$texto,[Text.Encoding]::ASCII)
-            psql -U postgres -d postgres -v ON_ERROR_STOP=1 -f epcoro_setup2.sql
-              CREATE ROLE epcoro LOGIN PASSWORD 'epcoro_secret' CREATEDB;
-              CREATE DATABASE epcoro OWNER epcoro ENCODING 'UTF8'
+            psql -U postgres -d postgres -v ON_ERROR_STOP=1 -f sinchy_setup2.sql
+              CREATE ROLE sinchy LOGIN PASSWORD 'sinchy_secret' CREATEDB;
+              CREATE DATABASE sinchy OWNER sinchy ENCODING 'UTF8'
                 TEMPLATE template0 LC_COLLATE 'Spanish_Bolivia.1252'
                 LC_CTYPE 'Spanish_Bolivia.1252';
 RESULTADO : CREATE ROLE / CREATE DATABASE.  ExitCode psql = 0.
@@ -512,13 +512,13 @@ RESULTADO : CREATE ROLE / CREATE DATABASE.  ExitCode psql = 0.
             Set-Content -Encoding UTF8 escribe en PowerShell 5.1 y que rompe
             la primera sentencia del archivo SQL.
             Credenciales de DESARROLLO (no de produccion):
-              usuario = epcoro   password = epcoro_secret
+              usuario = sinchy   password = sinchy_secret
 ESTADO    : OK
 
 ### [35] 2026-10-05 19:09 - FASE 1.4 / VERIFICACION COMO ROL DE APLICACION
 OBJETIVO  : Comprobar la conexion que usara Laravel, no la del superusuario.
-COMANDO   : psql -U epcoro -h 127.0.0.1 -d epcoro ...
-RESULTADO : current_user = epcoro   current_database = epcoro
+COMANDO   : psql -U sinchy -h 127.0.0.1 -d sinchy ...
+RESULTADO : current_user = sinchy   current_database = sinchy
             Encoding = UTF8   Collation = Spanish_Bolivia.1252
             rolcreatedb = t   (Laravel lo necesita para crear bases de test)
             CREATE TABLE / DROP TABLE de prueba: OK
@@ -606,8 +606,8 @@ ESTADO    : OK
 ### [42] 2026-10-05 19:24 - FASE 1.7 / PRUEBA DE CONECTIVIDAD PHP -> POSTGRESQL
 OBJETIVO  : Prueba final de extremo a extremo con la ruta que usara Laravel.
 COMANDO   : php probe_pg.php  con
-              new PDO("pgsql:host=127.0.0.1;port=5432;dbname=epcoro",
-                      "epcoro","epcoro_secret")
+              new PDO("pgsql:host=127.0.0.1;port=5432;dbname=sinchy",
+                      "sinchy","sinchy_secret")
 RESULTADO : PHP            : 8.4.26
             Driver PDO     : pgsql
             Server version : 17.6
@@ -628,8 +628,8 @@ ESTADO    : OK
  Composer           : 2.9.7 usando PHP 8.4.26
  PostgreSQL         : 17.6 nativo, servicio postgresql-x64-17 Automatic
  Puerto             : 5432
- Base               : epcoro (owner epcoro, UTF8, Spanish_Bolivia.1252)
- Rol de aplicacion  : epcoro / epcoro_secret  (CREATEDB, para los tests)
+ Base               : sinchy (owner sinchy, UTF8, Spanish_Bolivia.1252)
+ Rol de aplicacion  : sinchy / sinchy_secret  (CREATEDB, para los tests)
  Zona horaria       : America/La_Paz
  Extensiones OK     : pdo_pgsql, pgsql, bcmath, mbstring, openssl, curl,
                       zip, fileinfo, intl, tokenizer, dom, xml, sodium, gd, opcache
@@ -754,8 +754,8 @@ RESULTADO : Estado verificado: PHP 8.4.26, Composer 2.9.7 (ya con 8.4.26),
             PostgreSQL 17.6 nativo, psql 17.6, pdo_pgsql+pgsql OK, bcmath
             verificada, Docker instalado pero NO usado, XAMPP intacto y atras
             en el PATH.
-            Base epcoro: owner epcoro, UTF8, Spanish_Bolivia.1252,
-            rol epcoro/epcoro_secret con CREATEDB, TZ America/La_Paz.
+            Base sinchy: owner sinchy, UTF8, Spanish_Bolivia.1252,
+            rol sinchy/sinchy_secret con CREATEDB, TZ America/La_Paz.
             Procedimiento reproducible de instalacion, incluida la trampa:
             el modo desatendido de EDB falla con codigo 1 en esta maquina y hay
             que usar el asistente grafico.
@@ -821,7 +821,7 @@ OBJETIVO  : Corregir una afirmacion inexacta propia. El pie de este archivo
             puntos 1.1, 1.2, 1.3 y 1.5.
 COMANDO   : edit pasos.txt (pie de estado)
 RESULTADO : FASE 1 desglosada punto por punto. PENDIENTES: 1.6 extensiones de
-            VS Code, 1.7 epcoro.code-workspace, 1.8 estructura de carpetas +
+            VS Code, 1.7 sinchy.code-workspace, 1.8 estructura de carpetas +
             README + .gitignore, 1.9 git init + primer commit.
             1.4 (DBeaver) marcado SUSTITUIDO por pgAdmin 4, que ya veio con
             PostgreSQL 17; no requiere accion.
@@ -835,7 +835,7 @@ OBJETIVO  : Ver si era seguro mover docs/ antes de tocar nada.
 COMANDO   : Get-ChildItem -Force ; Get-Process draw.io ; Test-Path .git
 RESULTADO : Contenido de la raiz: preguntas_curso_claude/, diagrama, hoja.xlsx,
             instrucciones.txt, notas1.txt, notas_figma.txt, pasos.txt, prompt.txt
-            Existia un ".$diagrama_sist_epcoro.drawio.bkp", que es el archivo
+            Existia un ".$diagrama_sist_sinchy.drawio.bkp", que es el archivo
             temporal que deja Draw.io al abrir un diagrama. Se comprobo si
             Draw.io estaba corriendo ANTES de mover el .drawio.
             Draw.io: NO corriendo -> era seguro mover.
@@ -847,12 +847,12 @@ ESTADO    : OK
 
 ### [55] 2026-10-05 --:-- (sin hora fiable) - FASE 1.8 / ESTRUCTURA DE CARPETAS
 OBJETIVO  : Armar el monorepo segun la seccion 2 de instrucciones.txt.
-COMANDO   : New-Item docs ; Move-Item hoja.xlsx, diagrama_sist_epcoro.drawio,
+COMANDO   : New-Item docs ; Move-Item hoja.xlsx, diagrama_sist_sinchy.drawio,
             .$...bkp -> docs/
 RESULTADO : docs/ creado. Movidos:
               docs/hoja.xlsx                        58 224 bytes
-              docs/diagrama_sist_epcoro.drawio      10 522 bytes
-              docs/.$diagrama_sist_epcoro.drawio.bkp 10 195 bytes
+              docs/diagrama_sist_sinchy.drawio      10 522 bytes
+              docs/.$diagrama_sist_sinchy.drawio.bkp 10 195 bytes
             Se movio tambien el .bkp para no dejar un temporal suelto en la raiz.
 ESTADO    : OK
 
@@ -870,7 +870,7 @@ ESTADO    : OK
 OBJETIVO  : Evitar que entren al repo dependencias, secretos y artefactos.
 COMANDO   : write .gitignore
 RESULTADO : .gitignore creado. Cubre vendor, node_modules, .env (incluye
-            epcoro-api/.env y epcoro-web/.env), storage/framework, caches de
+            sinchy-api/.env y sinchy-web/.env), storage/framework, caches de
             phpunit/phpstan/pint, .sqlite, .vite, .idea, Thumbs.db,
             artefactos de Draw.io (*.bkp, .$*).
             Incluye /preguntas_curso_claude/ para que el material del curso no
@@ -878,11 +878,11 @@ RESULTADO : .gitignore creado. Cubre vendor, node_modules, .env (incluye
             Regla de seguridad: los .env NUNCA se versionan.
 ESTADO    : OK
 
-### [58] 2026-10-05 --:-- (sin hora fiable) - FASE 1.7 / epcoro.code-workspace
+### [58] 2026-10-05 --:-- (sin hora fiable) - FASE 1.7 / sinchy.code-workspace
 OBJETIVO  : Crear el workspace de VS Code con las carpetas del monorepo.
-COMANDO   : write epcoro.code-workspace
-RESULTADO : epcoro.code-workspace creado. Carpetas: raiz, epcoro-api,
-            epcoro-web. Ajustes por lenguaje (PHP sangria 4, JS/TS/Vue/JSON
+COMANDO   : write sinchy.code-workspace
+RESULTADO : sinchy.code-workspace creado. Carpetas: raiz, sinchy-api,
+            sinchy-web. Ajustes por lenguaje (PHP sangria 4, JS/TS/Vue/JSON
             sangria 2), rulers a 100 columnas, CRLF, utf8, exclusiones de
             busqueda en vendor y node_modules.
             Recomendadas las extensiones: PHP Intelephense, Laravel Blade,
@@ -893,15 +893,15 @@ NOTA      : el punto 1.6 (instalar esas extensiones) sigue PENDIENTE porque
 
 ### [59] 2026-10-05 --:-- (sin hora fiable) - FASE 1.9 / git init
 OBJETIVO  : Inicializar el control de versiones en la raiz del monorepo.
-COMANDO   : git -C C:\marioc\webs_figma\epcoro init
+COMANDO   : git -C C:\marioc\webs_figma\sinchy init
             git config --global user.name / user.email
             git status --porcelain
-RESULTADO : "Initialized empty Git repository in .../epcoro/.git/"
+RESULTADO : "Initialized empty Git repository in .../sinchy/.git/"
             Identidad global ya configurada:
               user.name  : mcarranza
               user.email : mario.carranza.salinas@gmail.com
             Archivos que git rastrea (9):
-              .gitignore, README.md, epcoro.code-workspace, instrucciones.txt,
+              .gitignore, README.md, sinchy.code-workspace, instrucciones.txt,
               notas1.txt, notas_figma.txt, pasos.txt, prompt.txt, docs/
             Confirmado que preguntas_curso_claude/ NO aparece: el .gitignore
             funciona.
@@ -915,14 +915,14 @@ PENDIENTE : el PRIMER COMMIT no se ejecuto. Queda a decision del usuario.
    FASE 0    Auditoria del sistema ................ COMPLETADA
    FASE 1.1  PHP 8.4.26 + extensiones ............. COMPLETADO
    FASE 1.2  Composer 2.9.7 ...................... COMPLETADO
-   FASE 1.3  PostgreSQL 17 nativo + base epcoro .. COMPLETADO
+   FASE 1.3  PostgreSQL 17 nativo + base sinchy .. COMPLETADO
    FASE 1.4  DBeaver ............................. SUSTITUIDO por pgAdmin 4
                                                     (que trajo PostgreSQL 17)
    FASE 1.5  Conectividad PHP -> PostgreSQL ...... COMPLETADO
    FASE 1.6  Instalar extensiones de VS Code .... PENDIENTE (requiere abrir
                                                     VS Code; el workspace ya
                                                     las declara)
-   FASE 1.7  epcoro.code-workspace .............. COMPLETADO (paso [58])
+   FASE 1.7  sinchy.code-workspace .............. COMPLETADO (paso [58])
    FASE 1.8  Estructura + README + .gitignore ... COMPLETADO (pasos 55-57)
    FASE 1.9  git init ........................... COMPLETADO (paso [59])
             primer commit ....................... PENDIENTE (decidir el usuario)
@@ -939,7 +939,7 @@ PENDIENTE : el PRIMER COMMIT no se ejecuto. Queda a decision del usuario.
      - FASE 1.6: instalar las extensiones de VS Code (requiere abrir VS Code)
      - El PRIMER COMMIT de git no se ha hecho (decision del usuario)
      - El servidor de desarrollo se detuvo; para trabajar:
-       cd epcoro-api ; php artisan serve
+       cd sinchy-api ; php artisan serve
 ================================================================================
 
 ################################################################################
@@ -948,7 +948,7 @@ PENDIENTE : el PRIMER COMMIT no se ejecuto. Queda a decision del usuario.
 
 ### [60] 18:39 - FASE 2.1 / PRIMER INTENTO: LARAVEL 12, NO 13
 OBJETIVO  : Crear el backend con 'composer create-project laravel/laravel'.
-COMANDO   : composer create-project laravel/laravel epcoro-api --no-interaction
+COMANDO   : composer create-project laravel/laravel sinchy-api --no-interaction
 RESULTADO : FALLO SILENCIOSO. El proyecto quedo con:
               composer.json -> "laravel/framework": "^12.0"  y "php": "^8.2"
             NO era Laravel 13, que es lo que pide el plan.
@@ -964,8 +964,8 @@ ESTADO    : CORREGIDO EN EL PASO [61]
 ### [61] 18:39 - FASE 2.1 / REHACER CON PHP 8.4.26 Y RAMA 13
 OBJETIVO  : Forzar el interprete correcto y la version correcta.
 COMANDO   : $env:PATH = "C:\tools\php84;C:\Program Files\PostgreSQL\17\bin;" + $env:PATH
-            Remove-Item epcoro-api -Recurse -Force
-            composer create-project laravel/laravel epcoro-api "^13.0" --no-interaction
+            Remove-Item sinchy-api -Recurse -Force
+            composer create-project laravel/laravel sinchy-api "^13.0" --no-interaction
 RESULTADO : "Installing laravel/laravel (v13.0.0)"
               "Locking laravel/framework (v13.34.0)"
             composer.json -> "laravel/framework": "^13.0"   "php": "^8.3"
@@ -984,14 +984,14 @@ RESULTADO : [platform.php] 8.4.26 / [platform-check] php-only
 ESTADO    : OK
 
 ### [63] 18:39 - FASE 2.3 / CONFIGURAR .env PARA POSTGRESQL
-COMANDO   : edit epcoro-api/.env
+COMANDO   : edit sinchy-api/.env
 RESULTADO : APP_NAME=Laravel -> SINCHI WAYRA
             APP_URL=http://localhost -> http://localhost:8000
             APP_TIMEZONE=America/La_Paz  (agregado; ver la trampa del paso [68])
             APP_LOCALE=en -> es ; APP_FAKER_LOCALE=en_US -> es_BO
             DB_CONNECTION=sqlite -> pgsql
             DB_HOST=127.0.0.1  DB_PORT=5432
-            DB_DATABASE=epcoro  DB_USERNAME=epcoro  DB_PASSWORD=epcoro_secret
+            DB_DATABASE=sinchy  DB_USERNAME=sinchy  DB_PASSWORD=sinchy_secret
             SESSION_LIFETIME=120 -> 480 (una jornada de trabajo)
             SESSION_SAME_SITE=lax  (agregado, necesario para Sanctum)
             CORS_ALLOWED_ORIGINS=http://localhost:5173
@@ -1011,11 +1011,11 @@ ESTADO    : OK
 
 ### [65] 18:39 - FASE 2.4 / VERIFICAR LA CONEXION Y PUBLICAR MIGRACIONES
 COMANDO   : php artisan db:show
-            psql -U epcoro -d epcoro -h 127.0.0.1 -c "\dt"
+            psql -U sinchy -d sinchy -h 127.0.0.1 -c "\dt"
             php artisan vendor:publish --tag=sanctum-migrations
             php artisan migrate
-RESULTADO : db:show -> PostgreSQL 17.6, pgsql, db epcoro, 127.0.0.1:5432,
-            usuario epcoro, 9 tablas, 208 KB. CONEXION CONFIRMADA.
+RESULTADO : db:show -> PostgreSQL 17.6, pgsql, db sinchy, 127.0.0.1:5432,
+            usuario sinchy, 9 tablas, 208 KB. CONEXION CONFIRMADA.
             La tabla personal_access_tokens NO existia (Sanctum 4 no corre su
             migracion solo). Se publico y se ejecuto. Quedaron 10 tablas.
 TRAMPA   : 'psql' sin PGPASSWORD se queda esperando la clave y el comando
@@ -1097,7 +1097,7 @@ RESULTADO : phpstan.neon: level 5, paths app/routes/database, incluye
               - phpstan.neon tenia 'ignoreErrors' DUPLICADO (clave repetida).
               - el primer intento de PHPStan se ejecuto desde el directorio
                 equivocado y no encontro la config: "At least one path must be
-                specified". Hay que correrlo con workdir en epcoro-api.
+                specified". Hay que correrlo con workdir en sinchy-api.
             Resultado final: pint --test -> passed ; phpstan -> [OK] No errors.
 ESTADO    : OK
 
@@ -1108,18 +1108,18 @@ RIESGO    : phpunit.xml venia con DB_CONNECTION=sqlite y DB_DATABASE=:memory:.
                  con DB::statement, sintaxis de PostgreSQL sin equivalente en
                  SQLite.
               2. La semantica de numeric que usa el calculo no es la misma.
-            Ademas, si alguien apuntara los tests a 'epcoro' con
+            Ademas, si alguien apuntara los tests a 'sinchy' con
             RefreshDatabase, borraria los datos de desarrollo.
-COMANDO   : psql -U epcoro -d postgres -c "CREATE DATABASE epcoro_test OWNER
-              epcoro ENCODING 'UTF8' LC_COLLATE 'Spanish_Bolivia.1252'
+COMANDO   : psql -U sinchy -d postgres -c "CREATE DATABASE sinchy_test OWNER
+              sinchy ENCODING 'UTF8' LC_COLLATE 'Spanish_Bolivia.1252'
               LC_CTYPE 'Spanish_Bolivia.1252' TEMPLATE template0;"
             edit phpunit.xml
-RESULTADO : Base epcoro_test creada (owner epcoro, UTF8, Spanish_Bolivia.1252).
-            phpunit.xml ahora apunta a pgsql / epcoro_test con las credenciales
+RESULTADO : Base sinchy_test creada (owner sinchy, UTF8, Spanish_Bolivia.1252).
+            phpunit.xml ahora apunta a pgsql / sinchy_test con las credenciales
             de desarrollo.
             Verificado despues de correr las pruebas:
-              epcoro_test -> 0 tablas (los tests de ejemplo no migran)
-              epcoro      -> 10 tablas, INTACTA
+              sinchy_test -> 0 tablas (los tests de ejemplo no migran)
+              sinchy      -> 10 tablas, INTACTA
 ESTADO    : OK
 
 ### [72] 18:39 - FASE 2.6 / ENDPOINT GET /api/health
@@ -1167,7 +1167,7 @@ ESTADO    : OK
 
 ################################################################################
  FASE 2 - ESQUELETO DEL BACKEND: COMPLETADA
- Criterio : /api/health responde 200 con la base conectada, y la base epcoro
+ Criterio : /api/health responde 200 con la base conectada, y la base sinchy
            existe en PostgreSQL. Ambos verificados por curl y por tests.
 ################################################################################
 
@@ -1188,8 +1188,8 @@ RESULTADO : database/database.sqlite SI existia (lo crea el script
               SESSION_SAME_SITE=lax, CORS_ALLOWED_ORIGINS,
               SANCTUM_STATEFUL_DOMAINS, FRONTEND_URL
             Sin clave de base de datos y sin APP_KEY, como corresponde a un
-            ejemplo. Verificado: no contiene 'epcoro_secret' ni APP_KEY con valor.
-            .env sigue ignorado por git (epcoro-api/.gitignore linea 3).
+            ejemplo. Verificado: no contiene 'sinchy_secret' ni APP_KEY con valor.
+            .env sigue ignorado por git (sinchy-api/.gitignore linea 3).
             Tras los cambios: 5 tests en verde, pint --test passed.
 ESTADO    : OK
 
@@ -1198,7 +1198,7 @@ ESTADO    : OK
  Verificacion final:
    Laravel Framework 13.34.0
    PHP 8.4.26  /  Composer 2.9.7
-   PostgreSQL 17.6 (base epcoro: 10 tablas ; base epcoro_test: 0 tablas)
+   PostgreSQL 17.6 (base sinchy: 10 tablas ; base sinchy_test: 0 tablas)
    GET /api/health -> 200, status ok, checks.database ok,
                      timezone America/La_Paz
    php artisan test        -> 5 passed (11 assertions)
@@ -1398,7 +1398,7 @@ HALLAZGO  : migrate:status mostraba una migracion PENDING que se habia publicado
               2026_10_05_223110_create_permission_tables ... Pending
             Las otras 4 (users, cache, jobs, personal_access_tokens) estaban Ran.
 RESULTADO : Ejecutada. Las tablas de roles y permisos de Spate ya existen en la
-            base epcoro.
+            base sinchy.
 ESTADO    : OK
 
 ### [84] 19:10 - FASE 3 / CONFLICTO DE DISENO: ROLES A MANO VS SPATIE
@@ -1899,7 +1899,7 @@ OBJETIVO  : Los cuatro bloques de logica de negocio, sin HTTP y sin tocar la
             TransicionEstadoService (5.5).
 COMANDO   : creacion de archivos (ver RESULTADO); despues:
             php artisan test --filter "DecimalTest|CalculoLiquidacionTest"
-RESULTADO : Archivos nuevos en epcoro-api/:
+RESULTADO : Archivos nuevos en sinchy-api/:
             - app/Support/Decimal.php        halfUp() escala 20 + normalizar()
             - app/Exceptions/                ReglaNegocioException (422 en la
               FASE 6), CalculoInvalidoException, TransicionInvalidaException
@@ -2120,8 +2120,8 @@ ESTADO    : OK. CRITERIO DE ACEPTACION DE LA FASE 5 CUMPLIDO.
 ### [107] 2026-10-07 07:45 - FASE 7 / AUDITORIA DE PARTIDA
 OBJETIVO  : Reconstruir donde se dejo la FASE 7 antes de tocar nada.
 COMANDO   : git status --short ; git log --oneline -5
-            Get-ChildItem -Recurse epcoro-web\src ; read de router/store/menu
-RESULTADO : epcoro-web/ EXISTE completo y esta SIN VERSIONAR (?? epcoro-web/).
+            Get-ChildItem -Recurse sinchy-web\src ; read de router/store/menu
+RESULTADO : sinchy-web/ EXISTE completo y esta SIN VERSIONAR (?? sinchy-web/).
             Checklist 7.1-7.9 implementado:
               7.1 template vue-ts       7.2 deps (vue-router, pinia, axios,
                  tailwind v4, @vueuse)  7.3 proxy /api -> :8000
@@ -2133,7 +2133,7 @@ RESULTADO : epcoro-web/ EXISTE completo y esta SIN VERSIONAR (?? epcoro-web/).
             BITACORA: pasos.txt no tiene UNA sola entrada de FASE 7, a pesar
             de que la regla del archivo exige registrar todo comando.
             README.md raiz sigue poniendo "7 a 12 ... pendiente".
-            epcoro-web/README.md sigue siendo la plantilla Vite sin tocar.
+            sinchy-web/README.md sigue siendo la plantilla Vite sin tocar.
 ESTADO    : OK (diagnostico)
 
 ### [108] 2026-10-07 07:45 - FASE 7 / VERIFICACION DE ACEPTACION (FALLO)
@@ -2154,7 +2154,7 @@ RESULTADO : FALLO reproducible, dos pruebas encadenadas:
             el 419 solo aparece cuando el navegador se declara stateful, que
             es exactamente lo que hace la SPA.
             Control 2: /sanctum/csrf-cookie directo contra :8000 SI funciona
-            (204 + XSRF-TOKEN + epcoro-session).
+            (204 + XSRF-TOKEN + sinchy-session).
             CONCLUSION: el login desde el navegador estaba roto aunque el
             codigo del frontend fuera correcto. Criterio de aceptacion NO
             cumplido hasta el paso [109].
@@ -2162,7 +2162,7 @@ ESTADO    : FALLA (bug de configuracion, no de codigo)
 
 ### [109] 2026-10-07 07:50 - FASE 7 / ARREGLO DEL PROXY
 OBJETIVO  : Que el pedido de la cookie CSRF llegue al backend en desarrollo.
-COMANDO   : edit epcoro-web/vite.config.ts (server.proxy)
+COMANDO   : edit sinchy-web/vite.config.ts (server.proxy)
 RESULTADO : Anadido el mapeo '/sanctum' -> http://localhost:8000 con
             changeOrigin, documentando en el propio archivo el motivo (sin el,
             el dev server devuelve el index.html, no hay XSRF-TOKEN y el
@@ -2199,7 +2199,7 @@ ESTADO    : OK. CRITERIO DE ACEPTACION DE LA FASE 7 CUMPLIDO (verificacion
 
   PENDIENTES DE LA FASE 7:
     - Comprobacion visual en navegador (DevTools responsive) - manual.
-    - epcoro-web/README.md se reescribio en [113] (ya no es la plantilla Vite).
+    - sinchy-web/README.md se reescribio en [113] (ya no es la plantilla Vite).
     - README.md raiz actualizado en [113].
     - Commit de FASE 7 (el usuario pide los commits por fase).
 
@@ -2207,7 +2207,7 @@ ESTADO    : OK. CRITERIO DE ACEPTACION DE LA FASE 7 CUMPLIDO (verificacion
 OBJETIVO  : Cerrar el hueco de "debe_cambiar_password lo ignora el frontend":
             el admin nace con la bandera puesta y no tenia forma de ponerla a
             cero desde la interfaz.
-COMANDO   : ediciones en epcoro-web/src
+COMANDO   : ediciones en sinchy-web/src
 RESULTADO : Contrato del backend confirmado antes de escribir:
             POST /api/v1/auth/change-password (auth:sanctum) con
             {password_actual, password, password_confirmation},
@@ -2249,15 +2249,15 @@ ESTADO    : OK
 
 ### [113] 2026-10-07 08:09 - FASE 7 / CONTROL DE CALIDAD Y DOCUMENTACION
 OBJETIVO  : Los tres checks del proyecto y los tres documentos de la fase.
-COMANDO   : npm run build (epcoro-web)
+COMANDO   : npm run build (sinchy-web)
             php artisan test ; vendor\bin\pint --test ; phpstan analyse
-            ediciones de README.md raiz y epcoro-web/README.md
+            ediciones de README.md raiz y sinchy-web/README.md
 RESULTADO : - build: vue-tsc + vite OK, 102 modulos, 170 kB js / 21 kB css.
             - tests: 127 passed (699 assertions), 22.67 s.
             - pint: passed. phpstan: no errors.
             - README.md raiz: la fila "7 a 12" se separa; la FASE 7 queda
               "casi completa" con lo que falta explicitado.
-            - epcoro-web/README.md: se reemplaza la plantilla Vite por el
+            - sinchy-web/README.md: se reemplaza la plantilla Vite por el
               readme del proyecto (como correrlo, porque el proxy necesita
               /sanctum, como autentica, estructura y faltantes).
             - Estado preparado para el commit de FASE 7.
@@ -2281,10 +2281,10 @@ OBJETIVO  : Abrir la FASE 8 y reconstruir el estado previo antes de tocar nada:
             liquidaciones, catalogos, personas, cotizaciones y parametros),
             (b) convenciones del frontend (layouts, stores, api, vistas),
             (c) reglas de validacion del backend que el formulario debe
-            replicar, (d) dependencias actuales de epcoro-web (?vee-validate
+            replicar, (d) dependencias actuales de sinchy-web (?vee-validate
             esta?).
-COMANDO   : inspeccion de rutas y controladores en epcoro-api/routes y
-            app/Http/Requests; estructura de epcoro-web/src; package.json;
+COMANDO   : inspeccion de rutas y controladores en sinchy-api/routes y
+            app/Http/Requests; estructura de sinchy-web/src; package.json;
             lectura de README.md seccion Estado e instrucciones.txt FASE 8
 RESULTADO : (pendiente)
 ESTADO    : (pendiente)
@@ -2328,7 +2328,7 @@ OBJETIVO  : Anadir vee-validate (validacion de UX espejo de las reglas del
             backend, requisito 8.9). Sin libreria de esquemas: reglas por
             campo en TS, para que cada mensaje refleje EXACTAMENTE la regla
             de StoreLiquidacionRequest.
-COMANDO   : npm install vee-validate   (en epcoro-web)
+COMANDO   : npm install vee-validate   (en sinchy-web)
 RESULTADO : vee-validate 4.15.1 instalado (0 vulnerabilidades). Uso final
             como REGISTRO MANUAL: useForm({ keepValuesOnUnmount: true }) sin
             useField ni handleSubmit; validar() alimenta setErrors y lo
@@ -2340,7 +2340,7 @@ OBJETIVO  : Construir el modulo de captura de liquidacion segun los pasos
             8.1 a 8.12 de instrucciones.txt: secciones, wizard responsive,
             validaciones vee-validate espejo, lista con filtros y
             paginacion por URL, detalle con PDF/Excel e historial.
-COMANDO   : escribir los archivos nuevos de epcoro-web (tipos, api, stores,
+COMANDO   : escribir los archivos nuevos de sinchy-web (tipos, api, stores,
             utils/calculo.ts, composable de formulario, componentes de
             seccion, vistas) y modificar el router para las rutas reales
 RESULTADO : Modulo completo (planilla de captura reutilizada por creacion y
@@ -2378,7 +2378,7 @@ OBJETIVO  : Abrir la FASE 9 y reconstruir el estado previo antes de tocar nada:
             puntos 9.1 a 9.7 de instrucciones.txt (lineas 1458-1472).
 COMANDO   : inspeccion de routes/api.php, TransicionController, Policy,
             TransicionesDisponibles, LiquidacionResource, EstadoLiquidacion,
-            seeders y tests; estructura de epcoro-web/src, ShowView.vue,
+            seeders y tests; estructura de sinchy-web/src, ShowView.vue,
             liquidaciones.api.ts, types/liquidacion.ts, stores/auth.ts,
             router y menu
 RESULTADO : (a) Backend MAYORMENTE LISTO: POST /liquidaciones/{id}/transiciones
@@ -2556,9 +2556,9 @@ COMANDO   : (11.2/11.3 verificacion) no quedan $request->all() en app/
             comando sinchiwayra:revisar-produccion (APP_ENV/DEBUG/KEY/URL/
             TIMEZONE, DB_PASSWORD, SESSION_SECURE_COOKIE/ENCRYPT,
             SANCTUM_STATEFUL_DOMAINS, CORS_ALLOWED_ORIGINS y nivel de log;
-            avisos con --estricto). (11.7) epcoro-api/.env.production.example
+            avisos con --estricto). (11.7) sinchy-api/.env.production.example
             (APP_ENV=production, APP_DEBUG=false, HTTPS, sin localhost) y
-            epcoro-web/.env.example + vite.config.ts leen
+            sinchy-web/.env.example + vite.config.ts leen
             VITE_API_PROXY_TARGET con loadEnv (el proxy solo afecta a dev).
             (11.8) scripts composer lint / lint:fix / analyse / check
             (= pint + phpstan + tests). (11.9) README: seccion "Instalacion
@@ -2632,7 +2632,7 @@ ESTADO    : OK.
 
 ### [123] 2026-10-12 11:12 - FASE 12 / MENSAJES DE VALIDACION EN ESPANOL
 OBJETIVO  : Cerrar el trabajo que quedo a medias de la sesion anterior: los
-            4 archivos nuevos de `epcoro-api/lang/es/` (validation, auth,
+            4 archivos nuevos de `sinchy-api/lang/es/` (validation, auth,
             passwords, pagination) SIN VERSIONAR y sin registrar aqui. La
             idea: con APP_LOCALE=es, TODOS los mensajes de validacion de la
             API salen en espanol, incluidas las reglas que no escriben su
@@ -2643,18 +2643,18 @@ OBJETIVO  : Cerrar el trabajo que quedo a medias de la sesion anterior: los
             verdes.
 COMANDO   : git status/log y read del repo (la ultima escritura de codigo
             eran esos 4 archivos, 10:54-10:55); `php artisan test`; creacion
-            de la base epcoro_test; write
+            de la base sinchy_test; write
             tests/Feature/MensajesDeValidacionTest.php; pint + phpstan; read/
             edit de README.md.
 RESULTADO : (a) TRAMPA DE ENTORNO: esta maquina es un clon nuevo del repo
-            (reflog: "clone: from .../epcoro.git") y NO tenia la base
-            epcoro_test. `php artisan test` moria con 145 fallos por
-            "no existe la base de datos epcoro_test" (SQLSTATE 08006) en vez
+            (reflog: "clone: from .../sinchy.git") y NO tenia la base
+            sinchy_test. `php artisan test` moria con 145 fallos por
+            "no existe la base de datos sinchy_test" (SQLSTATE 08006) en vez
             de correr. Se creo con los parametros de pasos_otra_maquina.txt
-            seccion 4.3: OWNER epcoro, UTF8, Spanish_Bolivia.1252,
-            TEMPLATE template0. El rol epcoro y la base de desarrollo epcoro
+            seccion 4.3: OWNER sinchy, UTF8, Spanish_Bolivia.1252,
+            TEMPLATE template0. El rol sinchy y la base de desarrollo sinchy
             (32 tablas) ya existian. Moraleja: al retomar en otra maquina,
-            crear epcoro_test ANTES de correr la suite, o los fallos no
+            crear sinchy_test ANTES de correr la suite, o los fallos no
             significan nada.
             (b) TEST DE CANDADO tests/Feature/MensajesDeValidacionTest.php
             (4 casos): la API queda en locale es; una regla generica usa el
@@ -2687,7 +2687,7 @@ OBJETIVO  : Corregir el pendiente visual de plan_pruebas §6.2: al abrir el alta
             de una liquidacion en ESCRITORIO, la seccion Comprador no se
             prellenaba con la fila del catalogo `compradores` (SINCHI WAYRA); los
             campos Razon social/NIM/NIT salian vacios.
-COMANDO   : read de epcoro-web (stores/catalogos.ts, composables/
+COMANDO   : read de sinchy-web (stores/catalogos.ts, composables/
             useLiquidacionForm.ts, views/Liquidaciones/CreateView.vue,
             components/liquidacion/PlantillaCaptura.vue y SelectorUbicacion.vue);
             psql -c "SELECT ... FROM compradores"; npm run build.
@@ -2709,7 +2709,7 @@ RESULTADO : LA BASE Y LA API ESTABAN BIEN: tabla compradores con la fila SINCHI 
             (Transaccion), sin SelectorUbicacion, y el cargar() de la vista si
             corria completo. De ahi que "funcionara" en movil y no en
             escritorio.
-            Correccion (epcoro-web/src/stores/catalogos.ts): `cargar()` ahora
+            Correccion (sinchy-web/src/stores/catalogos.ts): `cargar()` ahora
             guarda la promesa de la carga en curso en un modulo-level
             `promesaEnCurso`; el segundo llamador recibe ESA promesa y espera
             a que los datos esten cargados (antes retornaba `undefined`
@@ -2732,7 +2732,7 @@ ESTADO    : OK (corregido, pendiente la verificacion visual del usuario).
 OBJETIVO  : El usuario reporta "me da error al guardar la liquidacion". La
             consola del navegador mostraba un 401 en /api/v1/auth/me y dos
             [Vue warn] del prop `ley` (Expected String, got Number).
-COMANDO   : read de epcoro-web (useLiquidacionForm.ts, CampoEntrada.vue,
+COMANDO   : read de sinchy-web (useLiquidacionForm.ts, CampoEntrada.vue,
             ResumenCalculo.vue, SeccionTransaccion.vue, SeccionTecnico.vue,
             stores/auth.ts, validaciones.ts); read de routes/api.php,
             StoreLiquidacionRequest.php y config; git blame del helper;
@@ -2777,9 +2777,9 @@ OBJETIVO  : Tras el arreglo [125] el POST ya llega al backend, pero responde
             422: "La ubicacion no coincide con el area minera elegida: los
             cuatro niveles se completan desde el area." Es decir, el
             autocompletado de procedencia (seccion 3.2) estaba a medias.
-COMANDO   : grep/read de epcoro-api (ValidaUbicacionDelArea.php,
+COMANDO   : grep/read de sinchy-api (ValidaUbicacionDelArea.php,
             CatalogoController::areasMineras, AreaMinera.php, migracion de
-            areas_mineras) y de epcoro-web (SeccionProcedencia.vue,
+            areas_mineras) y de sinchy-web (SeccionProcedencia.vue,
             SelectorUbicacion.vue, CampoSelect.vue, validaciones.ts);
             psql -c "SELECT ... FROM areas_mineras JOIN municipios/provincias/
             localidades" para comprobar la consistencia del area; simulacion

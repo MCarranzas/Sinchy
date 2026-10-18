@@ -21,7 +21,7 @@ Todo se define en `render.yaml` (Blueprint). No hace falta tocar el código.
 Desde tu máquina, una sola vez:
 
 ```bash
-cd epcoro-api
+cd sinchy-api
 php artisan key:generate --show
 ```
 
@@ -32,7 +32,7 @@ Copia el valor completo (`base64:...`); lo pegas en el paso 3.
 1. Entra a https://render.com y crea la cuenta con GitHub (no pide tarjeta).
 2. **New → Blueprint** y conecta el repositorio `MCarranzas/Sinchy` (rama
    `main`). Render lee `render.yaml` y muestra lo que va a crear: un **web
-   service** (`epcoro`, con tu Dockerfile) y una **base PostgreSQL** (`epcoro-db`),
+   service** (`sinchy`, con tu Dockerfile) y una **base PostgreSQL** (`sinchy-db`),
    ambos en plan Free.
 
 > **Importante:** el proyecto es **solo PostgreSQL** (usa ENUM nativo, `ilike` y
@@ -45,7 +45,7 @@ Copia el valor completo (`base64:...`); lo pegas en el paso 3.
 
 Si tu web service ya existe y no aparece `DB_HOST` en sus variables:
 
-1. **New → PostgreSQL**: nombre `epcoro-db`, mismo **region** (`ohio`), plan
+1. **New → PostgreSQL**: nombre `sinchy-db`, mismo **region** (`ohio`), plan
    **Free**. Anota el **Internal Database URL** o los datos (host, puerto, base,
    usuario, contraseña).
 2. En el web service, **Environment → Environment Variables**, agrega (o corrige):
@@ -55,8 +55,8 @@ Si tu web service ya existe y no aparece `DB_HOST` en sus variables:
    | `DB_CONNECTION` | `pgsql` |
    | `DB_HOST` | el host interno de la base (o `fromDatabase`) |
    | `DB_PORT` | `5432` |
-   | `DB_DATABASE` | `epcoro` |
-   | `DB_USERNAME` | `epcoro` |
+   | `DB_DATABASE` | `sinchy` |
+   | `DB_USERNAME` | `sinchy` |
    | `DB_PASSWORD` | la contraseña de la base |
 
 3. Guarda: Render redespliega. En los logs de arranque debe verse
@@ -71,9 +71,9 @@ Al aplicar el Blueprint, Render pide solo las variables marcadas `sync: false`:
 | Variable | Valor |
 |---|---|
 | `APP_KEY` | `base64:...` (la del paso 1) |
-| `APP_URL` | provisional, p. ej. `https://epcoro.onrender.com` |
-| `CORS_ALLOWED_ORIGINS` | provisional, `https://epcoro.onrender.com` |
-| `SANCTUM_STATEFUL_DOMAINS` | provisional, `epcoro.onrender.com` (solo el host, sin https) |
+| `APP_URL` | provisional, p. ej. `https://sinchy.onrender.com` |
+| `CORS_ALLOWED_ORIGINS` | provisional, `https://sinchy.onrender.com` |
+| `SANCTUM_STATEFUL_DOMAINS` | provisional, `sinchy.onrender.com` (solo el host, sin https) |
 
 El resto (y las `DB_*`) las completa el Blueprint solo: enlaza la base al
 servicio con `fromDatabase`. Pulsa **Apply** y espera el primer build.
@@ -87,8 +87,8 @@ servicio con `fromDatabase`. Pulsa **Apply** y espera el primer build.
 ## 4. Corrige la URL real
 
 1. Cuando el deploy termine, copia la URL del servicio: normalmente
-   `https://epcoro.onrender.com`, pero Render agrega un sufijo si el nombre ya
-   está tomado (p. ej. `epcoro-a1b2.onrender.com`).
+   `https://sinchy.onrender.com`, pero Render agrega un sufijo si el nombre ya
+   está tomado (p. ej. `sinchy-a1b2.onrender.com`).
 2. En **Environment**, corrige las tres variables del paso 3 con la URL real:
    - `APP_URL` → `https://<tu-url>.onrender.com`
    - `CORS_ALLOWED_ORIGINS` → `https://<tu-url>.onrender.com`

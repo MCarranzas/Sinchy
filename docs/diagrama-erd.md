@@ -1,6 +1,6 @@
 # Diagrama ERD — SINCHI WAYRA (FASE 4)
 
-Fuente: las migraciones de `epcoro-api/database/migrations/2026_10_06_*.php`.
+Fuente: las migraciones de `sinchy-api/database/migrations/2026_10_06_*.php`.
 El diagrama se deriva del esquema real, no de un dibujo aparte: si cambia una
 migración, cambia este archivo.
 
@@ -250,6 +250,6 @@ erDiagram
 ## Cómo verificar que el diagrama sigue siendo cierto
 
 ```bash
-psql -U epcoro -d epcoro -c "\d liquidaciones"
+psql -U sinchy -d sinchy -c "\d liquidaciones"
 php artisan test --filter=TablasDeModelosTest
 ```

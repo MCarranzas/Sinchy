@@ -7,7 +7,7 @@ return [
     | Cross-Origin Resource Sharing (CORS) Configuration
     |--------------------------------------------------------------------------
     |
-    | El frontend (epcoro-web) corre en un servidor de desarrollo distinto al
+    | El frontend (sinchy-web) corre en un servidor de desarrollo distinto al
     | de la API, asi que el navegador envia peticiones de origen cruzado. Sin
     | esta configuracion el navegador bloquea la respuesta aunque la API
     | responda correctamente.

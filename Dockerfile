@@ -6,8 +6,8 @@
 # que la SPA y la API no pueden vivir en dominios distintos (ver
 # puesta_produccion.txt, seccion 3.2).
 #
-# El contexto de build debe ser la RAIZ del repositorio (epcoro/), porque se
-# copian tanto epcoro-web/ como epcoro-api/. En Railway: dejar el "Root
+# El contexto de build debe ser la RAIZ del repositorio (sinchy/), porque se
+# copian tanto sinchy-web/ como sinchy-api/. En Railway: dejar el "Root
 # Directory" del servicio en la raiz del repo.
 #
 #   Etapa 1 (web)   : Node 24 compila la SPA  ->  /web/dist
@@ -20,9 +20,9 @@
 FROM node:24-alpine AS web
 
 WORKDIR /web
-COPY epcoro-web/package.json epcoro-web/package-lock.json ./
+COPY sinchy-web/package.json sinchy-web/package-lock.json ./
 RUN npm ci
-COPY epcoro-web/ ./
+COPY sinchy-web/ ./
 RUN npm run build
 
 # ---------------------------------------------------------------------------
@@ -62,10 +62,10 @@ COPY docker/php.ini /usr/local/etc/php/conf.d/99-app.ini
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www/api
-COPY epcoro-api/composer.json epcoro-api/composer.lock ./
+COPY sinchy-api/composer.json sinchy-api/composer.lock ./
 RUN composer install --no-dev --no-interaction --prefer-dist \
         --optimize-autoloader --no-scripts
-COPY epcoro-api/ ./
+COPY sinchy-api/ ./
 RUN composer dump-autoload --no-dev --optimize --no-interaction \
     && mkdir -p storage/app/public storage/framework/cache/data \
         storage/framework/sessions storage/framework/views storage/logs \

@@ -1,7 +1,7 @@
 [✓] Leer instrucciones.txt, prompt.txt, notas_figma.txt, notas1.txt
 [✓] Auditar entorno real (PHP, Composer, PostgreSQL, Docker, Node)
 [✓] Verificar valores reales cacheados de hoja.xlsx contra el caso ORO del doc
-[✓] Contrastar diseño de BD con diagrama_sist_epcoro.drawio
+[✓] Contrastar diseño de BD con diagrama_sist_sinchy.drawio
 [✓] Confirmar requisitos de versión (Laravel 13 / PHP) con la web
 [ ] CREAR pasos.txt con la bitácora de comandos desde el comando #1
 [ ] Corregir instrucciones.txt a v1.1 con los 7 defectos detectados

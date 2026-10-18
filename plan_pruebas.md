@@ -4,11 +4,11 @@ Guia para probar los **flujos** y los **roles** del sistema de liquidaciones de
 mineral. Sirve tanto para una prueba manual por la interfaz como para ubicar la
 prueba automatizada que ya cubre cada caso.
 
-- Backend: `epcoro-api/` (Laravel 13 + PostgreSQL 17), API en `/api/v1`.
-- Frontend: `epcoro-web/` (Vue 3 + Vite), arranca en `http://localhost:5173`.
+- Backend: `sinchy-api/` (Laravel 13 + PostgreSQL 17), API en `/api/v1`.
+- Frontend: `sinchy-web/` (Vue 3 + Vite), arranca en `http://localhost:5173`.
 - Referencia de negocio: `instrucciones.txt` (secciones 4.1, 4.2, 4.3 y FASES
   8-11) y `docs/reglas-negocio.md` (decisiones D1-D4).
-- Contrato de la API: `epcoro-api/docs/api.md`.
+- Contrato de la API: `sinchy-api/docs/api.md`.
 
 > Los IDs de caso de este plan (`AUTH-01`, `FLU-03`, ...) son estables; use una
 > copia de la tabla de la seccion 11 para registrar cada corrida.
@@ -40,12 +40,12 @@ Fuera de alcance: rendimiento, accesibilidad, y las pantallas de
 
 ```powershell
 # Terminal 1 - backend
-Set-Location epcoro-api
+Set-Location sinchy-api
 php artisan migrate:fresh --seed      # esquema + catalogos + parametros + usuarios
 php artisan serve --host=127.0.0.1 --port=8000
 
 # Terminal 2 - frontend
-Set-Location epcoro-web
+Set-Location sinchy-web
 npm run dev                            # http://localhost:5173
 ```
 
@@ -60,7 +60,7 @@ El seeder ya deja las claves conocidas, asi que normalmente no hay que hacer
 nada. Si se cambiaron desde la interfaz y hay que volver a dejarlas:
 
 ```powershell
-Set-Location epcoro-api
+Set-Location sinchy-api
 php artisan tinker
 ```
 
@@ -407,7 +407,7 @@ filtros.
 
 **AUD-01 - Registro de acciones sensibles.**
 Pasos: hacer login, una transicion, una exportacion y un respaldo; abrir
-`epcoro-api/storage/logs/auditoria.log` (o `php artisan pail`).
+`sinchy-api/storage/logs/auditoria.log` (o `php artisan pail`).
 Esperado: una linea por accion (`login`, `logout`, `login_fallido`,
 `cuenta_bloqueada`, `password_cambiada`, `transicion`, `parametros`,
 `exportacion`, `respaldo`) con usuario, IP y user-agent.
@@ -473,7 +473,7 @@ desde el valor exacto.
 Antes de dar por cerrada una corrida manual, correr la suite:
 
 ```powershell
-Set-Location epcoro-api
+Set-Location sinchy-api
 composer check                         # pint + phpstan + php artisan test
 ```
 

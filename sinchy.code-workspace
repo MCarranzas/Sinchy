@@ -1,8 +1,8 @@
 {
   "folders": [
     { "path": "." },
-    { "name": "epcoro-api (Laravel 13)", "path": "epcoro-api" },
-    { "name": "epcoro-web (Vue 3)", "path": "epcoro-web" }
+    { "name": "sinchy-api (Laravel 13)", "path": "sinchy-api" },
+    { "name": "sinchy-web (Vue 3)", "path": "sinchy-web" }
   ],
   "settings": {
     "files.eol": "\r\n",

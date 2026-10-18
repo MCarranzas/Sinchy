@@ -324,7 +324,7 @@ class LiquidacionController extends Controller
                 'usuario' => [
                     'id' => $fila->usuario_id,
                     'nombre_completo' => $fila->usuario_nombre,
-                    'username' => $fila->usuario?->username ?? null,
+                    'username' => $fila->usuario->username ?? null,
                 ],
                 'comentario' => $fila->comentario,
                 'fecha' => $fila->created_at?->toIso8601String(),

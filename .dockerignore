@@ -1,6 +1,6 @@
 # SINCHI WAYRA - que NO entra en el contexto de build de Docker.
 #
-# Ojo: .gitignore NO afecta a Docker. Sin este archivo, un `COPY epcoro-api/ .`
+# Ojo: .gitignore NO afecta a Docker. Sin este archivo, un `COPY sinchy-api/ .`
 # copiaria el .env real (con secretos), vendor/ y node_modules/ a la imagen.
 
 # --- Git y metadatos ---
@@ -25,31 +25,31 @@ prompt.txt
 puesta_produccion.txt
 README.md
 RETOMAR.md
-epcoro.code-workspace
+sinchy.code-workspace
 
 # --- Backend: dependencias, entorno y artefactos locales ---
-epcoro-api/vendor
-epcoro-api/.env
-epcoro-api/.env.backup
-epcoro-api/.env.production
-epcoro-api/.env.development
-epcoro-api/node_modules
-epcoro-api/public/build
-epcoro-api/public/hot
-epcoro-api/public/storage
-epcoro-api/storage/framework/cache/data
-epcoro-api/storage/framework/sessions
-epcoro-api/storage/framework/views
-epcoro-api/storage/logs
-epcoro-api/.phpunit.result.cache
-epcoro-api/.phpunit.cache
+sinchy-api/vendor
+sinchy-api/.env
+sinchy-api/.env.backup
+sinchy-api/.env.production
+sinchy-api/.env.development
+sinchy-api/node_modules
+sinchy-api/public/build
+sinchy-api/public/hot
+sinchy-api/public/storage
+sinchy-api/storage/framework/cache/data
+sinchy-api/storage/framework/sessions
+sinchy-api/storage/framework/views
+sinchy-api/storage/logs
+sinchy-api/.phpunit.result.cache
+sinchy-api/.phpunit.cache
 
 # --- Prueba local (no va a la imagen) ---
 docker-compose.local.yml
 
 # --- Frontend: dependencias y build previo (se reconstruye en la etapa web) ---
-epcoro-web/node_modules
-epcoro-web/dist
-epcoro-web/.env
-epcoro-web/.env.local
-epcoro-web/.vscode
+sinchy-web/node_modules
+sinchy-web/dist
+sinchy-web/.env
+sinchy-web/.env.local
+sinchy-web/.vscode

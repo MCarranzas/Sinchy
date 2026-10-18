@@ -64,15 +64,15 @@ máquina original:
 
 ```
  M README.md                                              (tabla de estados)
- M epcoro-api/app/Http/Requests/ChangePasswordRequest.php (mensajes en español)
+ M sinchy-api/app/Http/Requests/ChangePasswordRequest.php (mensajes en español)
  M pasos.txt                                              (entradas [107]-[113])
-?? epcoro-web/                                            (SPA completa, nueva)
+?? sinchy-web/                                            (SPA completa, nueva)
 ?? pasos_otra_maquina.txt                                 (guía de entorno, nueva)
 ?? RETOMAR.md                                             (este archivo)
 ```
 
 **Primer paso al retomar: hacer el commit de FASE 7** (el usuario lo aprobó):
-`epcoro-web/`, el fix del proxy, los dos README, `pasos.txt` y el
+`sinchy-web/`, el fix del proxy, los dos README, `pasos.txt` y el
 `ChangePasswordRequest`. No commitear nada más.
 
 ---
@@ -110,7 +110,7 @@ aunque el código estuviera bien**:
 2. Con `Origin: http://localhost:5173` (peticion stateful, que es lo que manda
    el navegador), el `POST /auth/login` respondía **419**.
 
-Arreglo: `epcoro-web/vite.config.ts` ahora proxya `/api` **y `/sanctum`**.
+Arreglo: `sinchy-web/vite.config.ts` ahora proxya `/api` **y `/sanctum`**.
 Verificado end-to-end por el proxy: csrf-cookie 204 -> login 200 -> me 200 ->
 parametros 200 -> logout 200 -> me 401.
 
@@ -121,7 +121,7 @@ Si algún día se ve 419 otra vez, es que falta ese mapeo (o se cambió el
 
 ## 4. Verificaciones en verde (última corrida)
 
-- `npm run build` en `epcoro-web`: vue-tsc + vite, 102 módulos, OK.
+- `npm run build` en `sinchy-web`: vue-tsc + vite, 102 módulos, OK.
 - `php artisan test`: **127 passed (699 assertions)**.
 - `vendor\bin\pint --test`: passed.
 - `vendor\bin\phpstan analyse`: [OK] No errors.
@@ -135,8 +135,8 @@ Si algún día se ve 419 otra vez, es que falta ese mapeo (o se cambió el
 Requiere navegador, no se puede automatizar desde aquí:
 
 ```
-Terminal 1:  cd epcoro-api  && php artisan serve --host=127.0.0.1 --port=8000
-Terminal 2:  cd epcoro-web  && npm run dev
+Terminal 1:  cd sinchy-api  && php artisan serve --host=127.0.0.1 --port=8000
+Terminal 2:  cd sinchy-web  && npm run dev
 Abrir:       http://localhost:5173
 ```
 

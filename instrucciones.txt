@@ -52,7 +52,7 @@ celular, es decir un "ERP" sencillo de 4 modulos:
 Respuesta directa a tus dos preguntas:
 
   * ¿Que estructura de proyecto?_ Un MONOREPO con 2 aplicaciones hermanas:
-    `epcoro-api` (backend, Laravel 13 en modo API) y `epcoro-web`
+    `sinchy-api` (backend, Laravel 13 en modo API) y `sinchy-web`
     (frontend, Vue 3 + Vite + Tailwind). Se comunican unicamente por HTTP/JSON.
 
   * ¿Se aplican conceptos de backend y frontend?_ SI, y la separacion es
@@ -225,19 +225,19 @@ Verificacion con los valores REALES cacheados en xl/worksheets/sheet1.xml
 
 Un monorepo. La raiz contiene las dos aplicaciones y la infraestructura.
 
-epcoro/
+sinchy/
 |
 |-- (sin docker-compose: PostgreSQL 17 es nativo, ver seccion 7)
 |-- .env.example
 |-- README.md
 |-- docs/
 |   |-- hoja.xlsx
-|   |-- diagrama_sist_epcoro.drawio
+|   |-- diagrama_sist_sinchy.drawio
 |   |-- diagrama-erd.md              Diagrama entidad-relacion
 |   |-- catalogo-campos.md           Mapa celda Excel <-> columna BD <-> campo UI
 |   `-- reglas-negocio.md            Maquina de estados y formulas
 |
-|-- epcoro-api/                     === BACKEND (Laravel 13, API REST) ===
+|-- sinchy-api/                     === BACKEND (Laravel 13, API REST) ===
 |   |-- app/
 |   |   |-- Enums/
 |   |   |   |-- EstadoLiquidacion.php     Enum PHP con transiciones validas
@@ -299,7 +299,7 @@ epcoro/
 |   |-- composer.json
 |   `-- .env
 |
-`-- epcoro-web/                     === FRONTEND (Vue 3 + Vite + TS) ===
+`-- sinchy-web/                     === FRONTEND (Vue 3 + Vite + TS) ===
     |-- src/
     |   |-- api/            (axios.ts, auth.api.ts, liquidaciones.api.ts,
     |   |                    catalogos.api.ts, reportes.api.ts)
@@ -1091,10 +1091,10 @@ Detectado en esta maquina (2026-10-05) - ESTADO VERIFICADO tras la FASE 1:
                                           StackBuilder, que cubren ese perfil.
 
   Base de datos creada:
-      base  : epcoro   (owner epcoro, UTF8, LC_COLLATE Spanish_Bolivia.1252)
-      rol   : epcoro   (LOGIN, CREATEDB para que los tests de Laravel puedan
+      base  : sinchy   (owner sinchy, UTF8, LC_COLLATE Spanish_Bolivia.1252)
+      rol   : sinchy   (LOGIN, CREATEDB para que los tests de Laravel puedan
                         crear bases temporales)
-      pass  : epcoro_secret          <-- SOLO DESARROLLO
+      pass  : sinchy_secret          <-- SOLO DESARROLLO
       super : postgres / (la que eligio el usuario)   <-- no va en el repo
       puerto: 5432
       TZ    : America/La_Paz
@@ -1220,11 +1220,11 @@ FASE 1 - PREPARACION DEL ENTORNO
 --------------------------------------------------------------------------------
   1.1 Instalar PHP 8.3+ con las extensiones listadas. Verificar `php -v`, `php -m`
   1.2 Instalar Composer. Verificar `composer --version`
-  1.3 [YA HECHO] PostgreSQL 17 nativo instalado. Base epcoro creada
+  1.3 [YA HECHO] PostgreSQL 17 nativo instalado. Base sinchy creada
   1.4 Instalar DBeaver y abrir la conexion
   1.5 Verificar la conectividad PHP -> PostgreSQL con un script de prueba
   1.6 Instalar extensiones de VS Code
-  1.7 Abrir la carpeta raiz en VS Code como workspace (epcoro.code-workspace)
+  1.7 Abrir la carpeta raiz en VS Code como workspace (sinchy.code-workspace)
   1.8 Crear la estructura de carpetas vacias + README.md + .gitignore
   1.9 `git init` en la raiz y primer commit
   Criterio de aceptacion: `php -v` y `psql` responden, y puedo abrir la BD.
@@ -1232,7 +1232,7 @@ FASE 1 - PREPARACION DEL ENTORNO
 --------------------------------------------------------------------------------
 FASE 2 - ESQUELETO DEL BACKEND
 --------------------------------------------------------------------------------
-  2.1 `composer create-project laravel/laravel epcoro-api`
+  2.1 `composer create-project laravel/laravel sinchy-api`
       (si usaste FASE 1 con Laragon, ver la nota de final de documento)
   2.2 `php artisan install:api`  -> crea routes/api.php, Sanctum y la
       migracion de personal_access_tokens
@@ -1240,9 +1240,9 @@ FASE 2 - ESQUELETO DEL BACKEND
           DB_CONNECTION=pgsql
           DB_HOST=127.0.0.1
           DB_PORT=5432
-          DB_DATABASE=epcoro
-          DB_USERNAME=epcoro
-          DB_PASSWORD=epcoro_secret
+          DB_DATABASE=sinchy
+          DB_USERNAME=sinchy
+          DB_PASSWORD=sinchy_secret
           APP_URL=http://localhost:8000
           SESSION_DRIVER=database   (o redis)
   2.4 `php artisan migrate` y `php artisan db:show` para confirmar conexion
@@ -1257,7 +1257,7 @@ FASE 2 - ESQUELETO DEL BACKEND
           composer require laravel/pint --dev
   2.8 Configurar el proveedor de Sanctum como statefulApi (SPA con cookie)
   Criterio de aceptacion: `php artisan serve` y `curl http://localhost:8000/api/health`
-  responde ok. La base `epcoro` existe en PostgreSQL.
+  responde ok. La base `sinchy` existe en PostgreSQL.
 
 --------------------------------------------------------------------------------
 FASE 3 - AUTENTICACION (primer entregable funcional)
@@ -1419,7 +1419,7 @@ FASE 6 - API CRUD DE LIQUIDACIONES
 --------------------------------------------------------------------------------
 FASE 7 - BASE DEL FRONTEND Y LOGIN
 --------------------------------------------------------------------------------
-  7.1 `npm create vite@latest epcoro-web -- --template vue-ts`
+  7.1 `npm create vite@latest sinchy-web -- --template vue-ts`
   7.2 Instalar: vue-router, pinia, axios, tailwindcss, @vueuse/core
   7.3 vite.config.ts con server.proxy '/api' -> http://localhost:8000
   7.4 src/api/axios.ts con baseURL '/api', withCredentials y interceptor 401
@@ -1588,7 +1588,7 @@ Si instalaste Laragon o XAMPP en la FASE 1, no crees el proyecto con
 desordena los permisos de archivos. Mejor:
   1. Deja Apache/MySQL de Laragon apagados (usaras su PHP y PostgreSQL).
   2. Crea la carpeta del proyecto en un directorio limpio
-     (por ejemplo C:\laragon\www\epcoro o C:\proyectos\epcoro).
+     (por ejemplo C:\laragon\www\sinchy o C:\proyectos\sinchy).
   3. Sirve el backend con `php artisan serve` en el puerto 8000 y el frontend
      con Vite en el 5173. No necesitas Apache para el desarrollo.
 En produccion si usas Nginx + PHP-FPM.
@@ -1676,7 +1676,7 @@ los calculos con aritmetica decimal de 40 digitos. No son opiniones.
       Donde : seccion 2 (estructura de carpetas)
       Que   : v1.0 lo colocaba en app/Support/bootstrap/app.php.
       Correccion: en Laravel 11+ va en la RAIZ del proyecto:
-                  epcoro-api/bootstrap/app.php
+                  sinchy-api/bootstrap/app.php
 
   C8  DESPLEGABLE SI/NO ROTO EN EL EXCEL
       Donde : seccion 1
