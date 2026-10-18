@@ -35,6 +35,35 @@ Copia el valor completo (`base64:...`); lo pegas en el paso 3.
    service** (`epcoro`, con tu Dockerfile) y una **base PostgreSQL** (`epcoro-db`),
    ambos en plan Free.
 
+> **Importante:** el proyecto es **solo PostgreSQL** (usa ENUM nativo, `ilike` y
+> `TO_CHAR`; ver `puesta_produccion.txt`, 4.2). Si el servicio web se crea **sin**
+> la base enlazada (`New → Web Service` a mano), Laravel cae a SQLite y el
+> arranque muere con `near "TYPE": syntax error`. Debe existir la base y sus
+> variables `DB_*`. Si ya creaste el web service a mano, sigue la sección 2.1.
+
+### 2.1 Enlazar PostgreSQL a un servicio ya creado
+
+Si tu web service ya existe y no aparece `DB_HOST` en sus variables:
+
+1. **New → PostgreSQL**: nombre `epcoro-db`, mismo **region** (`ohio`), plan
+   **Free**. Anota el **Internal Database URL** o los datos (host, puerto, base,
+   usuario, contraseña).
+2. En el web service, **Environment → Environment Variables**, agrega (o corrige):
+
+   | Variable | Valor |
+   |---|---|
+   | `DB_CONNECTION` | `pgsql` |
+   | `DB_HOST` | el host interno de la base (o `fromDatabase`) |
+   | `DB_PORT` | `5432` |
+   | `DB_DATABASE` | `epcoro` |
+   | `DB_USERNAME` | `epcoro` |
+   | `DB_PASSWORD` | la contraseña de la base |
+
+3. Guarda: Render redespliega. En los logs de arranque debe verse
+   `[start] DB_CONNECTION=pgsql DB_HOST=...`. Si ves `DB_HOST=<sin definir>`, la
+   base aún no está enlazada (el `start.sh` aborta a propósito con un mensaje
+   claro).
+
 ## 3. Completa las variables y aplica
 
 Al aplicar el Blueprint, Render pide solo las variables marcadas `sync: false`:
@@ -96,6 +125,7 @@ Después **vuelve `SEED` y `DEMO_SEED` a `0`** para no re-sembrar en cada reinic
 | Login "entra y me devuelve al login" | `SANCTUM_STATEFUL_DOMAINS`/`APP_URL` no coinciden con la URL real (paso 4). |
 | `419` en el login | `SESSION_SECURE_COOKIE=true` sin HTTPS (Render da HTTPS por defecto, no debería pasar). |
 | `SQLSTATE: could not connect` | El Blueprint no enlazó la base: revisa que existan `DB_HOST`/`DB_PASSWORD`. |
+| `Connection: sqlite` o `near "TYPE": syntax error` | El servicio no tiene la base PostgreSQL enlazada (por eso Laravel cae a SQLite). Abre **Environment** y confirma que existan `DB_CONNECTION=pgsql` y `DB_HOST`; si faltan, el servicio no se creó desde el Blueprint. Enlaza la base a mano (sección 2.1) o bórralo y recréalo con **New → Blueprint**. |
 | Primera petición muy lenta (~1 min) | Es el *cold start* del plan Free. |
 | A las semanas la base "desaparece" | El free Postgres expira a los 30 días; para 1 semana no aplica. |
 

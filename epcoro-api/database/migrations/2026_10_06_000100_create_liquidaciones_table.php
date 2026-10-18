@@ -30,13 +30,17 @@ return new class extends Migration
 {
     public function up(): void
     {
-        DB::statement('DROP TYPE IF EXISTS liquidacion_estado');
-        DB::statement(<<<'SQL'
-            CREATE TYPE liquidacion_estado AS ENUM (
-                'creado', 'en_revision', 'revisado', 'aprobado',
-                'rechazado', 'en_correccion', 'anulado', 'eliminado'
-            )
-        SQL);
+        $driver = DB::getDriverName();
+
+        if ($driver === 'pgsql') {
+            DB::statement('DROP TYPE IF EXISTS liquidacion_estado');
+            DB::statement(<<<'SQL'
+                CREATE TYPE liquidacion_estado AS ENUM (
+                    'creado', 'en_revision', 'revisado', 'aprobado',
+                    'rechazado', 'en_correccion', 'anulado', 'eliminado'
+                )
+            SQL);
+        }
 
         Schema::create('liquidaciones', function (Blueprint $table) {
             // ------------------------------------------------ IDENTIFICACION
@@ -128,14 +132,16 @@ return new class extends Migration
         // Estado en formato nativo. USING castea lo que se creo como varchar.
         // El default se saca y se vuelve a poner porque PostgreSQL no castea
         // solo el valor por omision al cambiar el tipo de la columna.
-        DB::statement('ALTER TABLE liquidaciones ALTER COLUMN estado DROP DEFAULT');
-        DB::statement('ALTER TABLE liquidaciones ALTER COLUMN estado TYPE liquidacion_estado USING estado::liquidacion_estado');
-        DB::statement("ALTER TABLE liquidaciones ALTER COLUMN estado SET DEFAULT 'creado'::liquidacion_estado");
+        if ($driver === 'pgsql') {
+            DB::statement('ALTER TABLE liquidaciones ALTER COLUMN estado DROP DEFAULT');
+            DB::statement('ALTER TABLE liquidaciones ALTER COLUMN estado TYPE liquidacion_estado USING estado::liquidacion_estado');
+            DB::statement("ALTER TABLE liquidaciones ALTER COLUMN estado SET DEFAULT 'creado'::liquidacion_estado");
 
-        // CHECKs que el Blueprint no expresa: la ley es fraccion (trampa T1) y
-        // el peso no puede ser cero ni negativo.
-        DB::statement('ALTER TABLE liquidaciones ADD CONSTRAINT liquidaciones_peso_positivo CHECK (peso_gramos > 0)');
-        DB::statement('ALTER TABLE liquidaciones ADD CONSTRAINT liquidaciones_ley_valida CHECK (ley_pagable > 0 AND ley_pagable <= 1)');
+            // CHECKs que el Blueprint no expresa: la ley es fraccion (trampa T1) y
+            // el peso no puede ser cero ni negativo.
+            DB::statement('ALTER TABLE liquidaciones ADD CONSTRAINT liquidaciones_peso_positivo CHECK (peso_gramos > 0)');
+            DB::statement('ALTER TABLE liquidaciones ADD CONSTRAINT liquidaciones_ley_valida CHECK (ley_pagable > 0 AND ley_pagable <= 1)');
+        }
 
         // Indices con orden descendente: los dos primeros alimentan las
         // listas "mas recientes primero".
@@ -148,6 +154,8 @@ return new class extends Migration
     {
         Schema::dropIfExists('liquidaciones');
 
-        DB::statement('DROP TYPE IF EXISTS liquidacion_estado');
+        if (DB::getDriverName() === 'pgsql') {
+            DB::statement('DROP TYPE IF EXISTS liquidacion_estado');
+        }
     }
 };

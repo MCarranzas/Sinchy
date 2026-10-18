@@ -8,6 +8,17 @@ set -e
 
 cd /var/www/api
 
+echo "[start] DB_CONNECTION=${DB_CONNECTION:-pgsql} DB_HOST=${DB_HOST:-<sin definir>} DB_PORT=${DB_PORT:-<sin definir>} DB_DATABASE=${DB_DATABASE:-<sin definir>}"
+
+# Sin base enlazada, Laravel intentaria conectar a 127.0.0.1 y fallaria con
+# un error confuso. Mejor abortar aqui con un mensaje claro.
+if [ "${APP_ENV:-production}" = "production" ] && [ -z "${DB_HOST:-}" ]; then
+    echo "[start] ERROR: no hay base de datos enlazada (DB_HOST vacio)." >&2
+    echo "[start] Crea o enlaza la base PostgreSQL de Render y vuelve a desplegar." >&2
+    echo "[start] Ver deploy_render/despliegue_render.md, seccion 2." >&2
+    exit 1
+fi
+
 echo "[start] Generando la configuracion de Nginx para el puerto ${PORT:-8080}"
 envsubst '${PORT}' < /etc/nginx/http.d/default.conf.template > /etc/nginx/http.d/default.conf
 

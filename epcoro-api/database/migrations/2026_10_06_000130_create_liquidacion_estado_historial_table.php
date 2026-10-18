@@ -39,10 +39,12 @@ return new class extends Migration
             $table->index('estado_nuevo');
         });
 
-        DB::statement('ALTER TABLE liquidacion_estado_historial '
-            .'ALTER COLUMN estado_anterior TYPE liquidacion_estado USING estado_anterior::liquidacion_estado');
-        DB::statement('ALTER TABLE liquidacion_estado_historial '
-            .'ALTER COLUMN estado_nuevo TYPE liquidacion_estado USING estado_nuevo::liquidacion_estado');
+        if (DB::getDriverName() === 'pgsql') {
+            DB::statement('ALTER TABLE liquidacion_estado_historial '
+                .'ALTER COLUMN estado_anterior TYPE liquidacion_estado USING estado_anterior::liquidacion_estado');
+            DB::statement('ALTER TABLE liquidacion_estado_historial '
+                .'ALTER COLUMN estado_nuevo TYPE liquidacion_estado USING estado_nuevo::liquidacion_estado');
+        }
     }
 
     public function down(): void
