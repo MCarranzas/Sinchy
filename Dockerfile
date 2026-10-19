@@ -7,8 +7,7 @@
 # puesta_produccion.txt, seccion 3.2).
 #
 # El contexto de build debe ser la RAIZ del repositorio (sinchy/), porque se
-# copian tanto sinchy-web/ como sinchy-api/. En Railway: dejar el "Root
-# Directory" del servicio en la raiz del repo.
+# copian tanto sinchy-web/ como sinchy-api/.
 #
 #   Etapa 1 (web)   : Node 24 compila la SPA  ->  /web/dist
 #   Etapa 2 (final) : PHP 8.4 + Nginx sirve la SPA y enruta /api y /sanctum a
@@ -50,7 +49,7 @@ RUN apk add --no-cache \
     && rm -rf /var/cache/apk/*
 
 # PHP-FPM: escuchar solo en loopback y HEREDAR el entorno del contenedor.
-# clear_env=no es imprescindible en Railway: las variables (APP_KEY, DB_*,
+# clear_env=no es imprescindible en un PaaS/Docker: las variables (APP_KEY, DB_*,
 # SANCTUM_*, ...) llegan como variables de entorno del contenedor, no como
 # archivo .env, y por defecto PHP-FPM las borraria.
 RUN sed -i 's/^listen = .*/listen = 127.0.0.1:9000/' /usr/local/etc/php-fpm.d/www.conf \
@@ -81,7 +80,7 @@ RUN chmod +x /usr/local/bin/start.sh \
     && sed -i 's/\r$//' /usr/local/bin/start.sh \
     && rm -f /etc/nginx/http.d/default.conf
 
-# Railway inyecta PORT (Render usa 10000). Sin la variable se usa 8080.
+# El proveedor inyecta PORT. Sin la variable se usa 8080.
 ENV PORT=8080
 EXPOSE 8080
 

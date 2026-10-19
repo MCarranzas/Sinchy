@@ -12,8 +12,12 @@
 
  Artefactos de despliegue YA presentes en la RAIZ del repositorio:
    Dockerfile, docker/nginx.conf.template, docker/start.sh, docker/php.ini,
-   .dockerignore, .gitattributes, railway.toml
- Guia paso a paso para Railway: deploy_railway/despliegue_railway.md
+   .dockerignore, .gitattributes
+ Guia paso a paso para VPS: deploy_vps/despliegue_vps.md
+ Guia concreta para la prueba gratuita en Alwaysdata Free:
+   deploy_alwaysdata/despliegue_alwaysdata.md
+   (incluye deploy_alwaysdata/.env.alwaysdata.example y
+    deploy_alwaysdata/apache.htaccess)
 
  AVISO IMPORTANTE
  ----------------
@@ -97,8 +101,7 @@
    hostings puramente estaticos (no ejecutan PHP).
 
  Recomendacion corta:
-   - Sin tarjeta, para demo/piloto ......... OPCION C (Alwaysdata Free)
-   - Sin tarjeta, para demo "de vitrina" ... OPCION B (Render Free + Neon Free)
+   - Sin tarjeta, para demo/piloto ......... OPCION B (Alwaysdata Free)
    - Para uso real ......................... OPCION A (VM "siempre gratis")
 
 ================================================================================
@@ -440,7 +443,7 @@
    DB_HOST / DB_PORT           | host y 5432 del PostgreSQL         |
    DB_DATABASE / DB_USERNAME   | sinchy / sinchy                    |
    DB_PASSWORD                 | (secreto, nunca vacia)             | critico
-   DB_SSLMODE                  | require (si la base es externa)    | ver 6.3
+   DB_SSLMODE                  | require (si la base es externa)    |
    SESSION_DRIVER              | database                           |
    SESSION_LIFETIME            | 480                                |
    SESSION_ENCRYPT             | true                               | critico
@@ -523,7 +526,7 @@
    - NUNCA subir: .env, vendor/ (se instala), node_modules/, dist/ del repo,
      y MUCHO MENOS usuarios_prueba.txt (contiene credenciales de prueba).
    - Este guion manual aplica a la Opcion A (servidor propio). Para la imagen
-     Docker (Anexo B; Opciones B/C y Railway) los pasos de FRONTEND y BACKEND
+     Docker (Anexo B; Opcion B) los pasos de FRONTEND y BACKEND
      los hace la propia imagen: el build compila la SPA y `docker/start.sh`
      aplica migraciones y cachea la configuracion al arrancar.
 
@@ -579,72 +582,7 @@
    Contras: exige manejar un servidor (parches, copias, certificados). No hay
    boton magico.
 
- 6.3 OPCION B - RENDER (FREE, DOCKER) + NEON (POSTGRES FREE)  (DEMO, SIN TARJETA)
-
-   Verificado el 15/10/2026 contra la documentacion oficial de Render
-   (render.com/docs/free):
-
-     Plan Free de Render, servicio web (Docker):
-       - 750 horas de instancia al mes. Si se agotan, Render SUSPENDE los
-         servicios gratuitos hasta el mes siguiente.
-       - Se APAGA a los 15 minutos sin trafico y tarda ~1 minuto en despertar.
-       - Sistema de archivos EFIMERO: lo que se escriba en disco se pierde en
-         cada reinicio, redespliegue o apagado.
-       - 0,1 CPU / 512 MB de RAM. Sin disco persistente. Sin acceso SSH.
-       - Sin trabajos "one-off" y sin escalado.
-       - Bloquea los puertos SMTP (25, 465, 587) de salida.
-       - Dominio propio y HTTPS: SI, incluidos y gratuitos.
-       - La propia documentacion de Render advierte: "Do not use them for
-         production applications."
-     Plan Free de Render, PostgreSQL:
-       - 1 GB de almacenamiento y, sobre todo, EXPIRA A LOS 30 DIAS de creada
-         (14 dias de gracia y luego se BORRA con todos los datos).
-       - Una sola base gratuita por cuenta y sin respaldos administrados.
-       => NO usar la base gratuita de Render para esto. Usar una base externa.
-
-     Neo (Neon.tech) plan Free (PostgreSQL gestionado):
-       - Almacenamiento del orden de 0,5-1 GB por proyecto y ~100 horas de
-         computo al mes (las cifras cambiaron varias veces durante 2026: leer
-         la pagina de precios vigente).
-       - Escala a cero cuando no hay actividad: la primera consulta del dia
-         puede tardar unos segundos (se suma al minuto de despertar de Render).
-       - Permite restaurar a un punto en el pasado dentro de su ventana de
-         retencion (limitada en el plan gratuito).
-       - Conexion por SSL obligatoria => DB_SSLMODE=require.
-
-   Montaje resumido:
-     1) Crear la base en Neon y copiar su cadena de conexion.
-     2) Crear en Render un "Web Service" desde el repositorio de GitHub y
-        apuntarlo al Dockerfile de la RAIZ del repositorio (Anexo B, ya
-        implementado). El "Root Directory" debe quedar en la raiz del repo.
-        Render construye la imagen e inyecta la variable PORT (por defecto
-        10000); Nginx escucha en ella via envsubst (docker/start.sh).
-     3) Cargar las variables de entorno de la seccion 4 en el panel de Render
-        (incluyendo DB_* de Neon, DB_SSLMODE=require y APP_KEY).
-     4) Primer despliegue: ejecutar las migraciones. Como no hay SSH, se hace
-        desde el arranque del contenedor (Anexo B) o con un comando de una sola
-        vez ejecutado localmente apuntando a la base de Neon.
-     5) Como TRUST_PROXIES: en Render el trafico entra por su proxy interno y la
-        IP del cliente llega en X-Forwarded-For. El origin no es alcanzable
-        directamente desde Internet, asi que en ese caso concreto se puede usar
-        TRUST_PROXIES=* (el .env.production.example lo prohibe pensando en un
-        servidor con Nginx propio; aqui la justificacion es que nadie puede
-        falsificar la cabecera porque nadie llega al contenedor sin pasar por
-        Render). Documentar esta excepcion.
-     6) Guardar los logs en la salida estandar (LOG_STACK=stderr) porque el
-        disco es efimero y ademas es lo unico que se puede leer en el panel.
-
-   Limitaciones que hay que aceptar:
-     - Arranque en frio de ~1 minuto tras 15 de inactividad.
-     - El respaldo diario NO puede correr (no hay cron ni disco): la proteccion
-       queda a cargo de la ventana de restauracion de Neon. Alternativa
-       gratuita: un flujo programado de GitHub Actions que ejecute pg_dump
-       contra Neon y guarde el archivo como artefacto (Anexo E).
-     - El log de auditoria (180 dias) se pierde en cada reinicio. Si se necesita
-       auditoria persistente, esta opcion NO sirve.
-     - Los Excel/PDF grandes pueden chocar con 512 MB de RAM.
-
- 6.4 OPCION C - ALWAYSDATA (PLAN FREE)  (MEJOR OPCION SIN TARJETA)
+ 6.3 OPCION B - ALWAYSDATA (PLAN FREE)  (MEJOR OPCION SIN TARJETA)
 
    Verificado el 15/10/2026 en la documentacion oficial de alwaysdata. El plan
    gratuito incluye:
@@ -695,7 +633,7 @@
    Contras: 256 MB de RAM (justo para PHP-FPM + exportaciones), sin dominio
    propio, sin fines de lucro, y un panel poco comun si nunca se uso.
 
- 6.5 OPCION D - SPA EN CDN + API EN OTRO HOST  (NO RECOMENDADA)
+ 6.4 OPCION C - SPA EN CDN + API EN OTRO HOST  (NO RECOMENDADA)
 
    Ejemplo: SPA en Cloudflare Pages o Netlify (ambos gratuitos) y API en un
    contenedor aparte.
@@ -714,13 +652,12 @@
    mas fragil y agrega dependencia de la plataforma; solo tiene sentido si se
    necesita CDN global y no hay forma de tener un contenedor.
 
- 6.6 OPCIONES DESCARTADAS (y por que)
+ 6.5 OPCIONES DESCARTADAS (y por que)
 
    - InfinityFree, 000webhost, freehosting y similares: PHP con MySQL, sin
      PostgreSQL -> incumplen R2. Ademas sin SSH ni Composer, sin cron y con
      anuncios o limites de peticiones.
    - Heroku: elimino su capa gratuita.
-   - Railway: ya no tiene plan gratuito (solo credito de prueba).
    - Fly.io: desde octubre de 2024 no hay capa gratuita para organizaciones
      nuevas (pago por uso; requiere tarjeta).
    - Vercel / Netlify / GitHub Pages / Cloudflare Pages por si solos: solo
@@ -734,27 +671,27 @@
      5 horas de actividad y 1 GB, y la cuenta exige tarjeta (con cargo del plan
      prorrateado al registrarse, que luego se puede bajar al plan Starter).
      Como base de datos persistente no sirve; como servicio web es equivalente
-     a Render con mas tramites.
+     a un PaaS gratuito con mas tramites.
 
- 6.7 TABLA COMPARATIVA
+ 6.6 TABLA COMPARATIVA
 
-   Criterio            | A) VM always-free  | B) Render+Neon    | C) Alwaysdata
-   --------------------+--------------------+-------------------+--------------
-   Tarjeta requerida   | Si                 | No                | No
-   PHP 8.4             | Si (lo instalas)   | Si (imagen Docker)| Si
-   PostgreSQL 17       | Si                 | Si (Neon externo) | Si
-   Mismo origen        | Si                 | Si                | Si (con reglas)
-   Dominio propio      | Si                 | Si                | NO (subdominio)
-   HTTPS               | Si                 | Si                | Si
-   Disco persistente   | Si                 | NO (efimero)      | Si (1 GB)
-   Cron                | Si                 | NO                | Si
-   RAM al servicio     | 1-12 GB            | 512 MB            | 256 MB
-   Arranque en frio    | No                 | Si (~1 min)       | No
-   Auditoria 180 dias  | Si                 | NO (se pierde)    | Si (mientras no
-                       |                    |                   |   se limpie)
-   Respaldo pg_dump    | Si (programado)    | No (ver 6.3)      | Si (cron)
-   Idoneidad           | Uso real / piloto  | Demo publica      | Demo/piloto sin
-                       |                    |                   |   tarjeta
+   Criterio            | A) VM always-free  | B) Alwaysdata
+   --------------------+--------------------+----------------------
+   Tarjeta requerida   | Si                 | No
+   PHP 8.4             | Si (lo instalas)   | Si
+   PostgreSQL 17       | Si                 | Si
+   Mismo origen        | Si                 | Si (con reglas)
+   Dominio propio      | Si                 | NO (subdominio)
+   HTTPS               | Si                 | Si
+   Disco persistente   | Si                 | Si (1 GB)
+   Cron                | Si                 | Si
+   RAM al servicio     | 1-12 GB            | 256 MB
+   Arranque en frio    | No                 | No
+   Auditoria 180 dias  | Si                 | Si (mientras no
+                       |                    |   se limpie)
+   Respaldo pg_dump    | Si (programado)    | Si (cron)
+   Idoneidad           | Uso real / piloto  | Demo/piloto sin
+                       |                    |   tarjeta
 
 ================================================================================
  7. AJUSTES OBLIGATORIOS POR LAS LIMITACIONES DEL PLAN GRATUITO
@@ -768,15 +705,15 @@
    huerfanas si en el futuro alguien agrega un Job sin worker.
 
  7.2 LOGS: A DONDE ESCRIBIR
-   - En un servidor propio o con disco (Opcion A/C): dejar `daily` (30 dias) y
+   - En un servidor propio o con disco (Opcion A/B): dejar `daily` (30 dias) y
      el canal `auditoria` (180 dias) tal como viene. Es la configuracion legal
      correcta.
-   - En un PaaS con disco efimero (Opcion B): poner
+   - En un PaaS con disco efimero: poner
        LOG_CHANNEL=stderr
      para que los logs salgan al panel del proveedor y no se pierdan en el
      disco. OJO: el canal `auditoria` sigue escribiendo a archivo, asi que en un
-     PaaS efimero LA AUDITORIA SE PIERDE. Si la auditoria hace falta, la Opcion
-     B queda descartada.
+     PaaS efimero LA AUDITORIA SE PIERDE. Si la auditoria hace falta, ese tipo
+     de PaaS queda descartado.
 
  7.3 RESPALDOS
    - Con cron y pg_dump (Opcion A): dejar el programador como esta
@@ -785,10 +722,9 @@
      /var/backups/sinchiwayra. Ademas, copiar ese directorio periodicamente
      fuera del servidor (otro disco, rclone, o descarga manual): un respaldo en
      el mismo servidor no protege de perder el servidor.
-   - Sin cron (Opcion B): usar la restauracion a un punto en el tiempo del
-     proveedor de base de datos (Neon) y/o un flujo programado de GitHub
-     Actions que ejecute pg_dump contra la base y guarde el artefacto
-     (plantilla en el Anexo E).
+   - Sin cron: usar la restauracion a un punto en el tiempo del proveedor de
+     base de datos y/o un flujo programado de GitHub Actions que ejecute pg_dump
+     contra la base y guarde el artefacto (plantilla en el Anexo E).
    - Sin pg_dump (algunos hostings no lo tienen): revisar `PG_DUMP_PATH`; si no
      existe el binario, el respaldo programado falla (y avisa por el canal de
      auditoria con estado "fallido"). En ese caso, respaldar desde otra maquina.
@@ -810,14 +746,14 @@
      FastCGI ya le pasa a PHP la IP real del cliente.
    - Con Cloudflare u otro proxy delante: poner SOLO las redes de ese proxy,
      nunca '*'. Excepcion justificada: en un PaaS donde el contenedor no es
-     alcanzable desde Internet (Render), usar '*' es aceptable porque nadie
+     alcanzable desde Internet, usar '*' es aceptable porque nadie
      puede falsificar X-Forwarded-For sin pasar por el proveedor. Dejar
      constancia de la decision.
    - Sintoma de tenerlo mal: en el log de auditoria todas las IP son la del
      proxy, o (peor) un cliente puede falsear su IP.
 
  7.7 MEMORIA
-   - 512 MB (Render) o 256 MB (Alwaysdata): fijar memory_limit de PHP en 256M y
+   - 256 MB (Alwaysdata) o menos: fijar memory_limit de PHP en 256M y
      evitar exportar reportes de rangos enormes. Las exportaciones a Excel son
      las que mas memoria consumen.
 
@@ -1006,13 +942,11 @@
 
  10.3 DESPLIEGUE
 
-   - Opcion B (Render): crear un "Deploy Hook" en Render y llamarlo desde un
-     job de Actions con un `curl -X POST ${{ secrets.RENDER_DEPLOY_HOOK }}`
-     despues de que pase la CI. Render, ademas, redespliega solo al hacer push
-     si el servicio esta conectado al repositorio.
    - Opcion A (VM): job que entra por SSH (usar secrets para la llave) y
      ejecuta: `git pull && composer install --no-dev -o && php artisan migrate
      --force && php artisan optimize && sudo systemctl reload php8.4-fpm`.
+   - PaaS con despliegue desde Git: conectar el repositorio y configurar las
+     variables; el proveedor redespliega solo al hacer push.
 
 ================================================================================
  11. MONITOREO Y OPERACION
@@ -1020,9 +954,7 @@
 
    Monitoreo de disponibilidad (gratis):
      - UptimeRobot o similar: vigilar https://TU-DOMINIO/up cada 5 minutos y
-       avisar por correo si cae. En Opcion B, esto ADEMAS mantiene despierto el
-       servicio (evita el arranque en frio), aunque consume horas de instancia
-       del plan gratuito: 750 h/mes alcanzan para un solo servicio 24/7.
+       avisar por correo si cae.
      - Vigilar tambien /api/health: distingue "la web responde" de "la base de
        datos responde".
 
@@ -1075,16 +1007,7 @@
         - El proveedor puede reclamar la VM si esta inactiva durante mucho
           tiempo; y los cupos gratuitos cambian (Oracle ya redujo Ampere en 2026).
 
-     B) Render + Neon
-        - Arranque en frio de ~1 min tras 15 min sin trafico.
-        - Disco efimero: se pierde la auditoria de 180 dias y los respaldos.
-        - La base gratuita de Render expira a los 30 dias: por eso se usa Neon.
-        - Render dice explicitamente que su plan gratuito no es para produccion.
-        - 750 h/mes: un solo servicio 24/7 consume casi todo el cupo.
-        - Hay que avivar el servicio para demostraciones (o aceptar el minuto
-          de espera delante del cliente).
-
-     C) Alwaysdata
+     B) Alwaysdata
         - 256 MB de RAM: justo para exportaciones grandes.
         - Sin dominio propio y con la clausula de "sin fines de lucro".
         - Al ser un hosting compartido, no se controla el resto del servidor.
@@ -1095,7 +1018,9 @@
      - NO usar MySQL ni SQLite "para simplificar": las migraciones son de
        PostgreSQL y fallan.
      - NO correr `php artisan migrate:fresh` ni `db:seed` a secas en produccion:
-       borran y crean cuentas de demostracion.
+       borran y crean cuentas de demostracion. La unica excepcion es la prueba
+       temporal guiada en deploy_alwaysdata/despliegue_alwaysdata.md, sobre una
+       base de descarte y sin datos reales.
      - NO dejar APP_DEBUG=true para "ver mejor los errores": expone trazas,
        rutas y credenciales.
      - NO versionar el .env ni subir usuarios_prueba.txt al servidor.
@@ -1106,19 +1031,15 @@
  14. COSTOS
 ================================================================================
 
-   Escenario 1 - Opcion B (Render Free + Neon Free) ......... 0 USD/mes
-     Limite: 750 h de instancia, arranque en frio, disco efimero, sin cron.
-     Solo apto para demo/piloto.
-
-   Escenario 2 - Opcion C (Alwaysdata Free) ................ 0 USD/mes
+   Escenario 1 - Opcion B (Alwaysdata Free) ................. 0 USD/mes
      Limite: 1 GB de disco, 256 MB de RAM, subdominio alwaysdata.net,
      sin fines de lucro, sin dominio propio.
 
-   Escenario 3 - Opcion A (Oracle/GCP always-free) ......... 0 USD/mes
+   Escenario 2 - Opcion A (Oracle/GCP always-free) ......... 0 USD/mes
      Limite: los cupos de la capa gratuita; requiere tarjeta y administracion
      propia. Es la unica que cumple respaldo + cron + disco + dominio propio.
 
-   Escenario 4 - Puesta en produccion "de verdad" (referencia)
+   Escenario 3 - Puesta en produccion "de verdad" (referencia)
      Dominio .gob.bo o equivalente ........................ ~10-40 USD/anio
      VM pequena con disco y respaldos (1-2 GB RAM) ........ ~5-10 USD/mes
      Base de datos administrada con respaldo ............... ~0-15 USD/mes
@@ -1191,7 +1112,7 @@
    PG_DUMP_PATH=/usr/bin/pg_dump
 
 ================================================================================
- ANEXO B - DOCKERFILE Y ARCHIVOS DE DESPLIEGUE (Opciones B/C y Railway)
+ ANEXO B - DOCKERFILE Y ARCHIVOS DE DESPLIEGUE (Opcion B)
 ================================================================================
 
  IMPLEMENTADO. La RAIZ del repositorio contiene estos archivos. Ellos son la
@@ -1204,7 +1125,6 @@
    docker/php.ini                 memoria, variables_order, opcache, zona hor.
    .dockerignore                  evita .env, vendor/ y node_modules/
    .gitattributes                 fuerza finales de linea LF en *.sh y Docker
-   railway.toml                   construccion/arranque en Railway (Anexo G)
 
  Construye la SPA en una etapa (Node 24) y la sirve con Nginx + PHP-FPM 8.4 en
  la misma imagen y el mismo puerto ($PORT). El context de build es la RAIZ del
@@ -1298,7 +1218,7 @@
      && sed -i 's/\r$//' /usr/local/bin/start.sh \
      && rm -f /etc/nginx/http.d/default.conf
 
- # El proveedor inyecta PORT (Render usa 10000). Sin la variable se usa 8080.
+ # El proveedor inyecta PORT. Sin la variable se usa 8080.
  ENV PORT=8080
  EXPOSE 8080
 
@@ -1405,7 +1325,6 @@
  # --- Documentacion y material de desarrollo (no van a la imagen) ---
  docs
  auxiliar
- deploy_railway
  *.docx
  manual.docx
  usuarios_prueba.txt
@@ -1509,7 +1428,7 @@
  }
  ------------------------------------------------------------------------------
 
- En un PaaS (Railway, Render), ${PORT} lo inyecta el proveedor y start.sh hace
+ En un PaaS, ${PORT} lo inyecta el proveedor y start.sh hace
  el envsubst. En un servidor propio, reemplazar `listen ${PORT};` por
  `listen 443 ssl;` con el certificado, mas un `server` en el 80 que redirija
  a https.
@@ -1575,7 +1494,7 @@
  ANEXO E - RESPALDO AUTOMATICO SIN CRON (GitHub Actions + Neon)
 ================================================================================
 
- Para la Opcion B (donde el servidor no puede ejecutar el respaldo):
+ Para un hosting sin cron (el servidor no puede ejecutar el respaldo):
 
  ------------------------------------------------------------------------------
  name: Respaldo de la base
@@ -1663,8 +1582,7 @@
    tipos de cambio, cotizaciones, compradores, vendedores y areas mineras. Se
    dispara con la variable DEMO_SEED=1 en docker/start.sh (una vez, y luego se
    quita), NUNCA ejecutando `db:seed` a secas (ese si corre UsuariosEjemploSeeder
-   con claves aleatorias). Es idempotente y solo de DEMO. Ver
-   deploy_railway/despliegue_railway.md, seccion 6.1.
+   con claves aleatorias). Es idempotente y solo de DEMO. Ver el Anexo F.
 
    Como verificar despues de sembrar:
      php artisan tinker
@@ -1674,44 +1592,6 @@
 
  Las contrasenas de desarrollo de esas cuentas estan en usuarios_prueba.txt.
  Ese archivo es material de desarrollo: NUNCA debe subirse al servidor.
-
-================================================================================
- ANEXO G - RAILWAY (imagen unica: SPA + API en el mismo origen)
-================================================================================
-
- AVISO SOBRE EL COSTO: Railway YA NO tiene plan gratuito. Las cuentas nuevas
- reciben un credito de prueba (del orden de USD 5 por 30 dias) y despues un
- credito mensual minimo; agotado ese credito, los servicios se detienen. Para
- "gratis de verdad" usar la Opcion B (Render + Neon) o la Opcion C (Alwaysdata).
-
- Lo que sigue aplica igual a las tres opciones: es la MISMA imagen (Anexo B),
- un solo servicio que sirve SPA y API en el mismo origen.
-
- Guia paso a paso, tabla completa de variables y errores frecuentes:
-   deploy_railway/despliegue_railway.md
-
- Resumen:
-   1) Railway: New Project > Deploy from GitHub repo (MCarranzas/Sinchy). Dejar
-      el "Root Directory" en la RAIZ del repositorio (NO en sinchy-api).
-      Railway usa railway.toml y el Dockerfile para construir.
-   2) + New > Database > PostgreSQL (dejandola PRIVADA). Railway expone PGHOST,
-      PGPORT, PGUSER, PGPASSWORD y PGDATABASE.
-   3) Variables del servicio: las de la seccion 4, con DB_* referenciando el
-      servicio Postgres:
-        DB_HOST=${{Postgres.PGHOST}}        DB_PORT=${{Postgres.PGPORT}}
-        DB_DATABASE=${{Postgres.PGDATABASE}}
-        DB_USERNAME=${{Postgres.PGUSER}}    DB_PASSWORD=${{Postgres.PGPASSWORD}}
-      Mas: TRUST_PROXIES=* (excepcion justificada, ver 7.6), QUEUE_CONNECTION=sync
-      y LOG_STACK=stderr (disco efimero).
-   4) Settings > Networking > Generate Domain. Con esa URL fijar APP_URL,
-      CORS_ALLOWED_ORIGINS, FRONTEND_URL y SANCTUM_STATEFUL_DOMAINS (este SIN
-      https:// y SIN puerto). Redeploy.
-   5) Primer arranque: start.sh corre migraciones solo. Para sembrar los datos
-      base (Anexo F), definir SEED=1 una vez, copiar la contrasena del admin
-      desde los logs del deploy y QUITAR SEED.
-
- Comprobacion: GET /up -> 200; GET /api/health -> JSON con la base de datos;
- y un login real que sostenga la sesion.
 
 ================================================================================
  FIN DEL DOCUMENTO

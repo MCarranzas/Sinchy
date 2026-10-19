@@ -1,0 +1,58 @@
+# =============================================================================
+#  SINCHI WAYRA - .htaccess para Alwaysdata (Apache + PHP)
+# =============================================================================
+#  Subir como: ~/sinchy-api/public/.htaccess
+#
+#  Objetivo: mismo origen para la SPA y la API.
+#    /api/*      -> Laravel (index.php)
+#    /sanctum/*  -> Laravel (index.php)
+#    /up         -> Laravel (health endpoint)
+#    archivos    -> se sirven tal cual (assets, favicon, index.html)
+#    resto       -> index.html (rutas de Vue Router)
+#
+#  Guardar en UTF-8 SIN BOM.
+# =============================================================================
+
+<IfModule mod_rewrite.c>
+    <IfModule mod_negotiation.c>
+        Options -MultiViews -Indexes
+    </IfModule>
+
+    RewriteEngine On
+    RewriteBase /
+
+    # Apache puede perder estas cabeceras al pasar a PHP.
+    RewriteCond %{HTTP:Authorization} .
+    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+    RewriteCond %{HTTP:x-xsrf-token} .
+    RewriteRule .* - [E=HTTP_X_XSRF_TOKEN:%{HTTP:X-XSRF-Token}]
+
+    # Quitar la barra final, salvo que sea una carpeta real.
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_URI} (.+)/$
+    RewriteRule ^ %1 [L,R=301]
+
+    # No interceptar validaciones de Let's Encrypt ni otros servicios.
+    RewriteRule ^\.well-known/ - [L]
+
+    # API y Sanctum: siempre a Laravel.
+    RewriteRule ^api(/.*)?$ index.php [L]
+    RewriteRule ^sanctum(/.*)?$ index.php [L]
+    RewriteRule ^up$ index.php [L]
+
+    # Archivos y carpetas reales: servirlos directamente.
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    # Un asset que no existe no debe devolver la SPA: mejor un 404 claro.
+    RewriteCond %{REQUEST_URI} ^/assets/
+    RewriteRule ^ - [L,R=404]
+
+    # Rutas del frontend (Vue Router): devolver la SPA.
+    RewriteRule ^ index.html [L]
+</IfModule>
+
+# La raiz del sitio sirve la SPA; si no existe index.html, cae a Laravel.
+DirectoryIndex index.html index.php

@@ -1,6 +1,6 @@
 # Despliegue en VPS con Coolify (imagen única: SPA + API en el mismo origen)
 
-Alternativa a Railway. Un VPS propio (Hetzner, DigitalOcean, Contabo…) con
+Un VPS propio (Hetzner, DigitalOcean, Contabo…) con
 [Coolify](https://coolify.io), un PaaS auto-hospedado que hace despliegue desde
 Git, HTTPS automático y bases de datos, sin pagar cuota de plataforma.
 
@@ -80,8 +80,7 @@ administrador**. Recomendado enseguida: en **Settings → Instance Domain** pon
 
 ## 6. Variables de entorno
 
-En la app: **Environment Variables**. Pega estas (mismos valores que la guía de
-Railway, sección 4):
+En la app: **Environment Variables**. Pega estas:
 
 | Variable | Valor |
 |---|---|
@@ -140,8 +139,8 @@ Agrega `SEED=1` (y `DEMO_SEED=1` si es un entorno de **vitrina/demo**), pulsa
 3. `migrate --force` (con reintentos hasta que la base responda).
 4. Si `SEED=1`: seeders base (Anexo F) — **incluido `AdminSeeder`**, que imprime
    la **contraseña aleatoria** del `admin` **una sola vez**. Cópiala de los logs.
-5. Si `DEMO_SEED=1`: `DatosDemoSeeder` (ver `deploy_railway/despliegue_railway.md`,
-   sección 6.1 y el Anexo F).
+5. Si `DEMO_SEED=1`: `DatosDemoSeeder` (ver el Anexo F de
+   `puesta_produccion.txt`).
 
 Después del primer arranque **borra `SEED` y `DEMO_SEED`** (o ponlos en `0`) para
 no re-sembrar en cada reinicio.

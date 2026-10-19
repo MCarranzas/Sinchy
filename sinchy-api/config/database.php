@@ -101,8 +101,8 @@ return [
             // aplicacion: el grammar de Laravel envia los timestamps sin offset
             // y las columnas timestamptz las interpretan en la zona de la
             // sesion. Si la sesion quedara en UTC y la app en La_Paz (-4), los
-            // bloqueos/vencimientos se leerian 4 h desplazados (en Render, cuyo
-            // Postgres es UTC, esto romperia el bloqueo de cuentas).
+            // bloqueos/vencimientos se leerian 4 h desplazados (con un Postgres
+            // en UTC, esto romperia el bloqueo de cuentas).
             'timezone' => env('DB_TIMEZONE', env('APP_TIMEZONE', 'UTC')),
         ],
 

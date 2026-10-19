@@ -4,8 +4,8 @@
 
  Documento:   wsl_docker.txt
  Proposito:   verificar que el Dockerfile construye y que la imagen sirve la
-              SPA y la API en el mismo origen ANTES de gastar credito en
-              Railway. El codigo de la aplicacion NO cambia.
+              SPA y la API en el mismo origen ANTES de desplegar en un VPS.
+              El codigo de la aplicacion NO cambia.
 
  PROGRESO (16/10/2026, 12:23):
    [x] Seccion 1, paso 1: features habilitadas (DISM exit=3010 en ambas)
@@ -19,9 +19,8 @@
    El script de instalacion de Ubuntu queda en Temp\opencode\instala_ubuntu.ps1
 
  Archivos relacionados:
-   deploy_railway/PROBAR_LOCAL.md         guia detallada
+   deploy_vps/despliegue_vps.md           guia de despliegue en VPS
    docker-compose.local.yml               prueba local (imagen + postgres)
-   deploy_railway/despliegue_railway.md   despliegue real en Railway
 
 ================================================================================
  0. ¿VALE LA PENA INSTALAR DOCKER?
@@ -37,7 +36,7 @@
       * el comportamiento de la cookie con mismo origen: el proxy de Vite en
         desarrollo hace EXACTAMENTE lo que hara Nginx en produccion
 
-  - Lo que SOLO se prueba con Docker (o con el build de Railway):
+  - Lo que SOLO se prueba con Docker (o con el build de produccion):
       1) que los nombres de paquetes `apk` existan en el Alpine de
          php:8.4-fpm-alpine            <-- riesgo real, el unico
       2) que `clear_env = no` le pase las variables a PHP-FPM
@@ -45,8 +44,8 @@
       4) que docker/start.sh ejecute dentro del contenedor
 
  Instalar Docker = habilitar WSL2 (permisos de administrador y reinicio) +
- Docker Engine (~4-6 GB). Si no te molestas depurar desde los logs de Railway,
- NO LO INSTALES: un build fallido alla cuesta minutos de credito, no dinero.
+ Docker Engine (~4-6 GB). Si prefieres depurar directamente en el VPS,
+ NO LO INSTALES: ahi veras los mismos logs del contenedor.
 
  Tu equipo verificado: Windows 11 (build 26200) 64 bits, WSL NO instalado,
  113 GB libres en C:.
@@ -177,29 +176,26 @@
  "down -v" borra tambien el volumen de la base de prueba.
 
 ================================================================================
- 9. DIFERENCIAS ENTRE LA PRUEBA LOCAL Y RAILWAY
+ 9. DIFERENCIAS ENTRE LA PRUEBA LOCAL Y EL VPS
 ================================================================================
 
-   Tema                    Local                    Railway
+   Tema                    Local                    VPS
    ----------------------  -----------------------  -------------------------
-   HTTPS                   No hay                   Si (dominio .railway.app)
+   HTTPS                   No hay                   Si (dominio propio + TLS)
    SESSION_SECURE_COOKIE   false                    true
    Base de datos           contenedor postgres:17   servicio Postgres
                            en la misma red
-   Variables               docker-compose.local.yml panel de variables
-   TRUST_PROXIES           *                        * (excepcion justificada)
+   Variables               docker-compose.local.yml .env.prod / panel
+                                                    de Coolify
+   TRUST_PROXIES           *                        * (proxy del VPS)
 
  Es decir: lo que verifiques aqui se traslada, salvo lo de HTTPS y las
- variables del proveedor, que se configuran en el paso 4 de
- deploy_railway/despliegue_railway.md.
+ variables del proveedor, que se configuran segun deploy_vps/despliegue_vps.md.
 
 ================================================================================
  10. DESPUES DE LA PRUEBA
 ================================================================================
 
- Si local esta OK, desplegar en Railway con:
-   deploy_railway/despliegue_railway.md   (guia paso a paso)
-   puesta_produccion.txt, Anexo G         (resumen)
-
- OJO: Railway YA NO tiene plan gratuito. Para "gratis de verdad", las opciones
- B (Render + Neon) y C (Alwaysdata) usan la MISMA imagen.
+ Si local esta OK, desplegar en el VPS con:
+   deploy_vps/despliegue_vps.md           (guia paso a paso)
+   puesta_produccion.txt                  (variables y operacion)

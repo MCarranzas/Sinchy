@@ -212,14 +212,15 @@ El respaldo diario (`sinchiwayra:respaldar`) queda programado en
 ### Despliegue en un servidor
 
 La app se despliega como **una imagen unica** (SPA + API en el mismo origen, por
-Sanctum). Hay dos guias paso a paso:
+Sanctum). La guia paso a paso esta en `deploy_vps/despliegue_vps.md`:
+**VPS propio con Coolify** (o Docker Compose directo con Caddy). Usa
+`docker-compose.prod.yml` y `deploy_vps/.env.prod.example`. Costo fijo bajo
+(~€4-12/mes).
 
-- `deploy_vps/despliegue_vps.md` - **VPS propio con Coolify** (o Docker Compose
-  directo con Caddy). Usa `docker-compose.prod.yml` y
-  `deploy_vps/.env.prod.example`. Costo fijo bajo (~€4-12/mes).
-- `deploy_render/despliegue_render.md` - **Render plan Free** (sin tarjeta, con
-  `render.yaml`). Ideal para demos cortas; el servicio duerme a los 15 min.
-- `deploy_railway/despliegue_railway.md` - Railway (ya no tiene plan gratuito).
+Para una prueba gratuita de 1 a 2 semanas, sin IP publica y sin tarjeta, esta
+`deploy_alwaysdata/despliegue_alwaysdata.md`: **Alwaysdata Free** con PHP 8.4,
+PostgreSQL 17, SSH y Apache. Incluye la plantilla `.env.alwaysdata.example` y
+el `.htaccess` que sirve la SPA y la API desde el mismo origen.
 
 ## Estado
 

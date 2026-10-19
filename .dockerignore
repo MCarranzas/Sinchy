@@ -11,7 +11,6 @@
 # --- Documentacion y material de desarrollo (no van a la imagen) ---
 docs
 auxiliar
-deploy_railway
 *.docx
 manual.docx
 usuarios_prueba.txt

@@ -229,7 +229,7 @@
 ================================================================================
  DESPUES DE VERIFICAR EN CASA
 ================================================================================
- Si local esta OK, desplegar en la nube gratuita (misma imagen):
-   - deploy_railway/despliegue_railway.md   (Railway)
-   - puesta_produccion.txt, seccion 6        (Render + Neon / Alwaysdata)
+ Si local esta OK, desplegar en un VPS:
+   - deploy_vps/despliegue_vps.md        (Coolify / Docker Compose)
+   - puesta_produccion.txt               (variables, respaldos, operacion)
 ================================================================================
