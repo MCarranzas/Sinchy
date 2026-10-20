@@ -240,7 +240,7 @@ por SFTP excluyendo manualmente `vendor`, `node_modules`, `.env`,
 ### 4.3 Subir los archivos
 
 ```powershell
-$cuenta = "TU_CUENTA"
+$cuenta = "sinchy@ssh-sinchy.alwaysdata.net"
 
 scp "$out\sinchy-api.tar.gz" "${cuenta}@ssh-${cuenta}.alwaysdata.net:~/"
 scp "$out\sinchy-web-dist.tar.gz" "${cuenta}@ssh-${cuenta}.alwaysdata.net:~/"
