@@ -1,0 +1,51 @@
+INSTRUCCIONES PARA SUBIR EL PROYECTO SINCHY-API COMPLETO A ALWAYSDATA CON WINSCP
+
+1. VERIFICAR CARPETA LOCAL
+- Local: C:\marioc\webs_figma\Sinchy\sinchy-api\
+- Debe contener: app/, bootstrap/, config/, database/, public/, resources/, routes/, storage/, vendor/, .env, artisan, composer.json, composer.lock
+
+2. CONECTAR A ALWAYSDATA CON WINSCP
+- Hostname: ssh.alwaysdata.com
+- Port: 22
+- Username: sinchy
+- Password: (la de siempre)
+- Protocolo: SFTP
+
+3. ELIMINAR CONTENIDO ACTUAL DEL SERVIDOR (IMPORTANTE)
+- Ir a /home/sinchy/sinchy-api/
+- Seleccionar TODO lo que haya dentro (NO la carpeta sinchy-api, sí su contenido)
+- Eliminarlo (Delete). Esto evita mezclar archivos viejos con los nuevos.
+- Deja la carpeta vacía.
+
+4. SUBIR TODO DESDE LOCAL
+- Seleccionar TODO el contenido de C:\marioc\webs_figma\Sinchy\sinchy-api\ local
+- Arrastrar y soltar a /home/sinchy/sinchy-api/ remoto
+- Asegúrate de subir archivos ocultos (.env, .gitignore) si aparecen (WinSCP los muestra por defecto)
+
+5. VERIFICAR RUTAS EN EL SERVIDOR
+- Comprobar que existe /home/sinchy/sinchy-api/routes/web.php
+- Abrirlo desde WinSCP (editar) y debe tener TODAS las rutas, NO solo:
+  <?php
+  use Illuminate\Support\Facades\Route;
+  Route::get('/', function () { return view('welcome'); });
+
+6. CONFIGURAR .ENV EN EL SERVIDOR
+- Editar /home/sinchy/sinchy-api/.env con los valores correctos para Alwaysdata (BD, APP_URL, APP_ENV=production, APP_DEBUG=false)
+- Si APP_KEY está vacío o es el que viene por defecto, generar uno: se puede generar localmente con php artisan key:generate y copiarlo, o desde SSH.
+
+7. PERMISOS (storage y bootstrap/cache)
+- Desde WinSCP: botón derecho sobre storage/ -> Propiedades -> Octal: 775 (o 777 si da problemas)
+- Igual para bootstrap/cache/
+
+8. LIMPIAR CACHE DESDE SSH (recomendado)
+- Conectar por SSH a alwaysdata (ssh sinchy@ssh.alwaysdata.com)
+- cd /home/sinchy/sinchy-api
+- php artisan config:clear
+- php artisan route:clear
+- php artisan view:clear
+- php artisan cache:clear
+
+9. COMPROBAR EN NAVEGADOR
+- Ir a https://sinchy.alwaysdata.net/
+- Debe cargar tu sistema (no la página de bienvenida de Laravel)
+- Probar /login, /dashboard
