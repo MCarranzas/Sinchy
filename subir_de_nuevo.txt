@@ -5,7 +5,7 @@ INSTRUCCIONES PARA SUBIR EL PROYECTO SINCHY-API COMPLETO A ALWAYSDATA CON WINSCP
 - Debe contener: app/, bootstrap/, config/, database/, public/, resources/, routes/, storage/, vendor/, .env, artisan, composer.json, composer.lock
 
 2. CONECTAR A ALWAYSDATA CON WINSCP
-- Hostname: ssh.alwaysdata.com
+- Hostname: ssh-sinchy.alwaysdata.net
 - Port: 22
 - Username: sinchy
 - Password: (la de siempre)
