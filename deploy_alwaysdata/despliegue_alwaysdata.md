@@ -412,7 +412,7 @@ cd C:\MarioC\webs_figma\Sinchy\sinchy-api
 composer install --no-dev --optimize-autoloader
 tar -czf "$env:TEMP\sinchy-deploy\vendor.tar.gz" vendor
 scp "$env:TEMP\sinchy-deploy\vendor.tar.gz" `
-  "${cuenta}@ssh-${cuenta}.alwaysdata.net:~/"
+  "$sinchy@ssh-$sinchy.alwaysdata.net:~/"
 ```
 
 En el servidor:
@@ -486,7 +486,7 @@ php artisan optimize
 Abrir en el navegador:
 
 ```text
-https://CUENTA.alwaysdata.net/api/health
+https://sinchy.alwaysdata.net/api/health
 ```
 
 Debe devolver un JSON con `"database":"ok"` (y el estado general de la API).
@@ -494,7 +494,7 @@ Debe devolver un JSON con `"database":"ok"` (y el estado general de la API).
 También se puede probar por consola:
 
 ```bash
-curl -i https://CUENTA.alwaysdata.net/api/health
+curl -i https://sinchy.alwaysdata.net/api/health
 ```
 
 ### 7.2 SPA y rutas profundas
@@ -502,7 +502,7 @@ curl -i https://CUENTA.alwaysdata.net/api/health
 Abrir:
 
 ```text
-https://CUENTA.alwaysdata.net/
+https://sinchy.alwaysdata.net/
 https://CUENTA.alwaysdata.net/login
 ```
 
